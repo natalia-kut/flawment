@@ -279,6 +279,9 @@ export default function DocumentsView() {
         <div>
           <p className="eyebrow">WORKSPACE / DOCUMENTATION</p>
           <h1>Documents</h1>
+          <p className="section-description">
+            Build a polished project report from a reusable template.
+          </p>
         </div>
         <button className="primary-button" type="button" onClick={() => setIsCreateOpen(true)}>
           <span aria-hidden="true">+</span> New template
@@ -319,7 +322,10 @@ export default function DocumentsView() {
                 </span>
                 <span className="template-card-copy">
                   <strong>{template.name}</strong>
-                  <span>{template.isBuiltIn ? "Built-in" : "My template"} · {template.sections.length} sections</span>
+                  <span>
+                    {template.isBuiltIn ? "Built-in" : "My template"} · {template.sections.length}{" "}
+                    {template.sections.length === 1 ? "section" : "sections"}
+                  </span>
                 </span>
               </button>
             ))}
