@@ -16,6 +16,42 @@ enum ProjectStatus {
   CANCELLED
 }
 
+enum TaskStatus {
+  TO_DO
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ProjectRole {
+  ADMIN
+  PARTICIPANT
+  MANAGER
+}
+
+model User {
+  id         Int     @id @default(autoincrement())
+  username   String  @unique
+  email      String  @unique
+  password   String
+  first_name String
+  last_name  String
+  is_active  Boolean @default(true)
+
+  owned_projects Project[]          @relation("ProjectOwner")
+  memberships    ProjectMembership[]
+  assigned_tasks Task[]             @relation("TaskAssignee")
+  created_tasks  Task[]             @relation("TaskCreator")
+}
+
 model Project {
   id          Int           @id @default(autoincrement())
   name        String
@@ -24,21 +60,49 @@ model Project {
   end_date    DateTime?     @db.Date
   status      ProjectStatus @default(TO_DO)
 
-  owner_id    Int
-  owner       User          @relation(fields: [owner_id], references: [id])
+  owner_id Int
+  owner    User @relation("ProjectOwner", fields: [owner_id], references: [id])
 
-  created_at  DateTime      @default(now())
-  updated_at  DateTime      @updatedAt
+  memberships ProjectMembership[]
+  tasks       Task[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
-model User {
-  id         Int       @id @default(autoincrement())
-  username   String    @unique
-  email      String    @unique
-  password   String
-  first_name String
-  last_name  String
-  is_active  Boolean   @default(true)
+model Task {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String?
 
-  projects   Project[]
+  project_id Int
+  project    Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  assigned_to Int?
+  assignee    User? @relation("TaskAssignee", fields: [assigned_to], references: [id], onDelete: SetNull)
+
+  created_by Int
+  creator    User @relation("TaskCreator", fields: [created_by], references: [id])
+
+  deadline   DateTime?    @db.Date
+  status     TaskStatus   @default(TO_DO)
+  priority   TaskPriority @default(MEDIUM)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model ProjectMembership {
+  id Int @id @default(autoincrement())
+
+  project_id Int
+  project    Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  user_id Int
+  user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  role      ProjectRole @default(PARTICIPANT)
+  joined_at DateTime    @default(now())
+
+  @@unique([project_id, user_id])
 }
