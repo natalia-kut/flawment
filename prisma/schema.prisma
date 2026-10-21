@@ -1,0 +1,44 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProjectStatus {
+  TO_DO
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+  CANCELLED
+}
+
+model Project {
+  id          Int           @id @default(autoincrement())
+  name        String
+  description String?
+  start_date  DateTime      @db.Date
+  end_date    DateTime?     @db.Date
+  status      ProjectStatus @default(TO_DO)
+
+  owner_id    Int
+  owner       User          @relation(fields: [owner_id], references: [id])
+
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
+}
+
+model User {
+  id         Int       @id @default(autoincrement())
+  username   String    @unique
+  email      String    @unique
+  password   String
+  first_name String
+  last_name  String
+  is_active  Boolean   @default(true)
+
+  projects   Project[]
+}
