@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Flawment
 
-## Getting Started
+Flawment is an early-stage project management application. The current version is a UI scaffold: the sidebar lets you switch between Dashboard, Projects, Participants, Tasks, and Documents, and each section displays a placeholder.
+The database and Prisma schema are part of the project foundation, but the current UI does not yet read from or write to the database.
 
-First, run the development server:
+## Tech stack
+
+- **Next.js 16** with the App Router
+- **React 19** and **TypeScript**
+- **Tailwind CSS 4** and custom global CSS
+- **Prisma 7** as the ORM, with a **PostgreSQL 17** database for local
+  development
+
+## Prerequisites
+
+To run the web application, install:
+
+- [Node.js 20.9 or later](https://nodejs.org/)
+- npm (included with Node.js)
+
+To run the optional local database and Prisma migrations, also install
+[Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+## Run the web application
+
+1. Clone the repository and open a terminal in its root directory.
+2. Install the dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+
+   ```bash
+   npm run dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000).
+
+The current placeholder UI does not require a running database.
+
+## Run PostgreSQL and Prisma migrations (optional)
+
+The repository includes a Docker Compose service for PostgreSQL. Start it from
+the project root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up -d db
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set `DATABASE_URL` in a root-level `.env` file to match the local Compose
+configuration:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+DATABASE_URL="postgresql://app_user:test@localhost:5432/flawment?schema=public"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The `test` password is for local development only; do not use it in a deployed
+environment. Apply pending migrations and generate the Prisma client with:
 
-## Learn More
+```bash
+npx prisma migrate dev
+npx prisma generate
+```
 
-To learn more about Next.js, take a look at the following resources:
+To stop the database container:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+docker compose down
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Docker Compose keeps database data in a named volume, so stopping the container
+does not remove the data.
 
-## Deploy on Vercel
+## Useful commands
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run dev       # Start the development server
+npm run build     # Create a production build
+npm run start     # Serve the production build
+npm run lint      # Run ESLint
+```
