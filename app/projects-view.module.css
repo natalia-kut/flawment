@@ -1,0 +1,90 @@
+.tableContainer {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--card);
+}
+
+.table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  padding: 19px 22px;
+  vertical-align: middle;
+}
+
+.table thead th {
+  padding-top: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.table tbody tr + tr > * {
+  border-top: 1px solid var(--border);
+}
+
+.projectName {
+  width: 32%;
+  font-weight: 650;
+}
+
+.overdue {
+  display: block;
+  margin-top: 5px;
+  color: #b93929;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.deadline {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.progressCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progressTrack {
+  min-width: 60px;
+  height: 6px;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eee9e0;
+}
+
+.progressTrack > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.progressValue {
+  min-width: 30px;
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  text-align: right;
+}
+
+.people,
+.table thead th:last-child {
+  text-align: center;
+}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import DocumentsView from "./documents-view";
+import ProjectsView from "./projects-view";
 
 const navigation = [
   "Dashboard",
@@ -54,8 +55,10 @@ export default function Home() {
 
       <main className="main-content">
         {activePage === "Documents" ? (
-          <DocumentsView />
-        ) : (
+  <DocumentsView />
+) : activePage === "Projects" ? (
+  <ProjectsView />
+) : (
           <>
             <header className="page-header">
               <p className="eyebrow">WORKSPACE</p>
