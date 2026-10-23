@@ -5,6 +5,7 @@ import { saveTemplate } from "@/lib/documents/actions";
 import {
   assignmentFilterOptions,
   blockTypeOptions,
+  chartKindOptions,
   createBlock,
   dueFilterOptions,
   memberColumnOptions,
@@ -55,14 +56,31 @@ function blockSummary(block: TemplateBlock) {
       return `${block.facts.length} facts`;
     case "metrics":
       return `${block.metrics.length} figures`;
+    case "chart":
+      return chartKindOptions.find((option) => option.key === block.kind)?.label ?? "Chart";
     case "taskTable":
     case "memberTable":
-    case "statusChart":
     case "signatures":
       return block.title || "Untitled";
     case "pageBreak":
       return "New page in PDF";
   }
+}
+
+// Stroke icons for the block tools; text glyphs like ↑ render as color emoji on Windows.
+const toolIcons = {
+  up: "M8 13V3M3.5 7.5 8 3l4.5 4.5",
+  down: "M8 3v10M3.5 8.5 8 13l4.5-4.5",
+  duplicate: "M5.5 5.5h7v7h-7zM3.5 10.5v-7h7",
+  remove: "M4 4l8 8M12 4l-8 8",
+};
+
+function ToolIcon({ name }: { name: keyof typeof toolIcons }) {
+  return (
+    <svg aria-hidden="true" fill="none" height="14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" viewBox="0 0 16 16" width="14">
+      <path d={toolIcons[name]} />
+    </svg>
+  );
 }
 
 // Chips whose click order defines the order of columns, facts or figures.
@@ -236,8 +254,24 @@ function BlockEditor({ block, onChange }: { block: TemplateBlock; onChange: (blo
           />
         </>
       );
-    case "statusChart":
-      return <TitleField onChange={(title) => onChange({ ...block, title })} value={block.title} />;
+    case "chart":
+      return (
+        <>
+          <SelectField
+            label="Chart"
+            onChange={(kind) => {
+              const previous = chartKindOptions.find((option) => option.key === block.kind)?.label;
+              const next = chartKindOptions.find((option) => option.key === kind)?.label ?? "";
+              // Keep a custom title; follow the chart name while it is still the default.
+              const title = !block.title || block.title === previous ? next : block.title;
+              onChange({ ...block, kind: kind as typeof block.kind, title });
+            }}
+            options={chartKindOptions}
+            value={block.kind}
+          />
+          <TitleField onChange={(title) => onChange({ ...block, title })} value={block.title} />
+        </>
+      );
     case "taskTable":
       return (
         <>
@@ -371,6 +405,7 @@ export default function TemplateBuilder({
   const [isSaving, startSaving] = useTransition();
 
   const project = projects.find((item) => item.id === projectId) ?? projects.at(0);
+  const selectedBlock = blocks.find((block) => block.id === selectedBlockId);
   const draft: DocumentTemplate = { id: "draft", name: name.trim() || "Untitled template", description, blocks, isBuiltIn: false };
 
   function updateBlock(updated: TemplateBlock) {
@@ -480,14 +515,14 @@ export default function TemplateBuilder({
                       <span>{blockSummary(block)}</span>
                     </button>
                     <div className="block-tools">
-                      <button aria-label="Move up" disabled={index === 0} onClick={() => moveBlock(block.id, -1)} type="button">↑</button>
+                      <button aria-label="Move up" disabled={index === 0} onClick={() => moveBlock(block.id, -1)} type="button"><ToolIcon name="up" /></button>
                       <button
                         aria-label="Move down"
                         disabled={index === blocks.length - 1}
                         onClick={() => moveBlock(block.id, 1)}
                         type="button"
                       >
-                        ↓
+                        <ToolIcon name="down" />
                       </button>
                       <button
                         aria-label="Duplicate"
@@ -495,9 +530,9 @@ export default function TemplateBuilder({
                         onClick={() => insertBlock({ ...structuredClone(block), id: newBlockId() })}
                         type="button"
                       >
-                        ⧉
+                        <ToolIcon name="duplicate" />
                       </button>
-                      <button aria-label="Remove" onClick={() => removeBlock(block.id)} type="button">×</button>
+                      <button aria-label="Remove" onClick={() => removeBlock(block.id)} type="button"><ToolIcon name="remove" /></button>
                     </div>
                   </div>
                   {isSelected && (
@@ -510,8 +545,13 @@ export default function TemplateBuilder({
             })}
           </ol>
 
-          <div className="template-list-heading">
-            <span>Add block{selectedBlockId ? " after selected" : ""}</span>
+          <div className="palette-heading">
+            <span className="field-label">Add a block</span>
+            <span>
+              {selectedBlock
+                ? `Inserted below “${blockLabels[selectedBlock.type]}: ${blockSummary(selectedBlock)}”`
+                : "Inserted at the end"}
+            </span>
           </div>
           <div className="block-palette">
             {blockTypeOptions.map((option) => (

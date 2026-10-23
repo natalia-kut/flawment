@@ -90,6 +90,15 @@ export const memberSortOptions = [
   { key: "overdue", label: "Most overdue" },
 ] as const;
 
+export const chartKindOptions = [
+  { key: "status", label: "Task status breakdown" },
+  { key: "progressVsTime", label: "Progress vs. time elapsed" },
+  { key: "timeline", label: "Deadline timeline" },
+  { key: "workload", label: "Open work per person" },
+  { key: "deadlineWeeks", label: "Deadlines per week" },
+  { key: "priorityMatrix", label: "Priority × status matrix" },
+] as const;
+
 export const signerOptions = [
   { key: "owner", label: "Project owner" },
   { key: "ownerAndManagers", label: "Owner and managers" },
@@ -108,13 +117,14 @@ export type TaskFilter = {
 export type TaskSort = OptionKey<typeof taskSortOptions>;
 export type MemberSort = OptionKey<typeof memberSortOptions>;
 export type Signers = OptionKey<typeof signerOptions>;
+export type ChartKind = OptionKey<typeof chartKindOptions>;
 
 export type TemplateBlock =
   | { id: string; type: "heading"; text: string }
   | { id: string; type: "text"; text: string }
   | { id: string; type: "facts"; title: string; facts: VariableKey[] }
   | { id: string; type: "metrics"; metrics: VariableKey[] }
-  | { id: string; type: "statusChart"; title: string }
+  | { id: string; type: "chart"; kind: ChartKind; title: string }
   | {
       id: string;
       type: "taskTable";
@@ -136,7 +146,7 @@ export const blockTypeOptions: { type: BlockType; label: string; hint: string }[
   { type: "text", label: "Text", hint: "Paragraphs with {{variables}}" },
   { type: "facts", label: "Fact sheet", hint: "Label / value table" },
   { type: "metrics", label: "Key figures", hint: "Highlighted numbers" },
-  { type: "statusChart", label: "Status chart", hint: "Task status breakdown" },
+  { type: "chart", label: "Chart", hint: "Timeline, workload, deadlines…" },
   { type: "taskTable", label: "Task table", hint: "Filtered list of tasks" },
   { type: "memberTable", label: "Team table", hint: "Members and workload" },
   { type: "signatures", label: "Signatures", hint: "Sign-off lines" },
@@ -174,8 +184,8 @@ export function createBlock(type: BlockType): TemplateBlock {
       return { id, type, title: "Project details", facts: ["project", "owner", "startDate", "endDate"] };
     case "metrics":
       return { id, type, metrics: ["progress", "openTasks", "overdueTasks"] };
-    case "statusChart":
-      return { id, type, title: "Task status" };
+    case "chart":
+      return { id, type, kind: "timeline", title: "Deadline timeline" };
     case "taskTable":
       return {
         id,
@@ -236,8 +246,11 @@ function parseBlock(raw: unknown): TemplateBlock | null {
       return { id, type: "facts", title, facts: pickList(raw.facts, keysOf(variableOptions)) };
     case "metrics":
       return { id, type: "metrics", metrics: pickList<VariableKey>(raw.metrics, keysOf(variableOptions)).slice(0, 6) };
+    case "chart":
+      return { id, type: "chart", kind: pick(raw.kind, keysOf(chartKindOptions), "status"), title };
+    // Templates saved before charts had kinds.
     case "statusChart":
-      return { id, type: "statusChart", title };
+      return { id, type: "chart", kind: "status", title };
     case "taskTable": {
       const filter = isRecord(raw.filter) ? raw.filter : {};
       const limit = typeof raw.limit === "number" && Number.isInteger(raw.limit) && raw.limit > 0 ? Math.min(raw.limit, 200) : null;

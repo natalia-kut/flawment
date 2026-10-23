@@ -1,9 +1,10 @@
 import { Fragment } from "react";
 import {
   buildVariables,
-  countByStatus,
   describeTiming,
   formatDay,
+  healthTone,
+  initials,
   interpolate,
   isOverdue,
   roleLabel,
@@ -22,11 +23,12 @@ import {
 } from "@/lib/documents/template-schema";
 import {
   taskPriorityLabels,
-  taskStatuses,
   taskStatusLabels,
+  type DocumentPerson,
   type DocumentProject,
   type DocumentTask,
 } from "@/lib/documents/types";
+import DocumentChart from "./document-charts";
 
 type SheetProps = {
   template: DocumentTemplate;
@@ -38,12 +40,31 @@ const variableLabels = Object.fromEntries(variableOptions.map((option) => [optio
 const taskColumnLabels = Object.fromEntries(taskColumnOptions.map((option) => [option.key, option.label]));
 const memberColumnLabels = Object.fromEntries(memberColumnOptions.map((option) => [option.key, option.label]));
 
+function Person({ person }: { person: Pick<DocumentPerson, "name"> }) {
+  return (
+    <span className="person">
+      <span className="person-initials" aria-hidden="true">{initials(person.name)}</span>
+      {person.name}
+    </span>
+  );
+}
+
+// Figures that signal a problem get a warning tone when they are above zero.
+const alertMetrics = new Set(["overdueTasks", "unassignedTasks", "highPriorityOpen"]);
+
+function metricTone(key: string, value: string) {
+  if (key === "scheduleHealth") return healthTone(value);
+  if (key === "overdueTasks") return value !== "0" ? "critical" : "good";
+  if (alertMetrics.has(key)) return value !== "0" ? "warning" : "good";
+  return "neutral";
+}
+
 function taskCell(column: TaskColumn, task: DocumentTask, today: string) {
   switch (column) {
     case "title":
       return task.title;
     case "assignee":
-      return task.assignee?.name ?? <span className="document-muted">Unassigned</span>;
+      return task.assignee ? <Person person={task.assignee} /> : <span className="document-muted">Unassigned</span>;
     case "status":
       return taskStatusLabels[task.status];
     case "priority":
@@ -55,7 +76,7 @@ function taskCell(column: TaskColumn, task: DocumentTask, today: string) {
         <span className={isOverdue(task, today) ? "document-late" : undefined}>{describeTiming(task, today)}</span>
       );
     case "creator":
-      return task.creator.name;
+      return <Person person={task.creator} />;
     case "description":
       return task.description ?? "—";
   }
@@ -64,7 +85,7 @@ function taskCell(column: TaskColumn, task: DocumentTask, today: string) {
 function memberCell(column: MemberColumn, row: MemberRow, project: DocumentProject) {
   switch (column) {
     case "name":
-      return row.person.name;
+      return <Person person={row.person} />;
     case "email":
       return row.person.email;
     case "role":
@@ -129,7 +150,7 @@ function renderBlock(block: TemplateBlock, project: DocumentProject, today: stri
       return (
         <div className="document-metrics">
           {block.metrics.map((key) => (
-            <div className="document-metric" key={key}>
+            <div className={`document-metric tone-${metricTone(key, variables[key])}`} key={key}>
               <strong>{variables[key]}</strong>
               <span>{variableLabels[key]}</span>
             </div>
@@ -137,41 +158,13 @@ function renderBlock(block: TemplateBlock, project: DocumentProject, today: stri
         </div>
       );
 
-    case "statusChart": {
-      const counts = countByStatus(project);
-      const total = project.tasks.length;
+    case "chart":
       return (
         <>
           <SectionTitle title={block.title} variables={variables} />
-          {total === 0 ? (
-            <p className="document-muted">This project has no tasks yet.</p>
-          ) : (
-            <>
-              <div className="status-bar" role="img" aria-label="Task status breakdown">
-                {taskStatuses.map((status) =>
-                  counts[status] > 0 ? (
-                    <span
-                      className={`status-segment ${status.toLowerCase()}`}
-                      key={status}
-                      style={{ flexGrow: counts[status] }}
-                    />
-                  ) : null,
-                )}
-              </div>
-              <ul className="status-legend">
-                {taskStatuses.map((status) => (
-                  <li key={status}>
-                    <span className={`status-dot ${status.toLowerCase()}`} aria-hidden="true" />
-                    {taskStatusLabels[status]} <strong>{counts[status]}</strong>
-                    <span className="document-muted">({Math.round((counts[status] / total) * 100)}%)</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          <DocumentChart kind={block.kind} project={project} today={today} />
         </>
       );
-    }
 
     case "taskTable": {
       const tasks = selectTasks(project, today, block.filter, block.sort, block.limit);
@@ -181,24 +174,26 @@ function renderBlock(block: TemplateBlock, project: DocumentProject, today: stri
           {tasks.length === 0 ? (
             <p className="document-muted">{block.emptyText || "No tasks match this section."}</p>
           ) : (
-            <table className="document-table">
-              <thead>
-                <tr>
-                  {block.columns.map((column) => (
-                    <th className={`column-${column}`} key={column}>{taskColumnLabels[column]}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {tasks.map((task) => (
-                  <tr key={task.id}>
+            <div className="table-scroll">
+              <table className="document-table">
+                <thead>
+                  <tr>
                     {block.columns.map((column) => (
-                      <td className={`column-${column}`} key={column}>{taskCell(column, task, today)}</td>
+                      <th className={`column-${column}`} key={column}>{taskColumnLabels[column]}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {tasks.map((task) => (
+                    <tr key={task.id}>
+                      {block.columns.map((column) => (
+                        <td className={`column-${column}`} key={column}>{taskCell(column, task, today)}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </>
       );
@@ -212,24 +207,26 @@ function renderBlock(block: TemplateBlock, project: DocumentProject, today: stri
           {rows.length === 0 ? (
             <p className="document-muted">This project has no members yet.</p>
           ) : (
-            <table className="document-table">
-              <thead>
-                <tr>
-                  {block.columns.map((column) => (
-                    <th className={`column-${column}`} key={column}>{memberColumnLabels[column]}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.person.id}>
+            <div className="table-scroll">
+              <table className="document-table">
+                <thead>
+                  <tr>
                     {block.columns.map((column) => (
-                      <td className={`column-${column}`} key={column}>{memberCell(column, row, project)}</td>
+                      <th className={`column-${column}`} key={column}>{memberColumnLabels[column]}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.person.id}>
+                      {block.columns.map((column) => (
+                        <td className={`column-${column}`} key={column}>{memberCell(column, row, project)}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </>
       );
@@ -258,15 +255,28 @@ function renderBlock(block: TemplateBlock, project: DocumentProject, today: stri
 
 export default function DocumentSheet({ template, project, today }: SheetProps) {
   const variables = buildVariables(project, today);
+  const tone = healthTone(variables.scheduleHealth);
 
   return (
     <article className="document-sheet">
-      <div className="document-brand">
-        <span>FLAWMENT / {template.name.toUpperCase()}</span>
-        <span>{formatDay(today)}</span>
-      </div>
-      <h2>{template.name} · {project.name}</h2>
-      {project.description && <p className="project-description">{project.description}</p>}
+      <header className="document-cover">
+        <div className="document-cover-top">
+          <span>flawment<b>.</b></span>
+          <span>{template.name}</span>
+        </div>
+        <h2>{project.name}</h2>
+        {project.description && <p>{project.description}</p>}
+        <span className={`health-pill tone-${tone}`}>
+          <span aria-hidden="true">{tone === "good" ? "✓" : tone === "neutral" ? "•" : "!"}</span>
+          {variables.scheduleHealth}
+        </span>
+      </header>
+      <dl className="document-meta">
+        <div><dt>Owner</dt><dd>{project.owner.name}</dd></div>
+        <div><dt>Period</dt><dd>{formatDay(project.startDate)} – {formatDay(project.endDate)}</dd></div>
+        <div><dt>Team</dt><dd>{variables.memberCount}</dd></div>
+        <div><dt>Generated</dt><dd>{formatDay(today)}</dd></div>
+      </dl>
       {template.blocks.map((block) => (
         <Fragment key={block.id}>
           {block.type === "pageBreak" ? (
@@ -279,7 +289,7 @@ export default function DocumentSheet({ template, project, today }: SheetProps) 
         </Fragment>
       ))}
       <footer className="document-footer">
-        <span>Generated with Flawment from live project data</span>
+        <span>{template.name} · generated with Flawment from live project data</span>
         <span>{project.owner.name} · {project.owner.email}</span>
       </footer>
     </article>

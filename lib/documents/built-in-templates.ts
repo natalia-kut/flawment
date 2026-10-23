@@ -18,11 +18,13 @@ export const builtInTemplates: DocumentTemplate[] = [
         type: "text",
         text:
           "Status of {{project}} as of {{today}} — schedule health: {{scheduleHealth}}. " +
-          "{{progress}} of tasks are completed while {{timeElapsed}} of the planned time has passed " +
-          "({{daysRemaining}} remaining until {{endDate}}).",
+          "{{progress}} of tasks are completed while {{timeElapsed}} of the planned time has passed. " +
+          "Planned end: {{endDate}} ({{daysRemaining}}).",
       },
-      { id: "kpi", type: "metrics", metrics: ["progress", "timeElapsed", "overdueTasks", "dueSoon"] },
-      { id: "chart", type: "statusChart", title: "Task status" },
+      { id: "kpi", type: "metrics", metrics: ["scheduleHealth", "progress", "overdueTasks", "dueSoon"] },
+      { id: "pace", type: "chart", kind: "progressVsTime", title: "Progress against the schedule" },
+      { id: "timeline", type: "chart", kind: "timeline", title: "Deadline timeline" },
+      { id: "chart", type: "chart", kind: "status", title: "Task status" },
       {
         id: "overdue",
         type: "taskTable",
@@ -70,10 +72,12 @@ export const builtInTemplates: DocumentTemplate[] = [
           "and {{unassignedTasks}} still without an owner.",
       },
       { id: "kpi", type: "metrics", metrics: ["openTasks", "highPriorityOpen", "overdueTasks", "unassignedTasks"] },
+      { id: "load", type: "chart", kind: "workload", title: "Open work per person" },
+      { id: "weeks", type: "chart", kind: "deadlineWeeks", title: "Upcoming deadlines per week" },
       {
         id: "team",
         type: "memberTable",
-        title: "Open work per person",
+        title: "Workload details",
         columns: ["name", "role", "open", "highPriority", "overdue", "completed"],
         sort: "open",
       },
@@ -104,6 +108,7 @@ export const builtInTemplates: DocumentTemplate[] = [
           "and agree on an owner and a recovery date.",
       },
       { id: "kpi", type: "metrics", metrics: ["scheduleHealth", "overdueTasks", "highPriorityOpen", "daysRemaining"] },
+      { id: "matrix", type: "chart", kind: "priorityMatrix", title: "Where the risk sits" },
       {
         id: "critical",
         type: "taskTable",
@@ -150,12 +155,13 @@ export const builtInTemplates: DocumentTemplate[] = [
         title: "Project details",
         facts: ["project", "owner", "managers", "status", "startDate", "endDate", "duration", "memberCount"],
       },
+      { id: "status", type: "chart", kind: "status", title: "Final task status" },
       {
         id: "intro",
         type: "text",
         text:
           "On {{today}} the parties confirm the handover of {{project}}. " +
-          "{{completedTasks}} of {{totalTasks}} tasks were delivered ({{progress}} of the planned scope); " +
+          "{{completedTasks}} of {{totalTasks}} tasks were delivered ({{progress}} of the planned scope). " +
           "Tasks cancelled by agreement: {{cancelledTasks}}.",
       },
       {

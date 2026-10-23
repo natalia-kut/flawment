@@ -23,7 +23,7 @@ export function daysBetween(from: string, to: string) {
   return Math.round((toUtc(to) - toUtc(from)) / dayMs);
 }
 
-function addDays(day: string, days: number) {
+export function addDays(day: string, days: number) {
   return new Date(toUtc(day) + days * dayMs).toISOString().slice(0, 10);
 }
 
@@ -85,26 +85,35 @@ function scheduleHealth(project: DocumentProject, today: string, progress: numbe
   return "On track";
 }
 
+// Share of non-cancelled tasks completed, and share of the planned time that has passed.
+export function projectPace(project: DocumentProject, today: string) {
+  const completed = project.tasks.filter((task) => task.status === "COMPLETED").length;
+  const counted = project.tasks.filter((task) => task.status !== "CANCELLED").length;
+  const progress = counted > 0 ? Math.round((completed / counted) * 100) : 0;
+
+  let elapsed: number | null = null;
+  if (project.endDate) {
+    const total = Math.max(daysBetween(project.startDate, project.endDate), 1);
+    elapsed = Math.round(Math.min(Math.max(daysBetween(project.startDate, today) / total, 0), 1) * 100);
+  }
+  return { progress, elapsed };
+}
+
 export function buildVariables(project: DocumentProject, today: string): Record<VariableKey, string> {
   const tasks = project.tasks;
   const open = tasks.filter(isOpen);
   const completed = tasks.filter((task) => task.status === "COMPLETED").length;
   const cancelled = tasks.filter((task) => task.status === "CANCELLED").length;
   const overdue = tasks.filter((task) => isOverdue(task, today)).length;
-  const counted = tasks.length - cancelled;
-  const progress = counted > 0 ? Math.round((completed / counted) * 100) : 0;
+  const { progress, elapsed } = projectPace(project, today);
 
-  let elapsed: number | null = null;
   let duration = "No end date";
   let remaining = "No end date";
   if (project.endDate) {
-    const total = Math.max(daysBetween(project.startDate, project.endDate), 1);
-    const passed = daysBetween(project.startDate, today);
-    elapsed = Math.round(Math.min(Math.max(passed / total, 0), 1) * 100);
-    duration = plural(total, "day");
+    duration = plural(Math.max(daysBetween(project.startDate, project.endDate), 1), "day");
 
     const left = daysBetween(today, project.endDate);
-    remaining = left > 0 ? plural(left, "day") : left === 0 ? "Ends today" : `Ended ${plural(-left, "day")} ago`;
+    remaining = left > 0 ? `${plural(left, "day")} left` : left === 0 ? "ends today" : `ended ${plural(-left, "day")} ago`;
   }
 
   const managers = project.members.filter((member) => member.role === "MANAGER").map((member) => member.person.name);
@@ -135,6 +144,24 @@ export function buildVariables(project: DocumentProject, today: string): Record<
     cancelledTasks: String(cancelled),
     today: formatDay(today),
   };
+}
+
+export type HealthTone = "good" | "warning" | "critical" | "neutral";
+
+export function healthTone(health: string): HealthTone {
+  if (health === "On track" || health === "Completed") return "good";
+  if (health === "At risk") return "warning";
+  if (health === "Past deadline" || health === "Cancelled") return "critical";
+  return "neutral";
+}
+
+export function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 export function interpolate(template: string, variables: Record<string, string>) {
