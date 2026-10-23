@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useContext, useState, useTransition } from "react";
 import { deleteTemplate } from "@/lib/documents/actions";
 import { formatDay } from "@/lib/documents/engine";
 import { createBlock, type DocumentTemplate } from "@/lib/documents/template-schema";
 import { projectStatusLabels, type DocumentProject } from "@/lib/documents/types";
 import DocumentSheet from "./document-sheet";
 import TemplateBuilder from "./template-builder";
+import { RequestedTemplateContext } from "./workspace-context";
 import "./documents.css";
 
 type DocumentsViewProps = {
@@ -28,8 +29,13 @@ function fileName(...parts: string[]) {
 }
 
 export default function DocumentsView({ projects, initialTemplates, today }: DocumentsViewProps) {
+  const requestedTemplateId = useContext(RequestedTemplateContext);
   const [templates, setTemplates] = useState(initialTemplates);
-  const [selectedTemplateId, setSelectedTemplateId] = useState(initialTemplates[0]?.id ?? "");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(
+    initialTemplates.some((template) => template.id === requestedTemplateId)
+      ? requestedTemplateId!
+      : (initialTemplates[0]?.id ?? ""),
+  );
   const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id ?? 0);
   // Template the builder starts from; null while the builder is closed.
   const [builderSource, setBuilderSource] = useState<DocumentTemplate | null>(null);
