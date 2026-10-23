@@ -2,6 +2,9 @@
 
 import { useState, useActionState, type ReactNode } from "react";
 import { logout } from "@/lib/auth/actions";
+import Dashboard from "./dashboard";
+import { FlawiuszPanel, useFlawiuszChat } from "./flawiusz-chat";
+import { RequestedTemplateContext } from "./workspace-context";
 
 const navigation = [
   "Dashboard",
@@ -28,6 +31,15 @@ export default function AppShell({ documents, projects, user, projectCount }: {
   user: { first_name: string; last_name: string; role: string };
 }) {
   const [activePage, setActivePage] = useState<NavigationItem>("Projects");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [requestedTemplateId, setRequestedTemplateId] = useState<string | null>(null);
+  const chat = useFlawiuszChat();
+
+  function openTemplate(templateId: string) {
+    setRequestedTemplateId(templateId);
+    setActivePage("Documents");
+    setChatOpen(false);
+  }
 
   return (
     <div className="app-shell">
@@ -66,10 +78,18 @@ export default function AppShell({ documents, projects, user, projectCount }: {
 
       <main className="main-content">
         {activePage === "Documents" ? (
-          documents
+          // Remount when Flawiusz asks to open a template, so the page selects it.
+          <RequestedTemplateContext value={requestedTemplateId} key={requestedTemplateId ?? "documents"}>
+            {documents}
+          </RequestedTemplateContext>
         ) : activePage === "Projects" || activePage === "Participants" ? projects : activePage === "Dashboard" ? (
-          <><header className="page-header"><p className="eyebrow">WORKSPACE</p><h1>Welcome, {user.first_name}</h1></header>
-          <section className="workspace-card"><h2>{projectCount} accessible projects</h2><p>Create projects and manage memberships from Projects.</p><button className="primary-button" onClick={() => setActivePage("Projects")}>Open projects</button></section></>
+          <Dashboard
+            chat={chat}
+            firstName={user.first_name}
+            projectCount={projectCount}
+            onOpenProjects={() => setActivePage("Projects")}
+            onOpenTemplate={openTemplate}
+          />
         ) : (
           <>
             <header className="page-header">
@@ -89,6 +109,11 @@ export default function AppShell({ documents, projects, user, projectCount }: {
           </>
         )}
       </main>
+
+      {/* The dashboard has Flawiusz built in; other pages get the side panel. */}
+      {activePage !== "Dashboard" && (
+        <FlawiuszPanel chat={chat} onOpenChange={setChatOpen} onOpenTemplate={openTemplate} open={chatOpen} />
+      )}
     </div>
   );
 }

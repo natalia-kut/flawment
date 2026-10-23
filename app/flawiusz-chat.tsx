@@ -1,0 +1,429 @@
+"use client";
+
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { variableOptions } from "@/lib/documents/template-schema";
+import type { AgentEvent } from "@/lib/flawiusz/agent";
+import { busyPhrases } from "@/lib/flawiusz/phrases";
+import "./flawiusz.css";
+
+const thinkingStorageKey = "flawiusz-thinking";
+
+type SavedTemplate = { id: string; name: string };
+
+type Message = {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  templates: SavedTemplate[];
+  error?: string;
+};
+
+// Saved templates are not part of the visible text, so remind the model of them
+// on later turns (it needs the id to edit a template again).
+function historyContent(message: Message) {
+  const notes = message.templates.map((template) => `\n[Saved template "${template.name}" (${template.id})]`);
+  return message.content + notes.join("");
+}
+
+// One conversation shared by the dashboard and the side panel, so a chat started
+// on the dashboard continues on every other page.
+export function useFlawiuszChat() {
+  const router = useRouter();
+  const [messages, setMessages] = useState<Message[]>([]);
+  // The current step while Flawiusz is working; null when idle.
+  const [status, setStatus] = useState<string | null>(null);
+  const [thinking, setThinkingState] = useState(false);
+  const nextId = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const busy = status !== null;
+
+  // The thinking switch is a per-browser preference.
+  useEffect(() => {
+    try {
+      setThinkingState(localStorage.getItem(thinkingStorageKey) === "on");
+    } catch {
+      // Storage can be unavailable (private mode); keep the default.
+    }
+  }, []);
+
+  function setThinking(value: boolean) {
+    setThinkingState(value);
+    try {
+      localStorage.setItem(thinkingStorageKey, value ? "on" : "off");
+    } catch {
+      // Not remembered, but still applies to this session.
+    }
+  }
+
+  async function send(text: string) {
+    const prompt = text.trim();
+    if (!prompt || busy) return;
+
+    const question: Message = { id: nextId.current++, role: "user", content: prompt, templates: [] };
+    const reply: Message = { id: nextId.current++, role: "assistant", content: "", templates: [] };
+    const history = [...messages.filter((message) => message.content && !message.error), question].map(
+      (message) => ({ role: message.role, content: historyContent(message) }),
+    );
+    const update = (change: (message: Message) => Message) =>
+      setMessages((current) => current.map((message) => (message.id === reply.id ? change(message) : message)));
+
+    setMessages((current) => [...current, question, reply]);
+    setStatus(busyPhrases[0]);
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const handle = (event: AgentEvent) => {
+      switch (event.type) {
+        case "status":
+          setStatus(event.label);
+          break;
+        case "text":
+          update((message) => ({ ...message, content: message.content + event.text }));
+          break;
+        case "template":
+          update((message) => ({ ...message, templates: [...message.templates, { id: event.id, name: event.name }] }));
+          // Reload server data so the Documents page lists the new template.
+          router.refresh();
+          break;
+        case "error":
+          update((message) => ({ ...message, error: event.message }));
+          break;
+      }
+    };
+
+    try {
+      const response = await fetch("/api/flawiusz", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messages: history, thinking }),
+        signal: controller.signal,
+      });
+      if (!response.ok || !response.body) throw new Error(`Chat request failed with ${response.status}`);
+
+      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+      let buffer = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += value;
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) if (line.trim()) handle(JSON.parse(line) as AgentEvent);
+      }
+    } catch {
+      update((message) =>
+        controller.signal.aborted
+          ? { ...message, content: message.content || "_Stopped._" }
+          : { ...message, error: "Flawiusz is unavailable right now. Try again in a moment." },
+      );
+    } finally {
+      abortRef.current = null;
+      setStatus(null);
+    }
+  }
+
+  function stop() {
+    abortRef.current?.abort();
+  }
+
+  function reset() {
+    stop();
+    setMessages([]);
+  }
+
+  return { messages, status, busy, thinking, setThinking, send, stop, reset };
+}
+
+export type FlawiuszChat = ReturnType<typeof useFlawiuszChat>;
+
+const variableLabels: Record<string, string> = Object.fromEntries(
+  variableOptions.map((option) => [option.key, option.label.toLowerCase()]),
+);
+
+// Small models sometimes leak template placeholders into replies; show them as plain words.
+function humanize(text: string) {
+  return text.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, key: string) => variableLabels[key] ?? key.replace(/\./g, " "));
+}
+
+function inline(text: string) {
+  return humanize(text).split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, index) => {
+    if (part.length > 4 && part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.length > 2 && part.startsWith("`") && part.endsWith("`")) return <code key={index}>{part.slice(1, -1)}</code>;
+    return part;
+  });
+}
+
+type ListItem = { text: string; children: string[] };
+
+// Just enough Markdown for chat replies: paragraphs, headings, lists (one level of
+// nesting), bold and code.
+function Markdown({ text }: { text: string }) {
+  const blocks: ReactNode[] = [];
+  let list: { ordered: boolean; start: number; items: ListItem[] } | null = null;
+
+  const flushList = () => {
+    if (!list) return;
+    const items = list.items.map((item, index) => (
+      <li key={index}>
+        {inline(item.text)}
+        {item.children.length > 0 && (
+          <ul>
+            {item.children.map((child, childIndex) => (
+              <li key={childIndex}>{inline(child)}</li>
+            ))}
+          </ul>
+        )}
+      </li>
+    ));
+    blocks.push(
+      list.ordered ? (
+        // Keep the model's numbering when a list is interrupted, instead of restarting at 1.
+        <ol key={blocks.length} start={list.start}>{items}</ol>
+      ) : (
+        <ul key={blocks.length}>{items}</ul>
+      ),
+    );
+    list = null;
+  };
+
+  for (const line of text.split("\n")) {
+    const item = /^(\s*)(?:([-*•])|(\d+)[.)])\s+(.*)$/.exec(line);
+    const indented = /^\s{2,}\S/.test(line);
+    const lastItem = list?.items.at(-1);
+
+    // Indented lines under a list item belong to that item.
+    if (indented && lastItem) {
+      lastItem.children.push(item ? item[4] : line.trim());
+      continue;
+    }
+    if (item) {
+      const ordered = !item[2];
+      if (list && list.ordered !== ordered) flushList();
+      list ??= { ordered, start: ordered ? Number(item[3]) : 1, items: [] };
+      list.items.push({ text: item[4], children: [] });
+      continue;
+    }
+    // Blank lines between list items don't end the list; horizontal rules are just noise in a chat.
+    if (!line.trim() || /^\s*([-*_])\1{2,}\s*$/.test(line)) continue;
+    flushList();
+    const heading = /^#{1,4}\s+(.*)$/.exec(line);
+    if (heading) blocks.push(<p className="chat-heading" key={blocks.length}>{inline(heading[1])}</p>);
+    else blocks.push(<p key={blocks.length}>{inline(line)}</p>);
+  }
+  flushList();
+  return <>{blocks}</>;
+}
+
+export function ChatLog({
+  chat,
+  onOpenTemplate,
+  className,
+}: {
+  chat: FlawiuszChat;
+  onOpenTemplate: (templateId: string) => void;
+  className: string;
+}) {
+  const logRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
+  }, [chat.messages, chat.status]);
+
+  return (
+    <div className={`flawiusz-log ${className}`} ref={logRef} aria-live="polite">
+      {chat.messages.map((message) => (
+        <div className={`flawiusz-message ${message.role}`} key={message.id}>
+          {message.role === "user" ? (
+            <p>{message.content}</p>
+          ) : (
+            <>
+              {message.content && <Markdown text={message.content} />}
+              {message.templates.map((template) => (
+                <div className="flawiusz-template" key={template.id}>
+                  <span>
+                    Saved template <strong>{template.name}</strong>
+                  </span>
+                  <button type="button" className="secondary-button" onClick={() => onOpenTemplate(template.id)}>
+                    Open in Documents
+                  </button>
+                </div>
+              ))}
+              {message.error && <p className="flawiusz-error" role="alert">{message.error}</p>}
+            </>
+          )}
+        </div>
+      ))}
+      {chat.busy && (
+        <p className="flawiusz-status">
+          <span className="flawiusz-typing" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+          {chat.status}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function Composer({
+  chat,
+  placeholder,
+  autoFocus = false,
+}: {
+  chat: FlawiuszChat;
+  placeholder: string;
+  autoFocus?: boolean;
+}) {
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
+
+  function submit() {
+    if (!draft.trim() || chat.busy) return;
+    void chat.send(draft);
+    setDraft("");
+  }
+
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    submit();
+  }
+
+  function handleKey(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      submit();
+    }
+  }
+
+  return (
+    <form className="flawiusz-composer" onSubmit={handleSubmit}>
+      <div className="flawiusz-composer-row">
+        <textarea
+          ref={inputRef}
+          aria-label="Message Flawiusz"
+          placeholder={placeholder}
+          rows={1}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={handleKey}
+        />
+        {chat.busy ? (
+          <button type="button" className="secondary-button" onClick={chat.stop}>
+            Stop
+          </button>
+        ) : (
+          <button type="submit" className="primary-button" disabled={!draft.trim()}>
+            Send
+          </button>
+        )}
+      </div>
+      <label
+        className="flawiusz-thinking"
+        title="Flawiusz reasons before answering. Better for complex requests, but replies can take a minute or more."
+      >
+        <input
+          type="checkbox"
+          role="switch"
+          checked={chat.thinking}
+          onChange={(event) => chat.setThinking(event.target.checked)}
+        />
+        <span className="flawiusz-switch" aria-hidden="true" />
+        <span>
+          <strong>Think it through</strong> · slower, for tricky requests
+        </span>
+      </label>
+    </form>
+  );
+}
+
+// Launcher and slide-in panel, used on every page except the dashboard.
+export function FlawiuszPanel({
+  chat,
+  open,
+  onOpenChange,
+  onOpenTemplate,
+}: {
+  chat: FlawiuszChat;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onOpenTemplate: (templateId: string) => void;
+}) {
+  const [hintDismissed, setHintDismissed] = useState(false);
+  const showHint = !hintDismissed && chat.messages.length === 0;
+
+  return (
+    <>
+      {!open && (
+        <div className="flawiusz-launcher">
+          {showHint && (
+            <div className="flawiusz-hint">
+              <button type="button" className="flawiusz-hint-body" onClick={() => onOpenChange(true)}>
+                Need a hand? <strong>Ask Flawiusz</strong>
+              </button>
+              <button type="button" className="flawiusz-hint-close" aria-label="Dismiss" onClick={() => setHintDismissed(true)}>
+                ×
+              </button>
+            </div>
+          )}
+          <button type="button" className="flawiusz-fab" aria-label="Chat with Flawiusz" onClick={() => onOpenChange(true)}>
+            <Image src="/flawiusz.png" alt="" width={64} height={64} />
+            {chat.busy && <span className="flawiusz-fab-dot" aria-hidden="true" />}
+          </button>
+        </div>
+      )}
+
+      <aside
+        className={`flawiusz-panel${open ? " open" : ""}`}
+        aria-label="Chat with Flawiusz"
+        inert={!open}
+        onKeyDown={(event) => event.key === "Escape" && onOpenChange(false)}
+      >
+        <header className="flawiusz-panel-header">
+          <Image src="/flawiusz.png" alt="" width={40} height={40} />
+          <div>
+            <h2>Flawiusz</h2>
+            <p>Your project assistant</p>
+          </div>
+          {chat.messages.length > 0 && (
+            <button type="button" className="flawiusz-icon-button" onClick={chat.reset}>
+              New chat
+            </button>
+          )}
+          <button
+            type="button"
+            className="flawiusz-icon-button close"
+            aria-label="Close chat"
+            onClick={() => onOpenChange(false)}
+          >
+            ×
+          </button>
+        </header>
+
+        {chat.messages.length === 0 ? (
+          <div className="flawiusz-empty">
+            <Image src="/flawiusz.png" alt="" width={72} height={72} />
+            <p>
+              <strong>Hi, I&apos;m Flawiusz!</strong> I can answer questions about your projects, deadlines and team,
+              and draft document templates for you.
+            </p>
+          </div>
+        ) : (
+          <ChatLog chat={chat} className="in-panel" onOpenTemplate={onOpenTemplate} />
+        )}
+
+        <Composer autoFocus={open} chat={chat} placeholder="Ask Flawiusz…" />
+      </aside>
+    </>
+  );
+}
