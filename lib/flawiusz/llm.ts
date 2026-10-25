@@ -21,10 +21,6 @@ export function llmConfig(): LlmConfig | null {
   return baseUrl && model ? { baseUrl: baseUrl.replace(/\/+$/, ""), model, apiKey } : null;
 }
 
-// Qwen3's switch for skipping its reasoning, which roughly triples the response time
-// on a CPU. Other models ignore it.
-export const noThinkSwitch = " /no_think";
-
 type StreamChunk = {
   choices?: {
     delta?: {

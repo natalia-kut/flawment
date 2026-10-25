@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { llmConfig, noThinkSwitch, streamCompletion, type ChatMessage, type ToolSpec } from "./llm";
+import { llmConfig, streamCompletion, type ChatMessage, type ToolSpec } from "./llm";
 import { randomBusyPhrase, unavailableMessage } from "./phrases";
 import { localDay } from "@/lib/documents/engine";
 import { flawiuszTools, runTool } from "./tools";
@@ -60,7 +60,7 @@ export async function runFlawiusz(
     return;
   }
 
-  const messages: ChatMessage[] = [{ role: "system", content: systemPrompt() + noThinkSwitch }, ...conversation];
+  const messages: ChatMessage[] = [{ role: "system", content: systemPrompt() }, ...conversation];
   let wroteText = false;
 
   for (let step = 0; step < maxSteps; step++) {
