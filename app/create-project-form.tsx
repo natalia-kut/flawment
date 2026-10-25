@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 export type CreateProjectState = {
   success: boolean;
@@ -16,7 +16,7 @@ type CreateProjectFormProps = {
   owners: ProjectOwner[];
   createAction: (
     previousState: CreateProjectState,
-    formData: FormData,
+    formData: FormData
   ) => Promise<CreateProjectState>;
 };
 
@@ -25,14 +25,42 @@ const initialState: CreateProjectState = {
   message: "",
 };
 
+const emptyFields = {
+  name: "",
+  description: "",
+  start_date: "",
+  end_date: "",
+  owner_id: "",
+};
+
 export default function CreateProjectForm({
   owners,
   createAction,
 }: CreateProjectFormProps) {
+  const [fields, setFields] = useState(emptyFields);
+
   const [state, formAction, pending] = useActionState(
-    createAction,
-    initialState,
+    async (
+      previousState: CreateProjectState,
+      formData: FormData
+    ): Promise<CreateProjectState> => {
+      const result = await createAction(previousState, formData);
+
+      if (result.success) {
+        setFields({ ...emptyFields });
+      }
+
+      return result;
+    },
+    initialState
   );
+
+  function updateField(field: keyof typeof emptyFields, value: string) {
+    setFields((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
 
   return (
     <details className="create-project">
@@ -52,6 +80,8 @@ export default function CreateProjectForm({
             required
             maxLength={150}
             placeholder="Enter project name"
+            value={fields.name}
+            onChange={(event) => updateField("name", event.target.value)}
           />
 
           <label htmlFor="project-description">Description</label>
@@ -61,6 +91,10 @@ export default function CreateProjectForm({
             rows={4}
             maxLength={5000}
             placeholder="What is this project about?"
+            value={fields.description}
+            onChange={(event) =>
+              updateField("description", event.target.value)
+            }
           />
 
           <label htmlFor="project-start">Start date *</label>
@@ -69,6 +103,10 @@ export default function CreateProjectForm({
             name="start_date"
             type="date"
             required
+            value={fields.start_date}
+            onChange={(event) =>
+              updateField("start_date", event.target.value)
+            }
           />
 
           <label htmlFor="project-end">Deadline</label>
@@ -76,14 +114,21 @@ export default function CreateProjectForm({
             id="project-end"
             name="end_date"
             type="date"
+            value={fields.end_date}
+            onChange={(event) =>
+              updateField("end_date", event.target.value)
+            }
           />
 
           <label htmlFor="project-owner">Project owner *</label>
           <select
             id="project-owner"
             name="owner_id"
-            defaultValue=""
             required
+            value={fields.owner_id}
+            onChange={(event) =>
+              updateField("owner_id", event.target.value)
+            }
           >
             <option value="" disabled>
               Select project owner
