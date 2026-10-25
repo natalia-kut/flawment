@@ -21,8 +21,8 @@ export function llmConfig(): LlmConfig | null {
   return baseUrl && model ? { baseUrl: baseUrl.replace(/\/+$/, ""), model } : null;
 }
 
-// Qwen3's switch for skipping its reasoning, used unless the user turns thinking on
-// in the chat (on a CPU, thinking roughly triples the response time). Other models ignore it.
+// Qwen3's switch for skipping its reasoning, which roughly triples the response time
+// on a CPU. Other models ignore it.
 export const noThinkSwitch = " /no_think";
 
 type StreamChunk = {
@@ -53,7 +53,8 @@ export async function streamCompletion(
   const response = await fetch(`${config.baseUrl}/chat/completions`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ model: config.model, messages, tools, stream: true }),
+    // Some servers reject an empty tools list, so leave it out instead.
+    body: JSON.stringify({ model: config.model, messages, tools: tools.length > 0 ? tools : undefined, stream: true }),
     signal,
   });
   if (!response.ok || !response.body) {
@@ -79,7 +80,14 @@ export async function streamCompletion(
       const payload = data.slice(5).trim();
       if (payload === "[DONE]") continue;
 
-      const delta = (JSON.parse(payload) as StreamChunk).choices?.[0]?.delta;
+      let chunk: StreamChunk;
+      try {
+        chunk = JSON.parse(payload) as StreamChunk;
+      } catch {
+        // Skip anything that isn't a chunk (keep-alives, partial or malformed lines).
+        continue;
+      }
+      const delta = chunk.choices?.[0]?.delta;
       if (!delta) continue;
 
       if (delta.content) {

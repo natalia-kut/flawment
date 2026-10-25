@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { llmConfig, noThinkSwitch, streamCompletion, type ChatMessage, type ToolSpec } from "./llm";
-import { randomBusyPhrase } from "./phrases";
+import { randomBusyPhrase, unavailableMessage } from "./phrases";
 import { localDay } from "@/lib/documents/engine";
 import { flawiuszTools, runTool } from "./tools";
 
@@ -26,54 +26,60 @@ function systemPrompt() {
   return [
     "You are Flawiusz, a friendly beaver and the assistant built into Flawment, " +
     "a project management app. Today is " + localDay() + ".",
-    "Always reply in the same language as the user's latest message. " +
-    "Keep answers short and concrete; use short lists when they help.",
-    "Always read real data with the tools before answering questions about projects, tasks or people; " +
-    "never invent projects, tasks, people or numbers. When the user doesn't name a project, look across all of them. " +
-    "Use list_projects for project health, find_tasks for deadlines and who works on what, and " +
-    "get_team_workload for who is busy or free. Refer to projects by name, not by id. " +
-    "Keep project names, task titles and people's names exactly as in the data; never translate them. " +
-    "Nobody is signed in yet, so when the user asks about their own tasks or what they have to do, " +
-    "show the matching tasks across all projects.",
-    "To create a document template: call get_template_format, then call save_template with the blocks right away " +
-    "(the app validates them). Use preview_template only when the user wants to see a draft on real data first. " +
-    "Template names and texts are always in English, like the rest of the app. " +
-    "When you propose a template before saving it, reply with a short numbered list of its sections, " +
-    "one plain-language line each (e.g. '2. Key figures: schedule health, share of tasks completed, overdue tasks'). " +
-    "Never show {{variables}}, block types, ids, tables or horizontal rules in your reply — " +
-    "placeholders only go into the blocks you pass to the tools. " +
-    "Only say a template is saved after save_template succeeded; then tell the user they can find it " +
-    "on the Documents page. If the user asked you to create a template, save it — don't stop at the preview.",
-    "You cannot create or change projects, tasks or team members yet. If asked, say so briefly " +
-    "and help in another way, for example by suggesting task names as a list.",
+    "Reply in the user's language. Be concise, concrete and friendly.",
+    "For now you can only create document templates. You cannot read project, " +
+    "task or team data yet; if asked about it, say so briefly and offer to " +
+    "draft a template instead. Never invent data.",
+    "When creating a document template, call get_template_format first, then " +
+    "save_template with valid blocks. If asked to create a template, save it " +
+    "rather than only describing it. Keep existing template names exactly as " +
+    "stored; do not translate them. Template " +
+    "names and content must always be in English. When proposing a template " +
+    "before saving, use a short numbered list of sections with one " +
+    "plain-language line per section. Never show placeholders, block types, IDs " +
+    "or raw template structure in replies. Confirm saving only after " +
+    "save_template succeeds, then tell the user the template is available on " +
+    "the Documents page.",
+    "You cannot create or modify projects, tasks or team members. Say so " +
+    "briefly and offer a useful alternative, such as suggesting task names.",
+    "If a tool fails, say so instead of guessing. Never claim an action " +
+    "succeeded unless the tool confirms it.",
   ].join("\n\n");
 }
 
 export async function runFlawiusz(
   conversation: ConversationMessage[],
-  // Let the model reason before answering: better on complex requests, much slower.
-  thinking: boolean,
   emit: (event: AgentEvent) => void,
   signal: AbortSignal,
 ) {
   const config = llmConfig();
   if (!config) {
-    emit({ type: "error", message: "Flawiusz is not set up yet. Add LLM_BASE_URL and LLM_MODEL to .env." });
+    console.error("Flawiusz is not configured: set LLM_BASE_URL and LLM_MODEL in .env.");
+    emit({ type: "error", message: unavailableMessage });
     return;
   }
 
-  const system = systemPrompt() + (thinking ? "" : noThinkSwitch);
-  const messages: ChatMessage[] = [{ role: "system", content: system }, ...conversation];
+  const messages: ChatMessage[] = [{ role: "system", content: systemPrompt() + noThinkSwitch }, ...conversation];
   let wroteText = false;
 
   for (let step = 0; step < maxSteps; step++) {
     emit({ type: "status", label: randomBusyPhrase() });
 
+    // On the last step, take the tools away so the model has to wrap up in the user's language.
+    const lastStep = step === maxSteps - 1;
+    if (lastStep) {
+      // A user turn, since some chat templates reject a system message mid-conversation.
+      messages.push({
+        role: "user",
+        content: "(Automatic note) You have used all your steps. Answer now with what you have, and say what is still unfinished.",
+      });
+    }
+
     let startedStep = false;
     const reply = await streamCompletion(
       config,
       messages,
-      toolSpecs,
+      lastStep ? [] : toolSpecs,
       (text) => {
         // Separate text written before and after tool calls.
         if (!startedStep && wroteText) text = `\n\n${text}`;
@@ -83,7 +89,7 @@ export async function runFlawiusz(
       signal,
     );
 
-    if (reply.toolCalls.length === 0) return;
+    if (reply.toolCalls.length === 0 || lastStep) return;
     messages.push({ role: "assistant", content: reply.content, tool_calls: reply.toolCalls });
 
     for (const call of reply.toolCalls) {
@@ -113,6 +119,4 @@ export async function runFlawiusz(
       });
     }
   }
-
-  emit({ type: "text", text: "\n\nI had to stop here — this took more steps than I'm allowed. Try a more specific request." });
 }

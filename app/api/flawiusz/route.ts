@@ -1,4 +1,5 @@
 import { runFlawiusz, type AgentEvent, type ConversationMessage } from "@/lib/flawiusz/agent";
+import { unavailableMessage } from "@/lib/flawiusz/phrases";
 
 // Streams Flawiusz's reply as newline-delimited JSON events (see AgentEvent).
 // TODO(auth): Require a signed-in user.
@@ -24,7 +25,6 @@ export async function POST(request: Request) {
   const body: unknown = await request.json().catch(() => null);
   const conversation = parseConversation(body);
   if (!conversation) return Response.json({ error: "Invalid conversation." }, { status: 400 });
-  const thinking = (body as { thinking?: unknown }).thinking === true;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -33,14 +33,11 @@ export async function POST(request: Request) {
         if (!request.signal.aborted) controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
       };
       try {
-        await runFlawiusz(conversation, thinking, emit, request.signal);
+        await runFlawiusz(conversation, emit, request.signal);
       } catch (error) {
         if (!request.signal.aborted) {
           console.error("Flawiusz failed", error);
-          emit({
-            type: "error",
-            message: "Flawiusz can't reach the model server. Check that LM Studio is running.",
-          });
+          emit({ type: "error", message: unavailableMessage });
         }
       } finally {
         controller.close();

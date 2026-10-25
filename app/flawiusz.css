@@ -99,11 +99,6 @@
   padding: 0 20px;
 }
 
-.flawiusz-composer textarea:focus {
-  border-color: var(--accent);
-  outline: 3px solid rgb(214 83 37 / 18%);
-}
-
 /* --- Launcher --------------------------------------------------------------- */
 
 .flawiusz-launcher {
@@ -325,6 +320,10 @@
 .flawiusz-message ul,
 .flawiusz-message ol {
   margin: 0;
+}
+
+.flawiusz-message ul,
+.flawiusz-message ol {
   padding-left: 19px;
 }
 
@@ -414,73 +413,9 @@
 }
 
 .flawiusz-composer {
-  display: grid;
-  gap: 9px;
-}
-
-.flawiusz-composer-row {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-}
-
-.flawiusz-thinking {
-  display: flex;
-  position: relative;
-  align-items: center;
-  gap: 9px;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.flawiusz-thinking strong {
-  color: var(--foreground);
-  font-weight: 650;
-}
-
-/* The real checkbox stays focusable but invisible; the track below draws the switch. */
-.flawiusz-thinking input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.flawiusz-switch {
-  position: relative;
-  flex: 0 0 auto;
-  width: 30px;
-  height: 17px;
-  border-radius: 100px;
-  background: #d9cdbd;
-  transition: background-color 140ms ease;
-}
-
-.flawiusz-switch::after {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgb(33 24 16 / 25%);
-  content: "";
-  transition: transform 140ms ease;
-}
-
-.flawiusz-thinking input:checked + .flawiusz-switch {
-  background: var(--accent);
-}
-
-.flawiusz-thinking input:checked + .flawiusz-switch::after {
-  transform: translateX(13px);
-}
-
-.flawiusz-thinking input:focus-visible + .flawiusz-switch {
-  outline: 3px solid #e99b6d;
-  outline-offset: 2px;
 }
 
 .flawiusz-panel .flawiusz-composer {
@@ -503,6 +438,11 @@
   font-size: 14px;
   resize: none;
   field-sizing: content;
+}
+
+.flawiusz-composer textarea:focus {
+  border-color: var(--accent);
+  outline: 3px solid rgb(214 83 37 / 18%);
 }
 
 @keyframes flawiusz-pop {

@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { variableOptions } from "@/lib/documents/template-schema";
 import type { AgentEvent } from "@/lib/flawiusz/agent";
-import { busyPhrases } from "@/lib/flawiusz/phrases";
+import { busyPhrases, unavailableMessage } from "@/lib/flawiusz/phrases";
 import "./flawiusz.css";
 
-const thinkingStorageKey = "flawiusz-thinking";
+// Shown when the user stops Flawiusz before it wrote anything; never sent back to the model.
+const stoppedText = "*The request was interrupted*";
 
 type SavedTemplate = { id: string; name: string };
 
@@ -34,29 +35,10 @@ export function useFlawiuszChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   // The current step while Flawiusz is working; null when idle.
   const [status, setStatus] = useState<string | null>(null);
-  const [thinking, setThinkingState] = useState(false);
   const nextId = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
 
   const busy = status !== null;
-
-  // The thinking switch is a per-browser preference.
-  useEffect(() => {
-    try {
-      setThinkingState(localStorage.getItem(thinkingStorageKey) === "on");
-    } catch {
-      // Storage can be unavailable (private mode); keep the default.
-    }
-  }, []);
-
-  function setThinking(value: boolean) {
-    setThinkingState(value);
-    try {
-      localStorage.setItem(thinkingStorageKey, value ? "on" : "off");
-    } catch {
-      // Not remembered, but still applies to this session.
-    }
-  }
 
   async function send(text: string) {
     const prompt = text.trim();
@@ -64,7 +46,10 @@ export function useFlawiuszChat() {
 
     const question: Message = { id: nextId.current++, role: "user", content: prompt, templates: [] };
     const reply: Message = { id: nextId.current++, role: "assistant", content: "", templates: [] };
-    const history = [...messages.filter((message) => message.content && !message.error), question].map(
+    // Keep replies that saved a template even without text, so the model still knows the template's id.
+    const keep = (message: Message) =>
+      message.templates.length > 0 || (message.content && message.content !== stoppedText && !message.error);
+    const history = [...messages.filter(keep), question].map(
       (message) => ({ role: message.role, content: historyContent(message) }),
     );
     const update = (change: (message: Message) => Message) =>
@@ -98,7 +83,7 @@ export function useFlawiuszChat() {
       const response = await fetch("/api/flawiusz", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: history, thinking }),
+        body: JSON.stringify({ messages: history }),
         signal: controller.signal,
       });
       if (!response.ok || !response.body) throw new Error(`Chat request failed with ${response.status}`);
@@ -116,8 +101,8 @@ export function useFlawiuszChat() {
     } catch {
       update((message) =>
         controller.signal.aborted
-          ? { ...message, content: message.content || "_Stopped._" }
-          : { ...message, error: "Flawiusz is unavailable right now. Try again in a moment." },
+          ? { ...message, content: message.content || stoppedText }
+          : { ...message, error: unavailableMessage },
       );
     } finally {
       abortRef.current = null;
@@ -134,7 +119,7 @@ export function useFlawiuszChat() {
     setMessages([]);
   }
 
-  return { messages, status, busy, thinking, setThinking, send, stop, reset };
+  return { messages, status, busy, send, stop, reset };
 }
 
 export type FlawiuszChat = ReturnType<typeof useFlawiuszChat>;
@@ -149,10 +134,11 @@ function humanize(text: string) {
 }
 
 function inline(text: string) {
-  return humanize(text).split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, index) => {
+  return humanize(text).split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`)/g).map((part, index) => {
     if (part.length > 4 && part.startsWith("**") && part.endsWith("**")) {
       return <strong key={index}>{part.slice(2, -2)}</strong>;
     }
+    if (part.length > 2 && part.startsWith("*") && part.endsWith("*")) return <em key={index}>{part.slice(1, -1)}</em>;
     if (part.length > 2 && part.startsWith("`") && part.endsWith("`")) return <code key={index}>{part.slice(1, -1)}</code>;
     return part;
   });
@@ -161,7 +147,7 @@ function inline(text: string) {
 type ListItem = { text: string; children: string[] };
 
 // Just enough Markdown for chat replies: paragraphs, headings, lists (one level of
-// nesting), bold and code.
+// nesting), bold, italics and code.
 function Markdown({ text }: { text: string }) {
   const blocks: ReactNode[] = [];
   let list: { ordered: boolean; start: number; items: ListItem[] } | null = null;
@@ -234,6 +220,9 @@ export function ChatLog({
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [chat.messages, chat.status]);
 
+  // While Flawiusz works, its status shows inside the reply bubble it is writing.
+  const workingId = chat.busy ? chat.messages.at(-1)?.id : undefined;
+
   return (
     <div className={`flawiusz-log ${className}`} ref={logRef} aria-live="polite">
       {chat.messages.map((message) => (
@@ -254,20 +243,20 @@ export function ChatLog({
                 </div>
               ))}
               {message.error && <p className="flawiusz-error" role="alert">{message.error}</p>}
+                {message.id === workingId && (
+                  <p className="flawiusz-status">
+                    <span className="flawiusz-typing" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                    {chat.status}
+                  </p>
+                )}
             </>
           )}
         </div>
       ))}
-      {chat.busy && (
-        <p className="flawiusz-status">
-          <span className="flawiusz-typing" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
-          {chat.status}
-        </p>
-      )}
     </div>
   );
 }
@@ -308,41 +297,24 @@ export function Composer({
 
   return (
     <form className="flawiusz-composer" onSubmit={handleSubmit}>
-      <div className="flawiusz-composer-row">
-        <textarea
-          ref={inputRef}
-          aria-label="Message Flawiusz"
-          placeholder={placeholder}
-          rows={1}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={handleKey}
-        />
-        {chat.busy ? (
-          <button type="button" className="secondary-button" onClick={chat.stop}>
-            Stop
-          </button>
-        ) : (
-          <button type="submit" className="primary-button" disabled={!draft.trim()}>
-            Send
-          </button>
-        )}
-      </div>
-      <label
-        className="flawiusz-thinking"
-        title="Flawiusz reasons before answering. Better for complex requests, but replies can take a minute or more."
-      >
-        <input
-          type="checkbox"
-          role="switch"
-          checked={chat.thinking}
-          onChange={(event) => chat.setThinking(event.target.checked)}
-        />
-        <span className="flawiusz-switch" aria-hidden="true" />
-        <span>
-          <strong>Think it through</strong> · slower, for tricky requests
-        </span>
-      </label>
+      <textarea
+        ref={inputRef}
+        aria-label="Message Flawiusz"
+        placeholder={placeholder}
+        rows={1}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={handleKey}
+      />
+      {chat.busy ? (
+        <button type="button" className="secondary-button" onClick={chat.stop}>
+          Stop
+        </button>
+      ) : (
+        <button type="submit" className="primary-button" disabled={!draft.trim()}>
+          Send
+        </button>
+      )}
     </form>
   );
 }

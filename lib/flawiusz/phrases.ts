@@ -12,3 +12,5 @@ export const busyPhrases = [
 export function randomBusyPhrase() {
   return busyPhrases[Math.floor(Math.random() * busyPhrases.length)];
 }
+
+export const unavailableMessage = "Flawiusz is unavailable right now. Please try again later.";
