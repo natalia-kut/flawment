@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { deleteTemplate } from "@/lib/documents/actions";
+import { copyTemplate, deleteTemplate } from "@/lib/documents/actions";
+import { builtIn } from "@/lib/documents/built-in-templates";
 import { formatDay } from "@/lib/documents/engine";
 import { createBlock, type DocumentTemplate } from "@/lib/documents/template-schema";
 import { projectStatusLabels, type DocumentProject } from "@/lib/documents/types";
@@ -20,11 +21,24 @@ const blankTemplate: DocumentTemplate = {
   name: "",
   description: "",
   blocks: [createBlock("heading"), createBlock("text")],
-  isBuiltIn: true,
+  ...builtIn,
 };
+
+function templateScope(template: DocumentTemplate) {
+  if (template.isBuiltIn) return "Built-in";
+  return template.projectId === null ? "All my projects" : "This project";
+}
 
 function fileName(...parts: string[]) {
   return parts.join(" - ").replace(/[\\/:*?"<>|]+/g, "").trim();
+}
+
+// The browser's print dialog saves the sheet as a vector PDF; the title becomes the file name.
+function printAs(title: string) {
+  const previousTitle = document.title;
+  document.title = title;
+  window.addEventListener("afterprint", () => (document.title = previousTitle), { once: true });
+  window.print();
 }
 
 export default function DocumentsView({ projects, initialTemplates, today }: DocumentsViewProps) {
@@ -34,16 +48,42 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
   // Template the builder starts from; null while the builder is closed.
   const [builderSource, setBuilderSource] = useState<DocumentTemplate | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [copyTarget, setCopyTarget] = useState<DocumentProject | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [isDeleting, startDeleting] = useTransition();
+  const [isCopying, startCopying] = useTransition();
 
-  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0];
+  // Custom templates show up only in their own project, or everywhere when they have none.
+  const projectTemplates = templates.filter(
+    (template) => template.isBuiltIn || template.projectId === null || template.projectId === selectedProject?.id,
+  );
+  const selectedTemplate = projectTemplates.find((template) => template.id === selectedTemplateId) ?? projectTemplates[0];
+  const copyTargets = projects.filter((project) => project.id !== selectedTemplate.projectId);
 
   function selectTemplate(id: string) {
     setSelectedTemplateId(id);
     setConfirmingDelete(false);
+    setCopyTarget(null);
     setError("");
+    setNotice("");
+  }
+
+  function handleCopy(target: DocumentProject) {
+    const id = selectedTemplate.id;
+    setError("");
+    setNotice("");
+    startCopying(async () => {
+      const result = await copyTemplate(id, target.id);
+      setCopyTarget(null);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setTemplates((current) => [...current, result.value]);
+      setNotice(`Copied to ${target.name}.`);
+    });
   }
 
   function handleSaved(saved: DocumentTemplate) {
@@ -70,11 +110,7 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
   }
 
   function exportPdf() {
-    // The browser's print dialog saves the sheet as a vector PDF; the title becomes the file name.
-    const previousTitle = document.title;
-    document.title = fileName(selectedTemplate.name, selectedProject.name, today);
-    window.addEventListener("afterprint", () => (document.title = previousTitle), { once: true });
-    window.print();
+    printAs(fileName(selectedTemplate.name, selectedProject.name, today));
   }
 
   if (builderSource) {
@@ -109,6 +145,7 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
       </header>
 
       {error && <p className="storage-notice" role="alert">{error}</p>}
+      {notice && <p className="storage-notice success" role="status">{notice}</p>}
 
       {!selectedProject ? (
         <section className="placeholder-panel">
@@ -124,7 +161,10 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
               className="project-select"
               id="document-project"
               value={selectedProject.id}
-              onChange={(event) => setSelectedProjectId(Number(event.target.value))}
+              onChange={(event) => {
+                setSelectedProjectId(Number(event.target.value));
+                setCopyTarget(null);
+              }}
             >
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>{project.name}</option>
@@ -138,10 +178,10 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
 
             <div className="template-list-heading">
               <span>Templates</span>
-              <span>{templates.length}</span>
+              <span>{projectTemplates.length}</span>
             </div>
             <div className="template-list">
-              {templates.map((template) => (
+              {projectTemplates.map((template) => (
                 <button
                   className={`template-card${selectedTemplate.id === template.id ? " selected" : ""}`}
                   key={template.id}
@@ -155,7 +195,7 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
                   <span className="template-card-copy">
                     <strong>{template.name}</strong>
                     <span>{template.description || `${template.blocks.length} blocks`}</span>
-                    <em>{template.isBuiltIn ? "Built-in" : "My template"}</em>
+                    <em>{templateScope(template)}</em>
                   </span>
                 </button>
               ))}
@@ -182,8 +222,33 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
                       {isDeleting ? "Deleting…" : "Delete template"}
                     </button>
                   </>
+                ) : copyTarget ? (
+                  <>
+                    <button className="secondary-button" disabled={isCopying} type="button" onClick={() => setCopyTarget(null)}>
+                      Cancel
+                    </button>
+                    <button className="primary-button" disabled={isCopying} type="button" onClick={() => handleCopy(copyTarget)}>
+                      {isCopying ? "Copying…" : `Copy to ${copyTarget.name}`}
+                    </button>
+                  </>
                 ) : (
                   <>
+                    {copyTargets.length > 0 && (
+                      <select
+                        aria-label="Copy to another project"
+                        className="project-select compact"
+                        onChange={(event) => {
+                          setNotice("");
+                          setCopyTarget(copyTargets.find((project) => project.id === Number(event.target.value)) ?? null);
+                        }}
+                        value=""
+                      >
+                        <option value="">Copy to project…</option>
+                        {copyTargets.map((project) => (
+                          <option key={project.id} value={project.id}>{project.name}</option>
+                        ))}
+                      </select>
+                    )}
                     <button className="secondary-button" type="button" onClick={() => setConfirmingDelete(true)}>
                       Delete
                     </button>

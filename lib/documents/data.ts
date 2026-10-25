@@ -73,6 +73,9 @@ export function toCustomTemplate(record: {
   name: string;
   description: string | null;
   blocks: unknown;
+  project_id: number | null;
+  show_status: boolean;
+  show_name: boolean;
 }): DocumentTemplate {
   return {
     id: `custom-${record.id}`,
@@ -80,6 +83,9 @@ export function toCustomTemplate(record: {
     description: record.description ?? "",
     blocks: parseBlocks(record.blocks),
     isBuiltIn: false,
+    projectId: record.project_id,
+    showStatus: record.show_status,
+    showName: record.show_name,
   };
 }
 
