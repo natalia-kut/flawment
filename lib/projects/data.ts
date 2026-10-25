@@ -68,6 +68,7 @@ export async function getWorkspaceProjects() {
         canEdit: can(role, "project:update", user.role),
         canDelete: can(role, "project:delete", user.role),
         canManage: manage,
+        canManageTasks: can(role, "tasks:manage", user.role),
         canAssignRoles: can(role, "members:roles", user.role),
         members: project.memberships.map((m) => ({
           ...m.user,

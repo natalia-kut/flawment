@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import CreateTaskForm from "./create-task-form";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, type ReactNode, type FormEventHandler } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
@@ -74,7 +75,7 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
   const search = useSearchParams();
   const selected = search.get("project");
   const project = projects.find((p) => String(p.id) === selected);
-  const [modal, setModal] = useState<"create" | "edit" | "add" | null>(null);
+  const [modal, setModal] = useState<"create" | "edit" | "add" | "task" | null>(null);
   const close = () => setModal(null);
   return <div className="projects-workspace">
     <nav className="project-breadcrumbs" aria-label="Breadcrumb">
@@ -107,6 +108,7 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
       </h2>
       <p>Work planned for this project.</p>
     </div>
+    {project.canManageTasks && <button className="primary-button" onClick={() => setModal("task")}>+ New task</button>}
   </div>
 
   {project.tasks.length === 0 ? (
@@ -161,6 +163,9 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
       </div>
     </>}
 
+    {modal === "task" && project?.canManageTasks && <ProjectDialog title="Create a task" description="Plan the next piece of work for your project." onClose={close}>
+      <CreateTaskForm project={project} onCancel={close} onSuccess={close} />
+    </ProjectDialog>}
     {modal === "create" && <ProjectDialog title="Create a project" description="Start with the basics. You can invite your team next." onClose={close}>
       <ChangeForm operation="create" onSuccess={(id) => { close(); router.push(`/?project=${id}`); }}><ProjectFields /><div className="dialog-actions"><button type="button" className="secondary-button" onClick={close}>Cancel</button><button className="primary-button">Create project</button></div></ChangeForm>
     </ProjectDialog>}
@@ -175,3 +180,4 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
     </ProjectDialog>}
   </div>;
 }
+
