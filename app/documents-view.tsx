@@ -224,7 +224,6 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
     <div className="documents-page">
       <header className="documents-heading">
         <div>
-          <p className="eyebrow">WORKSPACE / DOCUMENTATION</p>
           <h1>Documents</h1>
           <p className="section-description">Create reports from your project&apos;s tasks, deadlines and team.</p>
         </div>

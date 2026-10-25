@@ -68,12 +68,11 @@ export default function AppShell({ documents, projects, user, projectCount }: {
         {activePage === "Documents" ? (
           documents
         ) : activePage === "Projects" ? projects : activePage === "Dashboard" ? (
-          <><header className="page-header"><p className="eyebrow">WORKSPACE</p><h1>Welcome, {user.first_name}</h1></header>
+          <><header className="page-header"><h1>Welcome, {user.first_name}</h1></header>
           <section className="workspace-card"><h2>{projectCount} accessible projects</h2><p>Create projects and manage memberships from Projects.</p><button className="primary-button" onClick={() => setActivePage("Projects")}>Open projects</button></section></>
         ) : (
           <>
             <header className="page-header">
-              <p className="eyebrow">WORKSPACE</p>
               <h1>{activePage}</h1>
             </header>
             <section className="placeholder-panel">

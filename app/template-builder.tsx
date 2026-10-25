@@ -572,7 +572,6 @@ export default function TemplateBuilder({
     <div className="builder">
       <header className="documents-heading builder-heading">
         <div className="builder-title">
-          <p className="eyebrow">WORKSPACE / DOCUMENTS / {editingId ? "EDIT" : "NEW"} TEMPLATE</p>
           <input
             aria-label="Template name"
             autoFocus={!name}

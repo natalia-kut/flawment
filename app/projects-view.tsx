@@ -77,16 +77,16 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
   const [modal, setModal] = useState<"create" | "edit" | "add" | null>(null);
   const close = () => setModal(null);
   return <div className="projects-workspace">
-    <nav className="project-breadcrumbs" aria-label="Breadcrumb">
+    {selected && <nav className="project-breadcrumbs" aria-label="Breadcrumb">
       <ol>
-        <li>{selected ? <Link href="/">Projects</Link> : <span aria-current="page">Projects</span>}</li>
-        {selected && <li><span className="breadcrumb-separator" aria-hidden="true">/</span><span aria-current="page">{project?.name ?? "Unavailable project"}</span></li>}
+        <li><Link href="/">Projects</Link></li>
+        <li><span className="breadcrumb-separator" aria-hidden="true">/</span><span aria-current="page">{project?.name ?? "Unavailable project"}</span></li>
       </ol>
-    </nav>
+    </nav>}
 
     {!selected ? <>
       <header className="page-header projects-page-heading">
-        <div><p className="eyebrow">YOUR WORKSPACE</p><h1>Projects</h1><p>A place for every idea. Choose a project to pick up where you left off.</p></div>
+        <div><h1>Projects</h1><p>A place for every idea. Choose a project to pick up where you left off.</p></div>
         <button className="primary-button" onClick={() => setModal("create")}><span aria-hidden="true">+</span> New project</button>
       </header>
       {projects.length === 0 ? <section className="project-empty-state"><span aria-hidden="true">↗</span><h2>Make room for your next idea</h2><p>Create a project and bring your team together.</p><button className="primary-button" onClick={() => setModal("create")}>Create your first project</button></section> :
@@ -96,7 +96,7 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
           <div className="project-card-meta"><span>{item.members.length} {item.members.length === 1 ? "member" : "members"}</span><span>{item.role?.replaceAll("_", " ")}</span></div>
         </Link>)}</div>}
     </> : !project ? <section className="project-empty-state"><h1>Project unavailable</h1><p>This project was deleted or you no longer have access.</p><Link href="/" className="secondary-button">Back to projects</Link></section> : <>
-      <header className="page-header projects-page-heading"><div><p className="eyebrow">PROJECT OVERVIEW</p><h1>{project.name}</h1><p>{project.description || "Add a description to tell your team what this project is about."}</p></div>
+      <header className="page-header projects-page-heading"><div><h1>{project.name}</h1><p>{project.description || "Add a description to tell your team what this project is about."}</p></div>
         {project.canEdit && <button className="secondary-button" onClick={() => setModal("edit")}>Edit project</button>}
       </header>
       <div className="project-detail-layout">
