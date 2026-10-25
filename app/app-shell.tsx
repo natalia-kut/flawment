@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useActionState, type ReactNode } from "react";
+import { logout } from "@/lib/auth/actions";
 
 const navigation = [
   "Dashboard",
@@ -12,8 +13,21 @@ const navigation = [
 
 type NavigationItem = (typeof navigation)[number];
 
-export default function AppShell({ documents }: { documents: ReactNode }) {
-  const [activePage, setActivePage] = useState<NavigationItem>("Dashboard");
+function SignOut() {
+  const [, action, pending] = useActionState(logout, undefined);
+  return <form action={action} className="logout-form">
+    <button type="submit" disabled={pending}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M10 4H5v16h5M14 8l4 4-4 4M9 12h10" /></svg>
+      <span>{pending ? "Signing out…" : "Sign out"}</span>
+    </button>
+  </form>;
+}
+
+export default function AppShell({ documents, projects, user, projectCount }: {
+  documents: ReactNode; projects: ReactNode; projectCount: number;
+  user: { first_name: string; last_name: string; role: string };
+}) {
+  const [activePage, setActivePage] = useState<NavigationItem>("Projects");
 
   return (
     <div className="app-shell">
@@ -39,21 +53,23 @@ export default function AppShell({ documents }: { documents: ReactNode }) {
             </button>
           ))}
         </nav>
-        {/* TODO(auth): Show the signed-in user's name and avatar here. */}
         <div className="sidebar-footer">
+          <div className="sidebar-profile">
           <span className="avatar" aria-hidden="true">
-            N
+            {user.first_name.slice(0, 1)}
           </span>
-          <span className="profile-name">User</span>
-          <span className="profile-menu" aria-hidden="true">
-            ···
-          </span>
+          <span className="profile-name">{user.first_name} {user.last_name}<small>{user.role === "SUPER_ADMIN" ? "Super admin" : "Standard user"}</small></span>
+          </div>
+          <SignOut />
         </div>
       </aside>
 
       <main className="main-content">
         {activePage === "Documents" ? (
           documents
+        ) : activePage === "Projects" || activePage === "Participants" ? projects : activePage === "Dashboard" ? (
+          <><header className="page-header"><p className="eyebrow">WORKSPACE</p><h1>Welcome, {user.first_name}</h1></header>
+          <section className="workspace-card"><h2>{projectCount} accessible projects</h2><p>Create projects and manage memberships from Projects.</p><button className="primary-button" onClick={() => setActivePage("Projects")}>Open projects</button></section></>
         ) : (
           <>
             <header className="page-header">

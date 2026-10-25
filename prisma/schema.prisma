@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -37,19 +36,43 @@ enum ProjectRole {
   MANAGER
 }
 
+enum UserRole {
+  USER
+  SUPER_ADMIN
+}
+
 model User {
-  id         Int     @id @default(autoincrement())
-  username   String  @unique
-  email      String  @unique
+  id         Int                @id @default(autoincrement())
+  username   String             @unique
+  email      String             @unique
   password   String
   first_name String
   last_name  String
-  is_active  Boolean @default(true)
+  is_active  Boolean            @default(true)
+  role       UserRole           @default(USER)
+  sessions   Session[]
+  templates  DocumentTemplate[]
 
-  owned_projects Project[]          @relation("ProjectOwner")
+  owned_projects Project[]           @relation("ProjectOwner")
   memberships    ProjectMembership[]
-  assigned_tasks Task[]             @relation("TaskAssignee")
-  created_tasks  Task[]             @relation("TaskCreator")
+  assigned_tasks Task[]              @relation("TaskAssignee")
+  created_tasks  Task[]              @relation("TaskCreator")
+}
+
+model Session {
+  token_hash String   @id
+  user_id    Int
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  expires_at DateTime
+
+  @@index([user_id])
+  @@index([expires_at])
+}
+
+model LoginAttempt {
+  key        String   @id
+  count      Int      @default(1)
+  expires_at DateTime
 }
 
 model Project {
@@ -71,7 +94,7 @@ model Project {
 }
 
 model Task {
-  id          Int          @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   title       String
   description String?
 
@@ -84,9 +107,9 @@ model Task {
   created_by Int
   creator    User @relation("TaskCreator", fields: [created_by], references: [id])
 
-  deadline   DateTime?    @db.Date
-  status     TaskStatus   @default(TO_DO)
-  priority   TaskPriority @default(MEDIUM)
+  deadline DateTime?    @db.Date
+  status   TaskStatus   @default(TO_DO)
+  priority TaskPriority @default(MEDIUM)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -109,12 +132,13 @@ model ProjectMembership {
 
 // Custom document templates. `blocks` holds the ordered template layout,
 // validated by lib/documents/template-schema.ts before it is saved.
-// TODO(auth): Add an owner relation once users can sign in.
 model DocumentTemplate {
   id          Int     @id @default(autoincrement())
   name        String
   description String?
   blocks      Json
+  owner_id    Int?
+  owner       User?   @relation(fields: [owner_id], references: [id], onDelete: Cascade)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
