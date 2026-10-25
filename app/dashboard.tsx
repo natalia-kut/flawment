@@ -26,12 +26,6 @@ export default function Dashboard({
         <h1>Welcome, {firstName}</h1>
       </header>
 
-      <section className="workspace-card dashboard-projects">
-        <h2>{projectCount} accessible projects</h2>
-        <p>Create projects and manage memberships from Projects.</p>
-        <button className="primary-button" onClick={onOpenProjects}>Open projects</button>
-      </section>
-
       <section className={`flawiusz-hero${started ? " started" : ""}`} aria-labelledby="flawiusz-hero-title">
         <div className="flawiusz-hero-intro">
           <Image className="flawiusz-hero-avatar" src="/flawiusz.png" alt="" width={68} height={68} priority />
@@ -53,6 +47,12 @@ export default function Dashboard({
         {started && <ChatLog chat={chat} className="in-hero" onOpenTemplate={onOpenTemplate} />}
 
         <Composer chat={chat} placeholder="e.g. What should I focus on this week?" />
+      </section>
+
+      <section className="workspace-card dashboard-projects">
+        <h2>{projectCount} accessible projects</h2>
+        <p>Create projects and manage memberships from Projects.</p>
+        <button className="primary-button" onClick={onOpenProjects}>Open projects</button>
       </section>
     </>
   );

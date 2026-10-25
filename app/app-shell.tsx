@@ -30,7 +30,7 @@ export default function AppShell({ documents, projects, user, projectCount }: {
   documents: ReactNode; projects: ReactNode; projectCount: number;
   user: { first_name: string; last_name: string; role: string };
 }) {
-  const [activePage, setActivePage] = useState<NavigationItem>("Projects");
+  const [activePage, setActivePage] = useState<NavigationItem>("Dashboard");
   const [chatOpen, setChatOpen] = useState(false);
   const [requestedTemplateId, setRequestedTemplateId] = useState<string | null>(null);
   const chat = useFlawiuszChat();
