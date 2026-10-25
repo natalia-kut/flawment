@@ -53,7 +53,10 @@ const blockSchema = z.discriminatedUnion("type", [
   z.object({
     id: blockId,
     type: z.literal("text"),
-    text: z.string().max(templateLimits.text).describe("Paragraphs; may contain {{variables}}."),
+    text: z
+      .string()
+      .max(templateLimits.text)
+      .describe("Plain text without Markdown; one paragraph per line. May contain {{variables}}."),
   }),
   z.object({ id: blockId, type: z.literal("facts"), title, facts: z.array(variable).min(1) }),
   z.object({ id: blockId, type: z.literal("metrics"), metrics: z.array(variable).min(1).max(6) }),
@@ -85,6 +88,20 @@ const blockSchema = z.discriminatedUnion("type", [
 ]);
 
 const blocksSchema = z.array(blockSchema).min(1).max(templateLimits.blocks);
+
+// Models often double-escape line breaks ("\\n" arrives as a literal backslash
+// and n) and format with Markdown, which the document renders as plain text.
+function plainText(text: string) {
+  return text
+    .replace(/\\r\\n|\\n|\\r/g, "\n")
+    .replace(/^\s*#{1,6}\s+/gm, "")
+    .replace(/\*\*([^*\n]+)\*\*|__([^_\n]+)__|\*([^*\n]+)\*/g, (_, bold, underscored, italic) => bold ?? underscored ?? italic);
+}
+
+function cleanBlock(block: z.infer<typeof blockSchema>) {
+  if (block.type === "text" || block.type === "heading") return { ...block, text: plainText(block.text) };
+  return block;
+}
 
 // --- Tools -----------------------------------------------------------------
 
@@ -152,7 +169,11 @@ export const flawiuszTools: FlawiuszTool[] = [
       blocks: blocksSchema,
     }),
     async run({ template_id, name, description, blocks }) {
-      const result = await saveTemplate(template_id ?? null, { name, description: description ?? "", blocks });
+      const result = await saveTemplate(template_id ?? null, {
+        name,
+        description: description ?? "",
+        blocks: blocks.map(cleanBlock),
+      });
       if (!result.ok) return result;
       return { ok: true, value: { id: result.value.id, name: result.value.name, blocks: result.value.blocks.length } };
     },
