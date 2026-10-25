@@ -54,6 +54,7 @@ const toolIcons = {
   duplicate: "M5.5 5.5h7v7h-7zM3.5 10.5v-7h7",
   remove: "M4 4l8 8M12 4l-8 8",
   add: "M8 3v10M3 8h10",
+  trash: "M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5M7 7v4M9 7v4",
   grip: "M6 4h.01M10 4h.01M6 8h.01M10 8h.01M6 12h.01M10 12h.01",
 };
 
@@ -483,7 +484,7 @@ export default function TemplateBuilder({
 
   function insertPosition() {
     if (insertTarget === null) {
-      return "New blocks go at the end of the document. To put one elsewhere, use + between sections in the preview.";
+      return "Click a section in the preview to edit it, or drag it to reorder. New blocks go at the end; use + in the preview to place one elsewhere.";
     }
     if (insertTarget === 0) return "The new block goes at the top of the document.";
     if (insertTarget === blocks.length) return "The new block goes at the end of the document.";
@@ -548,6 +549,18 @@ export default function TemplateBuilder({
             <ToolIcon name="grip" />
             {blockLabels[block.type]}
           </button>
+          <button
+            aria-label={`Remove ${blockLabels[block.type]}`}
+            className="block-delete"
+            onClick={(event) => {
+              event.stopPropagation();
+              removeBlock(block.id);
+            }}
+            title="Remove block"
+            type="button"
+          >
+            <ToolIcon name="trash" />
+          </button>
           {index === 0 && insertButton(0, "before")}
           {insertButton(index + 1, "after")}
         </>
@@ -598,8 +611,8 @@ export default function TemplateBuilder({
       <div className="builder-layout">
         <section className="document-preview-area" aria-label="Live preview">
           <div className="preview-toolbar">
-            <p className="builder-hint">Click a section to edit, drag to move, + to add.</p>
             <div className="builder-toggles">
+              <span>Show in document</span>
               <label className="builder-toggle">
                 <input checked={showName} onChange={(event) => setShowName(event.target.checked)} type="checkbox" />
                 Template name
@@ -609,13 +622,17 @@ export default function TemplateBuilder({
                 Project status
               </label>
             </div>
-            {project && (
+            {project && projectLocked && (
+              <p className="builder-project" title="Use Copy to project to reuse this template elsewhere.">
+                Project: <strong>{project.name}</strong>
+              </p>
+            )}
+            {project && !projectLocked && (
               <select
                 aria-label="Project"
                 className="project-select compact"
-                disabled={projectLocked}
                 onChange={(event) => onProjectChange(Number(event.target.value))}
-                title={projectLocked ? "This template belongs to this project. Use Copy to project to reuse it elsewhere." : "The template is saved for this project."}
+                title="The template is saved for this project."
                 value={project.id}
               >
                 {projects.map((item) => (
@@ -660,7 +677,7 @@ export default function TemplateBuilder({
                   >
                     <ToolIcon name="duplicate" />
                   </button>
-                  <button aria-label="Remove" onClick={() => removeBlock(selectedBlock.id)} type="button"><ToolIcon name="remove" /></button>
+                  <button aria-label="Remove" onClick={() => removeBlock(selectedBlock.id)} type="button"><ToolIcon name="trash" /></button>
                 </div>
               </div>
               <div className="block-editor">
