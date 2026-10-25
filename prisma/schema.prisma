@@ -106,3 +106,16 @@ model ProjectMembership {
 
   @@unique([project_id, user_id])
 }
+
+// Custom document templates. `blocks` holds the ordered template layout,
+// validated by lib/documents/template-schema.ts before it is saved.
+// TODO(auth): Add an owner relation once users can sign in.
+model DocumentTemplate {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  blocks      Json
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
