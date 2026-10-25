@@ -12,7 +12,13 @@ const navigation = [
 
 type NavigationItem = (typeof navigation)[number];
 
-export default function AppShell({ documents }: { documents: ReactNode }) {
+export default function AppShell({
+  documents,
+  projects,
+}: {
+  documents: ReactNode;
+  projects: ReactNode;
+}) {
   const [activePage, setActivePage] = useState<NavigationItem>("Dashboard");
 
   return (
@@ -26,6 +32,7 @@ export default function AppShell({ documents }: { documents: ReactNode }) {
         >
           flawment<span>.</span>
         </a>
+
         <nav className="main-nav" aria-label="Main navigation">
           {navigation.map((item) => (
             <button
@@ -39,6 +46,7 @@ export default function AppShell({ documents }: { documents: ReactNode }) {
             </button>
           ))}
         </nav>
+
         {/* TODO(auth): Show the signed-in user's name and avatar here. */}
         <div className="sidebar-footer">
           <span className="avatar" aria-hidden="true">
@@ -54,12 +62,15 @@ export default function AppShell({ documents }: { documents: ReactNode }) {
       <main className="main-content">
         {activePage === "Documents" ? (
           documents
+        ) : activePage === "Projects" ? (
+          projects
         ) : (
           <>
             <header className="page-header">
               <p className="eyebrow">WORKSPACE</p>
               <h1>{activePage}</h1>
             </header>
+
             <section className="placeholder-panel">
               <div className="placeholder-mark" aria-hidden="true">
                 {activePage.slice(0, 1)}
