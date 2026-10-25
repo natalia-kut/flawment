@@ -1,5 +1,4 @@
-// Minimal streaming client for OpenAI-compatible chat endpoints, such as the one
-// LM Studio serves at http://host:1234/v1. Configured with LLM_BASE_URL and LLM_MODEL in .env.
+// Minimal streaming client for OpenAI-compatible chat endpoints (LM Studio, Ollama, OpenRouter).
 
 export type ToolCall = { id: string; type: "function"; function: { name: string; arguments: string } };
 
@@ -13,12 +12,13 @@ export type ToolSpec = {
   function: { name: string; description: string; parameters: unknown };
 };
 
-export type LlmConfig = { baseUrl: string; model: string };
+export type LlmConfig = { baseUrl: string; model: string; apiKey?: string };
 
 export function llmConfig(): LlmConfig | null {
   const baseUrl = process.env.LLM_BASE_URL?.trim();
   const model = process.env.LLM_MODEL?.trim();
-  return baseUrl && model ? { baseUrl: baseUrl.replace(/\/+$/, ""), model } : null;
+  const apiKey = process.env.LLM_API_KEY?.trim() || undefined;
+  return baseUrl && model ? { baseUrl: baseUrl.replace(/\/+$/, ""), model, apiKey } : null;
 }
 
 // Qwen3's switch for skipping its reasoning, which roughly triples the response time
@@ -52,7 +52,10 @@ export async function streamCompletion(
 ): Promise<{ content: string; toolCalls: ToolCall[] }> {
   const response = await fetch(`${config.baseUrl}/chat/completions`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      ...(config.apiKey && { authorization: `Bearer ${config.apiKey}` }),
+    },
     // Some servers reject an empty tools list, so leave it out instead.
     body: JSON.stringify({ model: config.model, messages, tools: tools.length > 0 ? tools : undefined, stream: true }),
     signal,
