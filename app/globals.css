@@ -507,3 +507,127 @@ h1 {
     transition-duration: 0.01ms !important;
   }
 }
+
+.create-project {
+  margin-bottom: 28px;
+}
+
+.create-project > summary {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 18px;
+  border-radius: 8px;
+  background: #d94f1c;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.create-project > summary::-webkit-details-marker {
+  display: none;
+}
+
+.create-project > summary:hover {
+  background: #b94015;
+}
+
+.create-project > summary:focus-visible {
+  outline: 3px solid #d94f1c;
+  outline-offset: 4px;
+}
+
+.create-project-form {
+  max-width: 640px;
+  margin-top: 18px;
+  padding: 24px;
+  border: 1px solid #e6d9cb;
+  border-radius: 10px;
+  background: #fffdfa;
+}
+
+.create-project-form h2 {
+  margin-bottom: 20px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.create-project-form fieldset {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 0;
+}
+
+.create-project-form legend {
+  margin-bottom: 14px;
+  color: #75695c;
+}
+
+.create-project-form label {
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.create-project-form input,
+.create-project-form textarea,
+.create-project-form select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #d8cabc;
+  border-radius: 6px;
+  background: #fff;
+  color: #241c15;
+  font: inherit;
+}
+
+.create-project-form textarea {
+  resize: vertical;
+}
+
+.create-project-form input:focus,
+.create-project-form textarea:focus,
+.create-project-form select:focus {
+  outline: 2px solid #d94f1c;
+  outline-offset: 2px;
+}
+
+.create-project-form button {
+  justify-self: start;
+  margin-top: 16px;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: #d94f1c;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.create-project-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.create-project-form fieldset:disabled {
+  opacity: 0.65;
+}
+
+.create-project-form p {
+  margin-top: 16px;
+}
+
+.create-project-form .form-error {
+  color: #b42318;
+}
+
+.create-project-form .form-success {
+  color: #23713b;
+}
+
+.create-project-form p:empty {
+  display: none;
+}
