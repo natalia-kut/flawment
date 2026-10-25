@@ -6,11 +6,14 @@ import { parseBlocks, type DocumentTemplate } from "./template-schema";
 import type { DocumentPerson, DocumentProject } from "./types";
 
 // Never select passwords or other private user fields.
-const personSelect = { id: true, first_name: true, last_name: true, email: true, username: true } as const;
+const personSelect = { id: true, first_name: true, last_name: true, email: true, username: true, role: true } as const;
 
-type PersonRecord = { id: number; first_name: string; last_name: string; email: string; username: string };
+type PersonRecord = { id: number; first_name: string; last_name: string; email: string; username: string; role: string };
 
-function toPerson(user: PersonRecord): DocumentPerson {
+function toPerson(user: PersonRecord, showAdmins: boolean): DocumentPerson {
+  if (user.role === "SUPER_ADMIN" && !showAdmins) {
+    return { id: 0, name: "Workspace administrator", email: "", username: "" };
+  }
   return {
     id: user.id,
     name: `${user.first_name} ${user.last_name}`,
@@ -25,12 +28,13 @@ function toDay(date: Date) {
 
 export async function getDocumentProjects(): Promise<DocumentProject[]> {
   const user = await requireUser();
+  const visiblePerson = (person: PersonRecord) => toPerson(person, user.role === "SUPER_ADMIN");
   const projects = await prisma.project.findMany({
     where: visibleProjects(user),
     orderBy: [{ start_date: "desc" }, { id: "asc" }],
     include: {
       owner: { select: personSelect },
-      memberships: { include: { user: { select: personSelect } }, orderBy: { joined_at: "asc" } },
+      memberships: { where: user.role === "SUPER_ADMIN" ? {} : { user: { role: "USER" } }, include: { user: { select: personSelect } }, orderBy: { joined_at: "asc" } },
       tasks: {
         include: { assignee: { select: personSelect }, creator: { select: personSelect } },
         orderBy: { id: "asc" },
@@ -45,9 +49,9 @@ export async function getDocumentProjects(): Promise<DocumentProject[]> {
     status: project.status,
     startDate: toDay(project.start_date),
     endDate: project.end_date ? toDay(project.end_date) : null,
-    owner: toPerson(project.owner),
+    owner: visiblePerson(project.owner),
     members: project.memberships.map((membership) => ({
-      person: toPerson(membership.user),
+      person: visiblePerson(membership.user),
       role: membership.role,
       joinedAt: toDay(membership.joined_at),
     })),
@@ -58,8 +62,8 @@ export async function getDocumentProjects(): Promise<DocumentProject[]> {
       status: task.status,
       priority: task.priority,
       deadline: task.deadline ? toDay(task.deadline) : null,
-      assignee: task.assignee ? toPerson(task.assignee) : null,
-      creator: toPerson(task.creator),
+      assignee: task.assignee ? visiblePerson(task.assignee) : null,
+      creator: visiblePerson(task.creator),
     })),
   }));
 }

@@ -1,16 +1,18 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useActionState, useEffect, useRef, useState, type ReactNode, type FormEventHandler } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { projectAction } from "@/lib/projects/actions";
 
 function ProjectFields({ project }: { project?: WorkspaceProject }) {
   return <>
-    <label>Project name<input name="name" required maxLength={120} defaultValue={project?.name} /></label>
-    <label>Description<textarea name="description" maxLength={4000} defaultValue={project?.description ?? ""} /></label>
+    <label>Project name<input name="name" required maxLength={120} defaultValue={project?.name} placeholder="Give your project a name" /></label>
+    <label>Description<textarea name="description" maxLength={4000} defaultValue={project?.description ?? ""} placeholder="What will your team work on?" /></label>
     <div className="form-row">
       <label>Start date<input name="start_date" type="date" required defaultValue={project?.start_date ?? new Date().toISOString().slice(0, 10)} /></label>
-      <label>End date<input name="end_date" type="date" defaultValue={project?.end_date} /></label>
+      <label>End date <span className="optional-label">Optional</span><input name="end_date" type="date" defaultValue={project?.end_date} /></label>
     </div>
     <label>Status<select name="status" defaultValue={project?.status ?? "TO_DO"}>
       {["TO_DO", "IN_PROGRESS", "COMPLETED", "ARCHIVED", "CANCELLED"].map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}
@@ -18,18 +20,22 @@ function ProjectFields({ project }: { project?: WorkspaceProject }) {
   </>;
 }
 
-function ChangeForm({ children, operation, projectId, onSubmit, className = "workspace-form" }: {
-  children: React.ReactNode; operation: string; projectId?: number;
-  onSubmit?: React.FormEventHandler<HTMLFormElement>; className?: string;
+function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, className = "workspace-form" }: {
+  children: ReactNode; operation: string; projectId?: number;
+  onSubmit?: FormEventHandler<HTMLFormElement>; onSuccess?: (projectId?: number) => void; className?: string;
 }) {
-  const [state, action, pending] = useActionState(projectAction, {});
+  const [state, action, pending] = useActionState(async (previous: Awaited<ReturnType<typeof projectAction>>, data: FormData) => {
+    const result = await projectAction(previous, data);
+    if (result.success) onSuccess?.(result.projectId);
+    return result;
+  }, {});
   return <form action={action} className={className} onSubmit={onSubmit}>
     <input type="hidden" name="operation" value={operation} />
     {projectId && <input type="hidden" name="project_id" value={projectId} />}
     <fieldset disabled={pending}>{children}</fieldset>
     {pending && <span role="status">Saving…</span>}
     {state.error && <p className="form-error" role="alert">{state.error}</p>}
-    {state.success && <p className="form-success" role="status">{state.success}</p>}
+    {state.success && !onSuccess && <p className="form-success" role="status">{state.success}</p>}
   </form>;
 }
 
@@ -39,54 +45,92 @@ function RoleSelect({ elevated, value = "PARTICIPANT" }: { elevated: boolean; va
   </select></label>;
 }
 
-export default function ProjectsView({ projects }: { projects: WorkspaceProject[] }) {
-  const [selected, setSelected] = useState<number | null>(null);
-  const project = projects.find((p) => p.id === selected);
-  return <>
-    <header className="page-header"><p className="eyebrow">WORKSPACE</p><h1>Projects</h1><p>Create a project, then bring your team together.</p></header>
-    <div className="projects-workspace">
-      <section className="workspace-card"><h2>Your projects <span className="role-badge">{projects.length}</span></h2>
-        {projects.length === 0 && <p>You have no projects yet. Create your first one below.</p>}
-        <div className="project-list">{projects.map((item) => <button key={item.id} onClick={() => setSelected(item.id)} aria-pressed={selected === item.id} className="project-list-item">
-          <strong>{item.name}</strong><span>{item.status.replaceAll("_", " ")} · {item.role}</span>
-        </button>)}</div>
-        <details className="create-project" open={projects.length === 0}><summary>Create a project</summary>
-          <ChangeForm operation="create"><ProjectFields /><button className="primary-button">Create project</button></ChangeForm>
-        </details>
-      </section>
-      <section className="workspace-card" key={project?.id ?? "empty"}>
-        {!project ? <><h2>Choose a project</h2><p>Select a project to view its details and members.</p></> : <>
-          <div className="project-detail-heading"><h2>{project.name}</h2><span className="role-badge">{project.role}</span></div>
-          <p>{project.description || "No description yet."}</p>
-          <p>{project.start_date}{project.end_date ? ` → ${project.end_date}` : ""} · {project.status.replaceAll("_", " ")}</p>
-          {project.canEdit && <details><summary>Edit project</summary><ChangeForm operation="update" projectId={project.id}>
-            <ProjectFields project={project} /><button className="primary-button">Save project</button>
-          </ChangeForm></details>}
-          <h3>Members ({project.members.length})</h3>
-          <ul className="member-list">{project.members.map((member) => <li key={member.id}>
-            <div><strong>{member.first_name} {member.last_name}</strong><small>{member.email}</small><span className="role-badge">{member.role}{member.id === project.owner_id ? " · Owner" : ""}</span></div>
-            {project.canManage && member.id !== project.owner_id && <div className="member-controls">
-              {project.canAssignRoles && <ChangeForm operation="role" projectId={project.id} className="compact-form">
-                <input type="hidden" name="user_id" value={member.id} /><RoleSelect elevated value={member.role} /><button className="secondary-button">Save role</button>
-              </ChangeForm>}
-              {(project.canAssignRoles || member.role === "PARTICIPANT") && <ChangeForm operation="remove" projectId={project.id} className="compact-form" onSubmit={(event) => { if (!window.confirm(`Remove ${member.first_name} from this project?`)) event.preventDefault(); }}>
-                <input type="hidden" name="user_id" value={member.id} /><button className="danger-button">Remove</button>
-              </ChangeForm>}
-            </div>}
-          </li>)}</ul>
-          {project.canManage && <section className="add-member"><h3>Add a member</h3>
-            {project.eligible.length === 0 ? <p>All active users are already members.</p> : <ChangeForm key={project.eligible.map((u) => u.id).join(",")} operation="add" projectId={project.id}>
-              <label>Available users<select name="user_id" required defaultValue=""><option value="" disabled>Select a user</option>{project.eligible.map((user) => <option key={user.id} value={user.id}>{user.first_name} {user.last_name} ({user.email})</option>)}</select></label>
-              <RoleSelect elevated={project.canAssignRoles} /><button className="primary-button">Add to project</button>
-            </ChangeForm>}
-          </section>}
-          {project.canDelete && <div className="delete-project"><h3>Delete project</h3><p>This deletes the project, its memberships, and its tasks.</p>
-            <ChangeForm operation="delete" projectId={project.id} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}>
-              <button className="danger-button">Delete project</button>
-            </ChangeForm>
-          </div>}
-        </>}
-      </section>
+function ProjectDialog({ title, description, onClose, children }: {
+  title: string; description: string; onClose: () => void; children: ReactNode;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current!;
+    const previousOverflow = document.body.style.overflow;
+    dialog.showModal();
+    document.body.style.overflow = "hidden";
+    return () => {
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+  return <dialog ref={ref} className="project-dialog" aria-labelledby="project-dialog-title" aria-describedby="project-dialog-description"
+    onCancel={onClose} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="project-dialog-content">
+      <div className="project-dialog-heading"><h2 id="project-dialog-title">{title}</h2><button type="button" className="dialog-close" onClick={onClose} aria-label="Close dialog">×</button></div>
+      <p id="project-dialog-description">{description}</p>
+      {children}
     </div>
-  </>;
+  </dialog>;
+}
+
+export default function ProjectsView({ projects }: { projects: WorkspaceProject[] }) {
+  const router = useRouter();
+  const search = useSearchParams();
+  const selected = search.get("project");
+  const project = projects.find((p) => String(p.id) === selected);
+  const [modal, setModal] = useState<"create" | "edit" | "add" | null>(null);
+  const close = () => setModal(null);
+  return <div className="projects-workspace">
+    <nav className="project-breadcrumbs" aria-label="Breadcrumb">
+      <ol>
+        <li>{selected ? <Link href="/">Projects</Link> : <span aria-current="page">Projects</span>}</li>
+        {selected && <li><span className="breadcrumb-separator" aria-hidden="true">/</span><span aria-current="page">{project?.name ?? "Unavailable project"}</span></li>}
+      </ol>
+    </nav>
+
+    {!selected ? <>
+      <header className="page-header projects-page-heading">
+        <div><p className="eyebrow">YOUR WORKSPACE</p><h1>Projects</h1><p>A place for every idea. Choose a project to pick up where you left off.</p></div>
+        <button className="primary-button" onClick={() => setModal("create")}><span aria-hidden="true">+</span> New project</button>
+      </header>
+      {projects.length === 0 ? <section className="project-empty-state"><span aria-hidden="true">↗</span><h2>Make room for your next idea</h2><p>Create a project and bring your team together.</p><button className="primary-button" onClick={() => setModal("create")}>Create your first project</button></section> :
+        <div className="project-browser-grid">{projects.map((item) => <Link href={`/?project=${item.id}`} key={item.id} className="project-browser-card">
+          <div className="project-card-topline"><span className="role-badge">{item.status.replaceAll("_", " ")}</span><span aria-hidden="true">↗</span></div>
+          <h2>{item.name}</h2><p>{item.description || "Your next chapter starts here."}</p>
+          <div className="project-card-meta"><span>{item.members.length} {item.members.length === 1 ? "member" : "members"}</span><span>{item.role?.replaceAll("_", " ")}</span></div>
+        </Link>)}</div>}
+    </> : !project ? <section className="project-empty-state"><h1>Project unavailable</h1><p>This project was deleted or you no longer have access.</p><Link href="/" className="secondary-button">Back to projects</Link></section> : <>
+      <header className="page-header projects-page-heading"><div><p className="eyebrow">PROJECT OVERVIEW</p><h1>{project.name}</h1><p>{project.description || "Add a description to tell your team what this project is about."}</p></div>
+        {project.canEdit && <button className="secondary-button" onClick={() => setModal("edit")}>Edit project</button>}
+      </header>
+      <div className="project-detail-layout">
+        <section className="workspace-card project-team" key={project.id}>
+          <div className="section-heading"><div><h2>People <span className="role-badge">{project.members.length}</span></h2><p>The team making it happen.</p></div>{project.canManage && <button className="primary-button" onClick={() => setModal("add")}>Add member</button>}</div>
+          {project.members.length === 0 && <p>No team members yet.</p>}
+          <ul className="member-list">{project.members.map((member) => <li key={member.id}>
+            <div className="member-identity"><span className="member-avatar" aria-hidden="true">{member.first_name.slice(0, 1)}{member.last_name.slice(0, 1)}</span><div><strong>{member.first_name} {member.last_name}</strong><small>{member.email}</small><span className="role-badge">{member.role}{member.id === project.owner_id ? " · Owner" : ""}</span></div></div>
+            {project.canManage && member.id !== project.owner_id && (project.canAssignRoles || member.role === "PARTICIPANT") && <details className="member-settings"><summary>Manage</summary><div className="member-controls">
+              {project.canAssignRoles && <ChangeForm operation="role" projectId={project.id} className="compact-form"><input type="hidden" name="user_id" value={member.id} /><RoleSelect elevated value={member.role} /><button className="secondary-button">Save role</button></ChangeForm>}
+              <ChangeForm operation="remove" projectId={project.id} className="compact-form" onSubmit={(event) => { if (!window.confirm(`Remove ${member.first_name} from this project?`)) event.preventDefault(); }}>
+                <input type="hidden" name="user_id" value={member.id} /><button className="danger-button">Remove member</button>
+              </ChangeForm>
+            </div></details>}
+          </li>)}</ul>
+        </section>
+        <aside className="project-overview-sidebar">
+          <section className="workspace-card project-facts"><h2>At a glance</h2><dl><div><dt>Status</dt><dd>{project.status.replaceAll("_", " ")}</dd></div><div><dt>Start date</dt><dd>{project.start_date}</dd></div><div><dt>End date</dt><dd>{project.end_date || "No deadline"}</dd></div><div><dt>Your role</dt><dd>{project.role?.replaceAll("_", " ")}</dd></div></dl></section>
+          {project.canDelete && <details className="project-danger-zone"><summary>Project settings</summary><p>Deleting this project also deletes its tasks and memberships.</p><ChangeForm operation="delete" projectId={project.id} onSuccess={() => router.push("/")} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}><button className="danger-button">Delete project</button></ChangeForm></details>}
+        </aside>
+      </div>
+    </>}
+
+    {modal === "create" && <ProjectDialog title="Create a project" description="Start with the basics. You can invite your team next." onClose={close}>
+      <ChangeForm operation="create" onSuccess={(id) => { close(); router.push(`/?project=${id}`); }}><ProjectFields /><div className="dialog-actions"><button type="button" className="secondary-button" onClick={close}>Cancel</button><button className="primary-button">Create project</button></div></ChangeForm>
+    </ProjectDialog>}
+    {modal === "edit" && project && <ProjectDialog title="Edit project" description="Keep your team aligned with the latest details." onClose={close}>
+      <ChangeForm operation="update" projectId={project.id} onSuccess={close}><ProjectFields project={project} /><div className="dialog-actions"><button type="button" className="secondary-button" onClick={close}>Cancel</button><button className="primary-button">Save changes</button></div></ChangeForm>
+    </ProjectDialog>}
+    {modal === "add" && project && <ProjectDialog title="Bring someone on board" description={`Add a registered user to ${project.name}.`} onClose={close}>
+      {project.eligible.length === 0 ? <p>There are no other available users to add.</p> : <ChangeForm operation="add" projectId={project.id} onSuccess={close}>
+        <label>Available users<select name="user_id" required defaultValue=""><option value="" disabled>Select a user</option>{project.eligible.map((user) => <option key={user.id} value={user.id}>{user.first_name} {user.last_name} ({user.email})</option>)}</select></label>
+        <RoleSelect elevated={project.canAssignRoles} /><div className="dialog-actions"><button type="button" className="secondary-button" onClick={close}>Cancel</button><button className="primary-button">Add member</button></div>
+      </ChangeForm>}
+    </ProjectDialog>}
+  </div>;
 }

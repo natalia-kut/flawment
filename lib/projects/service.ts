@@ -6,6 +6,14 @@ export class ProjectError extends Error {}
 const roles: ProjectRole[] = ["ADMIN", "MANAGER", "PARTICIPANT"];
 const statuses: ProjectStatus[] = ["TO_DO", "IN_PROGRESS", "COMPLETED", "ARCHIVED", "CANCELLED"];
 const field = (data: FormData, key: string) => String(data.get(key) ?? "").trim();
+
+export async function findAvailableMembers(projectId: number) {
+  return prisma.user.findMany({
+    where: { is_active: true, role: "USER", memberships: { none: { project_id: projectId } } },
+    select: { id: true, first_name: true, last_name: true, email: true },
+    orderBy: { first_name: "asc" },
+  });
+}
 function id(value: string) {
   const result = Number(value);
   if (!Number.isSafeInteger(result) || result <= 0) throw new ProjectError("Invalid record ID.");
@@ -43,6 +51,8 @@ export async function mutateProject(actor: Actor, data: FormData) {
     if (operation === "update") return tx.project.update({ where: { id: projectId }, data: projectInput(data) });
     if (!["add", "remove", "role"].includes(operation)) throw new ProjectError("Unknown project operation.");
     const userId = id(field(data, "user_id"));
+    const target = await tx.user.findUnique({ where: { id: userId }, select: { role: true, is_active: true } });
+    if (!target || target.role === "SUPER_ADMIN") throw new ProjectError("Choose an available standard user.");
     if (userId === project.owner_id) throw new ProjectError("The project owner must remain its admin.");
     const member = project.memberships.find((m) => m.user_id === userId);
     if (operation === "add" || operation === "role") {
@@ -51,7 +61,7 @@ export async function mutateProject(actor: Actor, data: FormData) {
       if (actor.role !== "SUPER_ADMIN" && actorRole !== "ADMIN" && role !== "PARTICIPANT") throw new ProjectError("Only project admins can assign elevated roles.");
       if (operation === "add") {
         if (member) throw new ProjectError("This user is already a project member.");
-        if (!await tx.user.findFirst({ where: { id: userId, is_active: true } })) throw new ProjectError("Choose an active user.");
+        if (!target.is_active) throw new ProjectError("Choose an active user.");
         return tx.projectMembership.create({ data: { project_id: projectId, user_id: userId, role } });
       }
       if (!member) throw new ProjectError("This user is no longer a member.");

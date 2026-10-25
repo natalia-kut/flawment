@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "../../lib/prisma";
 import { registerAccount, authenticate } from "../../lib/auth/service";
-import { mutateProject } from "../../lib/projects/service";
+import { mutateProject, findAvailableMembers } from "../../lib/projects/service";
 import { visibleProjects, type Actor } from "../../lib/rbac";
 
 function form(values: Record<string, string | number>) {
@@ -51,10 +51,16 @@ test("registration, login and project authorization against PostgreSQL", async (
     const projectId = created.id;
     projectIds.push(projectId);
     const change = (operation: string, extra: Record<string, string | number> = {}) => form({ operation, project_id: projectId, ...extra });
+    const available = await findAvailableMembers(projectId);
+    assert.ok(available.some((user) => user.id === member.id));
+    assert.ok(!available.some((user) => user.id === root.id), "super admins never appear in member selection");
+    await assert.rejects(mutateProject(owner, change("add", { user_id: root.id, role: "PARTICIPANT" })), /standard user/);
+    await assert.rejects(mutateProject(root, change("add", { user_id: root.id, role: "ADMIN" })), /standard user/);
     assert.equal((await prisma.projectMembership.findUniqueOrThrow({ where: { project_id_user_id: { project_id: projectId, user_id: owner.id } } })).role, "ADMIN");
     assert.equal(await prisma.project.count({ where: { id: projectId, ...visibleProjects(outsider) } }), 0);
     await assert.rejects(mutateProject(outsider, change("delete")), /permission/);
     await mutateProject(owner, change("add", { user_id: member.id, role: "PARTICIPANT" }));
+    assert.ok(!(await findAvailableMembers(projectId)).some((user) => user.id === member.id));
     await assert.rejects(mutateProject(owner, change("add", { user_id: member.id, role: "PARTICIPANT" })), /already/);
     assert.equal(await prisma.user.count({ where: { id: member.id, memberships: { none: { project_id: projectId } } } }), 0);
     assert.equal(await prisma.project.count({ where: { id: projectId, ...visibleProjects(member) } }), 1);

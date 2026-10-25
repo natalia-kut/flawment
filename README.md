@@ -130,6 +130,12 @@ project `ADMIN` while retaining the standard account role. Select a project to
 edit details, add existing active users, change member roles, remove members,
 or delete the project, according to these permissions:
 
+Projects opens as a card list. Opening a card shows a dedicated project view;
+use the **Projects → project name** breadcrumb to return to the list. The selected
+project is stored in the URL, so refresh and browser back/forward preserve
+navigation. **New project**, **Edit project**, and **Add member** open dialogs
+with Cancel, Escape, and backdrop dismissal. Creating a project opens its overview.
+
 | Capability | PARTICIPANT | MANAGER | ADMIN | SUPER_ADMIN account |
 | --- | --- | --- | --- | --- |
 | View project, members and its document data | Yes | Yes | Yes | Every project |
@@ -145,6 +151,12 @@ memberships. Standard users only see projects they belong to; super admins see
 all projects. Project permissions live in `lib/rbac.ts`, with `tasks:manage` and
 `tasks:update-assigned` reserved for future task endpoints (task management UI is
 not part of this implementation).
+
+Super admins have access without project membership. They never appear in the
+available-user selector, and server-side checks reject adding or changing them
+through membership actions. Existing super-admin memberships are hidden from
+standard users. Documents also hide their account details from standard users,
+showing a generic administrator label where a project owner or task author is required.
 
 Document templates belong to their creator. Standard users can only read or change
 their own custom templates; super admins can manage all, including legacy

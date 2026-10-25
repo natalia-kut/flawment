@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useActionState, type ReactNode } from "react";
 import { logout } from "@/lib/auth/actions";
 
 const navigation = [
@@ -12,6 +12,16 @@ const navigation = [
 ] as const;
 
 type NavigationItem = (typeof navigation)[number];
+
+function SignOut() {
+  const [, action, pending] = useActionState(logout, undefined);
+  return <form action={action} className="logout-form">
+    <button type="submit" disabled={pending}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M10 4H5v16h5M14 8l4 4-4 4M9 12h10" /></svg>
+      <span>{pending ? "Signing out…" : "Sign out"}</span>
+    </button>
+  </form>;
+}
 
 export default function AppShell({ documents, projects, user, projectCount }: {
   documents: ReactNode; projects: ReactNode; projectCount: number;
@@ -44,12 +54,14 @@ export default function AppShell({ documents, projects, user, projectCount }: {
           ))}
         </nav>
         <div className="sidebar-footer">
+          <div className="sidebar-profile">
           <span className="avatar" aria-hidden="true">
             {user.first_name.slice(0, 1)}
           </span>
           <span className="profile-name">{user.first_name} {user.last_name}<small>{user.role === "SUPER_ADMIN" ? "Super admin" : "Standard user"}</small></span>
+          </div>
+          <SignOut />
         </div>
-        <form action={logout} className="logout-form"><button type="submit">Sign out</button></form>
       </aside>
 
       <main className="main-content">
