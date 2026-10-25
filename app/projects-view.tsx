@@ -1,27 +1,19 @@
 import styles from "./projects-view.module.css";
 
-const demoProjects = [
-  {
-    id: 1,
-    name: "Room booking system",
-    deadline: "2026-11-30",
-    status: "In progress",
-    completedTasks: 3,
-    totalTasks: 8,
-    overdueTasks: 1,
-    people: 5,
-  },
-  {
-    id: 2,
-    name: "Hackathon 2027",
-    deadline: "2027-03-10",
-    status: "Planned",
-    completedTasks: 0,
-    totalTasks: 2,
-    overdueTasks: 0,
-    people: 2,
-  },
-];
+type ProjectRow = {
+  id: number;
+  name: string;
+  deadline: string | null;
+  status: string;
+  completedTasks: number;
+  totalTasks: number;
+  overdueTasks: number;
+  people: number;
+};
+
+type ProjectsViewProps = {
+  projects?: ProjectRow[];
+};
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
@@ -30,7 +22,9 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
-export default function ProjectsView() {
+export default function ProjectsView({
+  projects = [],
+}: ProjectsViewProps) {
   return (
     <>
       <header className="page-header">
@@ -49,32 +43,59 @@ export default function ProjectsView() {
               <th scope="col">People</th>
             </tr>
           </thead>
+
           <tbody>
-            {demoProjects.map((project) => {
-              const progress = project.totalTasks === 0
-                ? 0
-                : Math.round((project.completedTasks / project.totalTasks) * 100);
+            {projects.length === 0 && (
+              <tr>
+                <td colSpan={5}>
+                  No projects yet. Create your first project.
+                </td>
+              </tr>
+            )}
+
+            {projects.map((project) => {
+              const progress =
+                project.totalTasks === 0
+                  ? 0
+                  : Math.round(
+                      (project.completedTasks / project.totalTasks) * 100,
+                    );
 
               return (
                 <tr key={project.id}>
                   <th scope="row" className={styles.projectName}>
                     {project.name}
+
                     {project.overdueTasks > 0 && (
                       <span className={styles.overdue}>
-                        {project.overdueTasks} overdue {project.overdueTasks === 1 ? "task" : "tasks"}
+                        {project.overdueTasks} overdue{" "}
+                        {project.overdueTasks === 1 ? "task" : "tasks"}
                       </span>
                     )}
                   </th>
+
                   <td className={styles.deadline}>
-                    <time dateTime={project.deadline}>
-                      {dateFormatter.format(new Date(`${project.deadline}T00:00:00Z`))}
-                    </time>
+                    {project.deadline ? (
+                      <time dateTime={project.deadline}>
+                        {dateFormatter.format(
+                          new Date(`${project.deadline}T00:00:00Z`),
+                        )}
+                      </time>
+                    ) : (
+                      "No deadline"
+                    )}
                   </td>
+
                   <td>
-                    <span className={`status-badge${project.status === "Planned" ? " planned" : ""}`}>
+                    <span
+                      className={`status-badge${
+                        project.status === "Planned" ? " planned" : ""
+                      }`}
+                    >
                       {project.status}
                     </span>
                   </td>
+
                   <td>
                     <div className={styles.progressCell}>
                       <div
@@ -87,10 +108,16 @@ export default function ProjectsView() {
                       >
                         <span style={{ width: `${progress}%` }} />
                       </div>
-                      <span className={styles.progressValue}>{progress}%</span>
+
+                      <span className={styles.progressValue}>
+                        {progress}%
+                      </span>
                     </div>
                   </td>
-                  <td className={styles.people}>{project.people}</td>
+
+                  <td className={styles.people}>
+                    {project.people}
+                  </td>
                 </tr>
               );
             })}
