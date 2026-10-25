@@ -1,8 +1,8 @@
+import { currentUser } from "@/lib/auth/session";
 import { runFlawiusz, type AgentEvent, type ConversationMessage } from "@/lib/flawiusz/agent";
 import { unavailableMessage } from "@/lib/flawiusz/phrases";
 
 // Streams Flawiusz's reply as newline-delimited JSON events (see AgentEvent).
-// TODO(auth): Require a signed-in user.
 
 const limits = { messages: 40, characters: 4000 };
 
@@ -22,6 +22,9 @@ function parseConversation(body: unknown): ConversationMessage[] | null {
 }
 
 export async function POST(request: Request) {
+  // Checked before the model is called, so signed-out requests cost nothing.
+  if (!(await currentUser())) return Response.json({ error: "Sign in to use Flawiusz." }, { status: 401 });
+
   const body: unknown = await request.json().catch(() => null);
   const conversation = parseConversation(body);
   if (!conversation) return Response.json({ error: "Invalid conversation." }, { status: 400 });

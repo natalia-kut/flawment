@@ -86,6 +86,11 @@ export function useFlawiuszChat() {
         body: JSON.stringify({ messages: history }),
         signal: controller.signal,
       });
+      // The session expired while the page was open.
+      if (response.status === 401) {
+        router.push("/login");
+        return;
+      }
       if (!response.ok || !response.body) throw new Error(`Chat request failed with ${response.status}`);
 
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
