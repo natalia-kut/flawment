@@ -55,7 +55,7 @@ export async function runFlawiusz(
 ) {
   const config = llmConfig();
   if (!config) {
-    console.error("Flawiusz is not configured: set LLM_BASE_URL and LLM_MODEL in .env.");
+    console.error("Flawiusz is not configured: set LLM_BASE_URL, LLM_MODEL and LLM_API_KEY in .env.");
     emit({ type: "error", message: unavailableMessage });
     return;
   }

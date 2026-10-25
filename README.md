@@ -5,8 +5,8 @@ Flawment is an early-stage project management application built with Next.js 16
 
 It includes **Flawiusz**, an AI assistant on the dashboard and in a side panel on
 every page. It answers questions about projects, deadlines and the team, and
-creates document templates. It runs on a local language model, so it needs no paid
-API; see [Set up Flawiusz](#set-up-flawiusz).
+creates document templates. It runs on a free model from OpenRouter, so it needs
+no paid API; see [Set up Flawiusz](#set-up-flawiusz).
 
 ## First-time setup (Windows and macOS)
 
@@ -190,60 +190,21 @@ project as one, add the other, and sign in as each to check role-specific action
 
 ## Set up Flawiusz
 
-The app works without Flawiusz; the chat then shows that the assistant is not set up.
-To enable it, add these lines to `.env` (see below for the values):
+Flawiusz uses the free
+[NVIDIA: Nemotron 3.5 Super VL](https://openrouter.ai/nvidia/nemotron-3.5-super-vl)
+model through [OpenRouter](https://openrouter.ai/). The app works without Flawiusz;
+the chat then shows that the assistant is not set up.
 
-```dotenv
-LLM_BASE_URL=http://localhost:1234/v1
-LLM_MODEL=qwen/qwen3-30b-a3b
-```
+1. Create an API key at [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys).
+2. Add these lines to `.env`:
 
-Flawiusz works with any model that supports tool calling. The models below are only suggestions, the
-ones Flawiusz was tested with; pick one that fits your hardware:
+   ```dotenv
+   LLM_BASE_URL=https://openrouter.ai/api/v1
+   LLM_MODEL=nvidia/nemotron-3.5-super-vl:free
+   LLM_API_KEY=sk-or-...
+   ```
 
-| Model | Memory | Notes |
-|---|---|---|
-| **Qwen3 30B-A3B** (suggested) | about 18 GB | Best answers of the two. It uses only about 3B parameters per token, so it stays reasonably fast even on a CPU. |
-| **Qwen3 8B** | about 6 GB | Lighter alternative for computers with 16 GB of RAM. Weaker in Polish and on complex requests. |
-
-Use either LM Studio or Ollama.
-
-### LM Studio
-
-1. In LM Studio, download the model, for example **Qwen3 30B-A3B** (choose a build with the hammer icon,
-   which means tool support).
-2. Open the **Developer** tab, load the model and set **Context Length** to at least **16384**.
-3. Start the server (**Status: Running**, port 1234).
-4. In `.env`, set `LLM_BASE_URL=http://localhost:1234/v1` and set `LLM_MODEL` to the model id listed
-   at `http://localhost:1234/v1/models` (for example `qwen/qwen3-30b-a3b` or `qwen/qwen3-8b`).
-
-### Ollama
-
-```bash
-ollama pull qwen3:30b   # Qwen3 30B-A3B; or qwen3:8b for the lighter model
-```
-
-In `.env`, set `LLM_BASE_URL=http://localhost:11434/v1` and `LLM_MODEL=qwen3:30b` (or `qwen3:8b`).
-
-### Running the model on another computer
-
-To run the model on a more powerful computer in the same network:
-
-1. Make the server reachable from the network:
-   - LM Studio: in **Settings**, turn on **Serve on Local Network**.
-   - Ollama: set the environment variable `OLLAMA_HOST=0.0.0.0:11434` and restart Ollama.
-2. Allow the port (1234 or 11434) in that computer's firewall, for private networks only.
-3. Use that computer's IP address in `LLM_BASE_URL`, for example
-   `http://192.168.0.150:1234/v1`.
-
-Neither server has authentication. Never expose its port to the internet.
-
-### Response time
-
-Replies take a few seconds to about half a minute on a CPU. They are much faster when the model runs
-on a GPU (in LM Studio, set **GPU Offload** to the maximum when loading the model).
-
-Restart `npm run dev` after changing `.env`.
+3. Restart `npm run dev`.
 
 ## Troubleshooting
 

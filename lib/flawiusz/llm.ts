@@ -1,4 +1,4 @@
-// Minimal streaming client for OpenAI-compatible chat endpoints (LM Studio, Ollama, OpenRouter).
+// Minimal streaming client for OpenRouter's OpenAI-compatible chat endpoint.
 
 export type ToolCall = { id: string; type: "function"; function: { name: string; arguments: string } };
 
@@ -12,13 +12,13 @@ export type ToolSpec = {
   function: { name: string; description: string; parameters: unknown };
 };
 
-export type LlmConfig = { baseUrl: string; model: string; apiKey?: string };
+export type LlmConfig = { baseUrl: string; model: string; apiKey: string };
 
 export function llmConfig(): LlmConfig | null {
   const baseUrl = process.env.LLM_BASE_URL?.trim();
   const model = process.env.LLM_MODEL?.trim();
-  const apiKey = process.env.LLM_API_KEY?.trim() || undefined;
-  return baseUrl && model ? { baseUrl: baseUrl.replace(/\/+$/, ""), model, apiKey } : null;
+  const apiKey = process.env.LLM_API_KEY?.trim();
+  return baseUrl && model && apiKey ? { baseUrl: baseUrl.replace(/\/+$/, ""), model, apiKey } : null;
 }
 
 type StreamChunk = {
@@ -50,7 +50,7 @@ export async function streamCompletion(
     method: "POST",
     headers: {
       "content-type": "application/json",
-      ...(config.apiKey && { authorization: `Bearer ${config.apiKey}` }),
+      authorization: `Bearer ${config.apiKey}`,
     },
     // Some servers reject an empty tools list, so leave it out instead.
     body: JSON.stringify({ model: config.model, messages, tools: tools.length > 0 ? tools : undefined, stream: true }),
