@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
-import { copyTemplate, deleteTemplate } from "@/lib/documents/actions";
+import { copyTemplate, deleteTemplate, saveTemplate } from "@/lib/documents/actions";
 import { builtIn } from "@/lib/documents/built-in-templates";
-import { createBlock, type DocumentTemplate } from "@/lib/documents/template-schema";
+import { createBlock, templateLimits, type DocumentTemplate } from "@/lib/documents/template-schema";
 import type { DocumentProject } from "@/lib/documents/types";
 import DocumentSheet from "./document-sheet";
 import TemplateBuilder from "./template-builder";
@@ -100,6 +100,8 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
   const [notice, setNotice] = useState("");
   const [isDeleting, startDeleting] = useTransition();
   const [isCopying, startCopying] = useTransition();
+  const [renaming, setRenaming] = useState(false);
+  const [, startRenaming] = useTransition();
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0];
   // Custom templates show up only in their own project, or everywhere when they have none.
@@ -113,8 +115,30 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
     setSelectedTemplateId(id);
     setConfirmingDelete(false);
     setCopyTarget(null);
+    setRenaming(false);
     setError("");
     setNotice("");
+  }
+
+  function rename(value: string) {
+    setRenaming(false);
+    const template = selectedTemplate;
+    const name = value.trim();
+    if (!name || name === template.name) return;
+
+    // Show the new name right away and put the old one back if saving fails.
+    const replace = (next: DocumentTemplate) =>
+      setTemplates((current) => current.map((item) => (item.id === template.id ? next : item)));
+    replace({ ...template, name });
+    setError("");
+    startRenaming(async () => {
+      const result = await saveTemplate(template.id, { ...template, name });
+      if (result.ok) replace(result.value);
+      else {
+        replace(template);
+        setError(result.error);
+      }
+    });
   }
 
   function handleCopy(target: DocumentProject) {
@@ -249,7 +273,34 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
 
           <section className="document-preview-area" aria-label="Document preview">
             <div className="preview-toolbar">
-              <h2>{selectedTemplate.name}</h2>
+              {renaming ? (
+                <h2>
+                  <input
+                    aria-label="Template name"
+                    autoFocus
+                    className="template-title-input"
+                    defaultValue={selectedTemplate.name}
+                    maxLength={templateLimits.name}
+                    onBlur={(event) => rename(event.target.value)}
+                    onFocus={(event) => event.target.select()}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") event.currentTarget.value = selectedTemplate.name;
+                      if (event.key === "Enter" || event.key === "Escape") event.currentTarget.blur();
+                    }}
+                  />
+                </h2>
+              ) : selectedTemplate.isBuiltIn ? (
+                <h2>{selectedTemplate.name}</h2>
+              ) : (
+                <h2>
+                  <button className="template-title" onClick={() => setRenaming(true)} title="Rename" type="button">
+                    {selectedTemplate.name}
+                    <svg aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" viewBox="0 0 16 16">
+                      <path d="M10.5 3.5l2 2L6 12H4v-2zM9 5l2 2" />
+                    </svg>
+                  </button>
+                </h2>
+              )}
               <div className="heading-actions">
                 {!selectedTemplate.isBuiltIn && copyTargets.length > 0 && (
                   <details className="copy-menu" key={`copy-${selectedTemplate.id}`}>
