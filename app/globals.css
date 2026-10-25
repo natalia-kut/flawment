@@ -507,3 +507,47 @@ h1 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Authentication and project membership */
+.auth-page { min-height: 100vh; display: grid; place-items: center; padding: 32px 20px; }
+.auth-card { width: min(100%, 460px); background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; }
+.auth-brand { display: inline-block; color: var(--foreground); font-size: 30px; font-weight: 800; text-decoration: none; margin-bottom: 24px; }
+.auth-brand span { color: var(--accent); }
+.auth-card h1 { font-size: 30px; margin: 8px 0; }
+.auth-card > p { margin-bottom: 20px; }
+.workspace-form { display: grid; gap: 14px; margin-top: 16px; }
+.workspace-form fieldset, .compact-form fieldset { display: grid; gap: 14px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.workspace-form label, .compact-form label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+.workspace-form input, .workspace-form select, .workspace-form textarea, .compact-form select { width: 100%; min-width: 0; border: 1px solid #c7baaa; background: #fff; border-radius: 6px; padding: 10px 12px; color: var(--foreground); font: inherit; }
+.workspace-form textarea { min-height: 80px; resize: vertical; }
+.workspace-form :is(input, select, textarea):focus-visible { outline: 3px solid #e99b6d; outline-offset: 2px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.projects-workspace .danger-button { border: 1px solid #b4361b; border-radius: 8px; min-height: 42px; padding: 8px 15px; background: #fae5e0; color: #942b20; cursor: pointer; font-weight: 600; }
+.workspace-form button:disabled, .workspace-form fieldset:disabled button, .compact-form fieldset:disabled button { opacity: .55; cursor: wait; }
+.form-error { color: #a1261b; font-size: 14px; }
+.form-success { color: #286444; font-size: 14px; }
+.projects-workspace { display: grid; grid-template-columns: minmax(250px, 1fr) minmax(0, 2fr); gap: 24px; align-items: start; }
+.workspace-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; min-width: 0; }
+.workspace-card h2 { font-size: 22px; margin: 0 0 14px; overflow-wrap: anywhere; }
+.workspace-card h3 { margin: 24px 0 12px; }
+.workspace-card p { color: #756658; line-height: 1.5; overflow-wrap: anywhere; }
+.workspace-card details { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 20px; }
+.workspace-card summary { font-weight: 600; cursor: pointer; }
+.project-list { display: grid; gap: 8px; }
+.project-list-item { display: grid; gap: 5px; text-align: left; padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: transparent; cursor: pointer; overflow-wrap: anywhere; }
+.project-list-item[aria-pressed=true] { border-color: var(--accent); background: #fcf0e7; }
+.project-list-item span { font-size: 12px; color: #756658; }
+.role-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 4px 7px; background: #f1e8dc; border-radius: 4px; }
+.project-detail-heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.member-list { list-style: none; padding: 0; }
+.member-list li { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+.member-list small { display: block; color: #756658; margin: 4px 0 8px; overflow-wrap: anywhere; }
+.member-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.compact-form fieldset { gap: 6px; }
+.compact-form { max-width: 240px; }
+.delete-project { border-top: 1px solid var(--border); margin-top: 30px; }
+.profile-name small { display: block; color: #bdb3a9; font-size: 11px; margin-top: 3px; }
+.logout-form { margin-top: 12px; }
+.logout-form button { border: 1px solid #665447; border-radius: 5px; color: #fffaf3; background: transparent; cursor: pointer; padding: 8px 12px; }
+@media (max-width: 1000px) { .projects-workspace { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .auth-card, .workspace-card { padding: 20px; } .form-row { grid-template-columns: 1fr; } }

@@ -36,6 +36,7 @@ try {
   run("docker", ["compose", "up", "-d", "--wait", "--wait-timeout", "120", "db"]);
   run(process.execPath, [npm, "run", "db:deploy"]);
   run(process.execPath, [npm, "run", "db:generate"]);
+  run(process.execPath, [npm, "run", "db:seed:admin"]);
 
   console.log("\nBootstrap complete. Run npm run dev and open http://localhost:3000.");
 } catch (error) {

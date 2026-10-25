@@ -23,7 +23,7 @@ This same command works in Windows PowerShell, Command Prompt, and macOS shells.
 It checks Node.js and Docker, copies `.env.example` to `.env` if missing, installs
 exact dependencies from `package-lock.json` using `npm ci`, starts PostgreSQL in
 Docker Compose, waits up to 120 seconds for its health check, applies committed
-migrations, and generates Prisma Client. No separate `npm install` is needed.
+migrations, generates Prisma Client, and seeds the super admin. No separate `npm install` is needed.
 It exits on failure; fix the reported problem and rerun it.
 
 Start the web application afterward:
@@ -103,7 +103,73 @@ unset DATABASE_URL
 After pulling dependency or migration changes, rerun bootstrap. After editing
 `prisma/schema.prisma`, run `db:migrate` and then `db:generate`, and commit the
 resulting migration. Prisma 7 does not automatically generate the client when
-running migrations. The seed script refuses to run when users already exist.
+running migrations. The sample-data seed skips when standard users already exist.
+
+## Accounts and project roles
+
+Open `/register` to create a standard account (username, name, email and a password
+of 10–128 characters). Registration signs you in automatically. Returning users
+sign in at `/login` with their email and password; use **Sign out** in the sidebar
+to end the session. Email and username uniqueness is case-insensitive.
+
+Bootstrap creates the local super admin with:
+
+- Email: `admin@flawment.local`
+- Password: `FlawmentAdmin123!`
+
+To seed it into an existing installation after applying migrations and generating
+the client, run `npm run db:seed:admin`. Set `SUPER_ADMIN_EMAIL` and
+`SUPER_ADMIN_PASSWORD` in `.env` before the first seed to choose other credentials.
+Rerunning the seed preserves the existing account and password and refuses to
+promote a colliding standard account. Production seeding requires explicit
+credentials. Sample users/projects remain optional via `npm run db:seed`; sample
+users use `flawment123` as their local-only password.
+
+Any signed-in user can create a project in **Projects**, becoming its owner and
+project `ADMIN` while retaining the standard account role. Select a project to
+edit details, add existing active users, change member roles, remove members,
+or delete the project, according to these permissions:
+
+| Capability | PARTICIPANT | MANAGER | ADMIN | SUPER_ADMIN account |
+| --- | --- | --- | --- | --- |
+| View project, members and its document data | Yes | Yes | Yes | Every project |
+| Edit project details | — | Yes | Yes | Yes |
+| Add/remove participants | — | Yes | Yes | Yes |
+| Assign ADMIN/MANAGER roles or remove elevated members | — | — | Yes | Yes |
+| Delete project and its tasks | — | — | Yes | Yes |
+
+The owner always remains a project admin and cannot be removed or demoted.
+The available-user selector excludes existing members. Removing a member clears
+their task assignments in that project. Deleted projects cascade to tasks and
+memberships. Standard users only see projects they belong to; super admins see
+all projects. Project permissions live in `lib/rbac.ts`, with `tasks:manage` and
+`tasks:update-assigned` reserved for future task endpoints (task management UI is
+not part of this implementation).
+
+Document templates belong to their creator. Standard users can only read or change
+their own custom templates; super admins can manage all, including legacy
+templates without an owner. Built-in templates remain available to signed-in users.
+
+Sessions use random opaque cookies (`HttpOnly`, `SameSite=Lax`, `Secure` in
+production) and hashed tokens in PostgreSQL, expire after seven days, and are
+revoked on logout. Passwords use salted scrypt hashes, compatible with the
+existing seed. Login allows ten attempts per email per 15-minute window. Production
+must use HTTPS for the secure session cookie. Email invitations and password
+recovery are not implemented yet.
+
+### Verification
+
+```sh
+npm test
+npm run test:integration
+npm run lint
+```
+
+Unit tests check password hashing and permissions. Integration tests require the
+migrated PostgreSQL database, create temporary accounts/projects, test auth and
+role boundaries, and delete their test records afterward. Run them against a local
+development database. To check the UI manually, register two users, create a
+project as one, add the other, and sign in as each to check role-specific actions.
 
 ## Troubleshooting
 

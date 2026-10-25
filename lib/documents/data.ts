@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth/session";
+import { visibleProjects } from "@/lib/rbac";
 import { builtInTemplates } from "./built-in-templates";
 import { parseBlocks, type DocumentTemplate } from "./template-schema";
 import type { DocumentPerson, DocumentProject } from "./types";
@@ -22,7 +24,9 @@ function toDay(date: Date) {
 }
 
 export async function getDocumentProjects(): Promise<DocumentProject[]> {
+  const user = await requireUser();
   const projects = await prisma.project.findMany({
+    where: visibleProjects(user),
     orderBy: [{ start_date: "desc" }, { id: "asc" }],
     include: {
       owner: { select: personSelect },
@@ -76,6 +80,7 @@ export function toCustomTemplate(record: {
 }
 
 export async function getDocumentTemplates(): Promise<DocumentTemplate[]> {
-  const custom = await prisma.documentTemplate.findMany({ orderBy: { created_at: "asc" } });
+  const user = await requireUser();
+  const custom = await prisma.documentTemplate.findMany({ where: user.role === "SUPER_ADMIN" ? {} : { owner_id: user.id }, orderBy: { created_at: "asc" } });
   return [...builtInTemplates, ...custom.map(toCustomTemplate)];
 }

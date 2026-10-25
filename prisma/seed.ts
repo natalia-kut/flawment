@@ -1,12 +1,12 @@
 import "dotenv/config";
-import { randomBytes, scryptSync } from "node:crypto";
+import { hashPassword } from "../lib/auth/password";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import type { ProjectRole, ProjectStatus, TaskPriority, TaskStatus } from "../src/generated/prisma/enums";
 
 // Sample workspace data. Dates are relative to the day the seed runs, so overdue
 // and upcoming sections in generated documents always have something to show.
-// Run with `npx prisma db seed`; it refuses to run when users already exist.
+// Run with `npx prisma db seed`; it skips samples when standard users already exist.
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
@@ -15,11 +15,6 @@ function day(offset: number) {
   date.setUTCHours(0, 0, 0, 0);
   date.setUTCDate(date.getUTCDate() + offset);
   return date;
-}
-
-function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  return `scrypt$${salt}$${scryptSync(password, salt, 32).toString("hex")}`;
 }
 
 const users = [
@@ -153,7 +148,7 @@ const projects: ProjectSeed[] = [
 ];
 
 async function main() {
-  if ((await prisma.user.count()) > 0) {
+  if ((await prisma.user.count({ where: { role: "USER" } })) > 0) {
     console.log("Users already exist — skipping the seed to avoid overwriting data.");
     return;
   }
@@ -164,7 +159,7 @@ async function main() {
       data: {
         username,
         email: `${username}@flawment.dev`,
-        password: hashPassword("flawment123"),
+        password: await hashPassword("flawment123"),
         first_name: firstName,
         last_name: lastName,
       },

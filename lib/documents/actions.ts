@@ -1,13 +1,12 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth/session";
 import type { Prisma } from "@/src/generated/prisma/client";
 import { toCustomTemplate } from "./data";
 import { parseTemplateInput, type DocumentTemplate } from "./template-schema";
 
 type ActionResult<T> = { ok: true; value: T } | { ok: false; error: string };
-
-// TODO(auth): Restrict saving and deleting to the template's owner.
 
 function parseCustomId(templateId: string) {
   const match = /^custom-(\d+)$/.exec(templateId);
@@ -18,6 +17,7 @@ export async function saveTemplate(
   templateId: string | null,
   input: unknown,
 ): Promise<ActionResult<DocumentTemplate>> {
+  const user = await requireUser();
   const parsed = parseTemplateInput(input);
   if (!parsed.ok) return parsed;
 
@@ -32,8 +32,8 @@ export async function saveTemplate(
     if (templateId && id === null) return { ok: false, error: "Built-in templates cannot be changed." };
 
     const record = id
-      ? await prisma.documentTemplate.update({ where: { id }, data })
-      : await prisma.documentTemplate.create({ data });
+      ? await prisma.documentTemplate.update({ where: { id, ...(user.role === "SUPER_ADMIN" ? {} : { owner_id: user.id }) }, data })
+      : await prisma.documentTemplate.create({ data: { ...data, owner_id: user.id } });
     return { ok: true, value: toCustomTemplate(record) };
   } catch {
     return { ok: false, error: "The template could not be saved. Try again." };
@@ -41,11 +41,12 @@ export async function saveTemplate(
 }
 
 export async function deleteTemplate(templateId: string): Promise<ActionResult<null>> {
+  const user = await requireUser();
   const id = parseCustomId(templateId);
   if (id === null) return { ok: false, error: "Built-in templates cannot be deleted." };
 
   try {
-    await prisma.documentTemplate.delete({ where: { id } });
+    await prisma.documentTemplate.delete({ where: { id, ...(user.role === "SUPER_ADMIN" ? {} : { owner_id: user.id }) } });
     return { ok: true, value: null };
   } catch {
     return { ok: false, error: "The template could not be deleted. Try again." };
