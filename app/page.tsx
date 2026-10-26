@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import AppShell from "./app-shell";
-import DocumentsSection from "./documents-section";
+import DocumentsSection from "@/components/documents/documents-section";
 import { requireUser } from "@/lib/auth/session";
 import { getWorkspaceProjects } from "@/lib/projects/data";
 import ProjectsView from "./projects-view";
