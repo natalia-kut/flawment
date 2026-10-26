@@ -239,3 +239,19 @@ already loaded for the current project; existing server authorization still appl
 Manual check: create tasks with different statuses and priorities, search for a
 word from a description, combine filters, check a no-results case, then clear.
 Run npm test for search and filter coverage.
+
+### Workspace Tasks page
+
+The sidebar **Tasks** page lists tasks across projects returned by the existing
+authorized workspace loader. Standard users see their projects; super admins see
+all accessible projects. Search and filter by project, status, priority or assignee.
+**Open project** navigates to the owning project, where existing task management
+permissions apply. No tasks are fetched from a separate unrestricted endpoint.
+
+Sidebar selection is now stored in the view query parameter (for example,
+ /?view=tasks), so refresh and browser back/forward retain the selected page.
+The per-project task lists and their management actions remain available.
+
+Manual check: open Tasks, combine filters, clear them, then use Open project.
+Refresh the Tasks page and check browser back/forward. Sign in as a user belonging
+to fewer projects to confirm that only their project tasks are visible.
