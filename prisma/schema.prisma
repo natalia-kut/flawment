@@ -86,8 +86,9 @@ model Project {
   owner_id Int
   owner    User @relation("ProjectOwner", fields: [owner_id], references: [id])
 
-  memberships ProjectMembership[]
-  tasks       Task[]
+  memberships        ProjectMembership[]
+  tasks              Task[]
+  document_templates DocumentTemplate[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -137,9 +138,17 @@ model DocumentTemplate {
   name        String
   description String?
   blocks      Json
+  show_status Boolean @default(true)
+  show_name   Boolean @default(true)
   owner_id    Int?
   owner       User?   @relation(fields: [owner_id], references: [id], onDelete: Cascade)
+  // Null for templates the owner can use in all of their projects.
+  project_id  Int?
+  project     Project? @relation(fields: [project_id], references: [id], onDelete: Cascade)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+
+  @@index([owner_id])
+  @@index([project_id])
 }

@@ -2,6 +2,8 @@ import type { DocumentTemplate, TaskFilter } from "./template-schema";
 
 const openStatuses: TaskFilter["statuses"] = ["TO_DO", "IN_PROGRESS", "IN_REVIEW"];
 
+export const builtIn = { isBuiltIn: true, projectId: null, showStatus: true, showName: true } as const;
+
 function filter(overrides: Partial<TaskFilter>): TaskFilter {
   return { statuses: [], priorities: [], due: "any", assignment: "any", ...overrides };
 }
@@ -11,19 +13,10 @@ export const builtInTemplates: DocumentTemplate[] = [
     id: "builtin-status-report",
     name: "Status report",
     description: "Progress against the schedule, what is late and what is coming up next.",
-    isBuiltIn: true,
+    ...builtIn,
     blocks: [
-      {
-        id: "intro",
-        type: "text",
-        text:
-          "Status of {{project}} as of {{today}} — schedule health: {{scheduleHealth}}. " +
-          "{{progress}} of tasks are completed while {{timeElapsed}} of the planned time has passed. " +
-          "Planned end: {{endDate}} ({{daysRemaining}}).",
-      },
       { id: "kpi", type: "metrics", metrics: ["scheduleHealth", "progress", "overdueTasks", "dueSoon"] },
       { id: "pace", type: "chart", kind: "progressVsTime", title: "Progress against the schedule" },
-      { id: "timeline", type: "chart", kind: "timeline", title: "Deadline timeline" },
       { id: "chart", type: "chart", kind: "status", title: "Task status" },
       {
         id: "overdue",
@@ -45,35 +38,16 @@ export const builtInTemplates: DocumentTemplate[] = [
         limit: null,
         emptyText: "No deadlines in the next two weeks.",
       },
-      {
-        id: "review",
-        type: "taskTable",
-        title: "Awaiting review",
-        columns: ["title", "assignee", "deadline"],
-        filter: filter({ statuses: ["IN_REVIEW"] }),
-        sort: "deadline",
-        limit: null,
-        emptyText: "No tasks are waiting for review.",
-      },
     ],
   },
   {
     id: "builtin-team-workload",
     name: "Team workload",
     description: "How open work is spread across the team, plus tasks nobody owns yet.",
-    isBuiltIn: true,
+    ...builtIn,
     blocks: [
-      {
-        id: "intro",
-        type: "text",
-        text:
-          "Workload overview for {{project}} ({{memberCount}}), prepared on {{today}}. " +
-          "There are {{openTasks}} open tasks, {{highPriorityOpen}} of them high or urgent priority, " +
-          "and {{unassignedTasks}} still without an owner.",
-      },
       { id: "kpi", type: "metrics", metrics: ["openTasks", "highPriorityOpen", "overdueTasks", "unassignedTasks"] },
       { id: "load", type: "chart", kind: "workload", title: "Open work per person" },
-      { id: "weeks", type: "chart", kind: "deadlineWeeks", title: "Upcoming deadlines per week" },
       {
         id: "team",
         type: "memberTable",
@@ -96,17 +70,9 @@ export const builtInTemplates: DocumentTemplate[] = [
   {
     id: "builtin-risk-register",
     name: "Risk & escalation report",
-    description: "High-priority, late and unplanned work that needs a decision.",
-    isBuiltIn: true,
+    description: "High-priority and late work that needs a decision.",
+    ...builtIn,
     blocks: [
-      {
-        id: "intro",
-        type: "text",
-        text:
-          "This report lists work on {{project}} that puts the {{endDate}} deadline at risk. " +
-          "Current assessment: {{scheduleHealth}}. Please review each item with {{owner}} " +
-          "and agree on an owner and a recovery date.",
-      },
       { id: "kpi", type: "metrics", metrics: ["scheduleHealth", "overdueTasks", "highPriorityOpen", "daysRemaining"] },
       { id: "matrix", type: "chart", kind: "priorityMatrix", title: "Where the risk sits" },
       {
@@ -129,16 +95,6 @@ export const builtInTemplates: DocumentTemplate[] = [
         limit: null,
         emptyText: "No missed deadlines.",
       },
-      {
-        id: "unplanned",
-        type: "taskTable",
-        title: "Open tasks without a deadline",
-        columns: ["title", "assignee", "priority"],
-        filter: filter({ statuses: openStatuses, due: "noDeadline" }),
-        sort: "priority",
-        limit: null,
-        emptyText: "Every open task is scheduled.",
-      },
       { id: "sign", type: "signatures", title: "Reviewed by", signers: "ownerAndManagers" },
     ],
   },
@@ -146,7 +102,7 @@ export const builtInTemplates: DocumentTemplate[] = [
     id: "builtin-handover-protocol",
     name: "Handover protocol",
     description: "Formal acceptance record: delivered scope, open items and sign-off.",
-    isBuiltIn: true,
+    ...builtIn,
     blocks: [
       { id: "heading", type: "heading", text: "Acceptance protocol — {{project}}" },
       {
@@ -154,15 +110,6 @@ export const builtInTemplates: DocumentTemplate[] = [
         type: "facts",
         title: "Project details",
         facts: ["project", "owner", "managers", "status", "startDate", "endDate", "duration", "memberCount"],
-      },
-      { id: "status", type: "chart", kind: "status", title: "Final task status" },
-      {
-        id: "intro",
-        type: "text",
-        text:
-          "On {{today}} the parties confirm the handover of {{project}}. " +
-          "{{completedTasks}} of {{totalTasks}} tasks were delivered ({{progress}} of the planned scope). " +
-          "Tasks cancelled by agreement: {{cancelledTasks}}.",
       },
       {
         id: "delivered",

@@ -159,12 +159,17 @@ export type DocumentTemplate = {
   description: string;
   blocks: TemplateBlock[];
   isBuiltIn: boolean;
+  projectId: number | null;
+  showStatus: boolean;
+  showName: boolean;
 };
 
 export type TemplateInput = {
   name: string;
   description: string;
   blocks: TemplateBlock[];
+  showStatus: boolean;
+  showName: boolean;
 };
 
 export const templateLimits = { name: 60, description: 160, text: 2000, title: 80, blocks: 40 };
@@ -311,6 +316,12 @@ export function parseTemplateInput(raw: unknown): Result<TemplateInput> {
 
   return {
     ok: true,
-    value: { name, description: text(raw.description, templateLimits.description).trim(), blocks },
+    value: {
+      name,
+      description: text(raw.description, templateLimits.description).trim(),
+      blocks,
+      showStatus: raw.showStatus !== false,
+      showName: raw.showName !== false,
+    },
   };
 }

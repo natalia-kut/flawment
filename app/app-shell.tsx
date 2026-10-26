@@ -9,7 +9,7 @@ import { RequestedTemplateContext } from "./workspace-context";
 const navigation = [
   "Dashboard",
   "Projects",
-  "Participants",
+  "Team",
   "Tasks",
   "Documents",
 ] as const;
@@ -82,7 +82,7 @@ export default function AppShell({ documents, projects, user, projectCount }: {
           <RequestedTemplateContext value={requestedTemplateId} key={requestedTemplateId ?? "documents"}>
             {documents}
           </RequestedTemplateContext>
-        ) : activePage === "Projects" || activePage === "Participants" ? projects : activePage === "Dashboard" ? (
+        ) : activePage === "Projects" ? projects : activePage === "Dashboard" ? (
           <Dashboard
             chat={chat}
             firstName={user.first_name}
@@ -93,7 +93,6 @@ export default function AppShell({ documents, projects, user, projectCount }: {
         ) : (
           <>
             <header className="page-header">
-              <p className="eyebrow">WORKSPACE</p>
               <h1>{activePage}</h1>
             </header>
             <section className="placeholder-panel">
