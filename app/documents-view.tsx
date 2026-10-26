@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { deleteTemplate } from "@/lib/documents/actions";
-import { formatDay } from "@/lib/documents/engine";
-import { createBlock, type DocumentTemplate } from "@/lib/documents/template-schema";
-import { projectStatusLabels, type DocumentProject } from "@/lib/documents/types";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { copyTemplate, deleteTemplate, saveTemplate } from "@/lib/documents/actions";
+import { builtIn } from "@/lib/documents/built-in-templates";
+import { createBlock, templateLimits, type DocumentTemplate } from "@/lib/documents/template-schema";
+import type { DocumentProject } from "@/lib/documents/types";
 import DocumentSheet from "./document-sheet";
 import TemplateBuilder from "./template-builder";
 import "./documents.css";
@@ -20,11 +20,72 @@ const blankTemplate: DocumentTemplate = {
   name: "",
   description: "",
   blocks: [createBlock("heading"), createBlock("text")],
-  isBuiltIn: true,
+  ...builtIn,
 };
+
 
 function fileName(...parts: string[]) {
   return parts.join(" - ").replace(/[\\/:*?"<>|]+/g, "").trim();
+}
+
+// The browser's print dialog saves the sheet as a vector PDF; the title becomes the file name.
+function printAs(title: string) {
+  const previousTitle = document.title;
+  document.title = title;
+  window.addEventListener("afterprint", () => (document.title = previousTitle), { once: true });
+  window.print();
+}
+
+function ConfirmDialog({ tone, title, children, confirmLabel, busyLabel, busy, onConfirm, onClose }: {
+  tone: "danger" | "accent";
+  title: string;
+  children: ReactNode;
+  confirmLabel: string;
+  busyLabel: string;
+  busy: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current!;
+    const previousOverflow = document.body.style.overflow;
+    dialog.showModal();
+    document.body.style.overflow = "hidden";
+    return () => {
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  return (
+    <dialog
+      aria-describedby="confirm-dialog-text"
+      aria-labelledby="confirm-dialog-title"
+      className={`confirm-dialog ${tone}`}
+      onCancel={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !busy) onClose();
+      }}
+      ref={ref}
+    >
+      <span aria-hidden="true" className="confirm-dialog-icon">
+        <svg fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" viewBox="0 0 24 24">
+          <path d={tone === "danger" ? "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" : "M8 8h11v11H8zM5 16V5h11"} />
+        </svg>
+      </span>
+      <h2 id="confirm-dialog-title">{title}</h2>
+      <p id="confirm-dialog-text">{children}</p>
+      <div className="confirm-dialog-actions">
+        <button className="secondary-button" disabled={busy} onClick={onClose} type="button">
+          Cancel
+        </button>
+        <button className={tone === "danger" ? "danger-button" : "primary-button"} disabled={busy} onClick={onConfirm} type="button">
+          {busy ? busyLabel : confirmLabel}
+        </button>
+      </div>
+    </dialog>
+  );
 }
 
 export default function DocumentsView({ projects, initialTemplates, today }: DocumentsViewProps) {
@@ -34,16 +95,66 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
   // Template the builder starts from; null while the builder is closed.
   const [builderSource, setBuilderSource] = useState<DocumentTemplate | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [copyTarget, setCopyTarget] = useState<DocumentProject | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [isDeleting, startDeleting] = useTransition();
+  const [isCopying, startCopying] = useTransition();
+  const [renaming, setRenaming] = useState(false);
+  const [, startRenaming] = useTransition();
 
-  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0];
+  // Custom templates show up only in their own project, or everywhere when they have none.
+  const projectTemplates = templates.filter(
+    (template) => template.isBuiltIn || template.projectId === null || template.projectId === selectedProject?.id,
+  );
+  const selectedTemplate = projectTemplates.find((template) => template.id === selectedTemplateId) ?? projectTemplates[0];
+  const copyTargets = projects.filter((project) => project.id !== selectedTemplate.projectId);
 
   function selectTemplate(id: string) {
     setSelectedTemplateId(id);
     setConfirmingDelete(false);
+    setCopyTarget(null);
+    setRenaming(false);
     setError("");
+    setNotice("");
+  }
+
+  function rename(value: string) {
+    setRenaming(false);
+    const template = selectedTemplate;
+    const name = value.trim();
+    if (!name || name === template.name) return;
+
+    // Show the new name right away and put the old one back if saving fails.
+    const replace = (next: DocumentTemplate) =>
+      setTemplates((current) => current.map((item) => (item.id === template.id ? next : item)));
+    replace({ ...template, name });
+    setError("");
+    startRenaming(async () => {
+      const result = await saveTemplate(template.id, { ...template, name });
+      if (result.ok) replace(result.value);
+      else {
+        replace(template);
+        setError(result.error);
+      }
+    });
+  }
+
+  function handleCopy(target: DocumentProject) {
+    const id = selectedTemplate.id;
+    setError("");
+    setNotice("");
+    startCopying(async () => {
+      const result = await copyTemplate(id, target.id);
+      setCopyTarget(null);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setTemplates((current) => [...current, result.value]);
+      setNotice(`Copied to ${target.name}.`);
+    });
   }
 
   function handleSaved(saved: DocumentTemplate) {
@@ -61,6 +172,7 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
     startDeleting(async () => {
       const result = await deleteTemplate(id);
       if (!result.ok) {
+        setConfirmingDelete(false);
         setError(result.error);
         return;
       }
@@ -70,11 +182,7 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
   }
 
   function exportPdf() {
-    // The browser's print dialog saves the sheet as a vector PDF; the title becomes the file name.
-    const previousTitle = document.title;
-    document.title = fileName(selectedTemplate.name, selectedProject.name, today);
-    window.addEventListener("afterprint", () => (document.title = previousTitle), { once: true });
-    window.print();
+    printAs(fileName(selectedTemplate.name, selectedProject.name, today));
   }
 
   if (builderSource) {
@@ -93,22 +201,36 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
     );
   }
 
+  function templateCard(template: DocumentTemplate) {
+    const selected = selectedTemplate.id === template.id;
+    return (
+      <button
+        aria-pressed={selected}
+        className={`template-card${selected ? " selected" : ""}`}
+        key={template.id}
+        onClick={() => selectTemplate(template.id)}
+        type="button"
+      >
+        <strong title={template.name}>{template.name}</strong>
+        <span>{template.description || `${template.blocks.length} blocks`}</span>
+        {!template.isBuiltIn && template.projectId === null && <em>All projects</em>}
+      </button>
+    );
+  }
+
+  const customTemplates = projectTemplates.filter((template) => !template.isBuiltIn);
+
   return (
     <div className="documents-page">
       <header className="documents-heading">
         <div>
-          <p className="eyebrow">WORKSPACE / DOCUMENTATION</p>
           <h1>Documents</h1>
-          <p className="section-description">
-            Generate project documents from live data, or design your own template.
-          </p>
+          <p className="section-description">Create reports from your project&apos;s tasks, deadlines and team.</p>
         </div>
-        <button className="primary-button" type="button" onClick={() => setBuilderSource(blankTemplate)}>
-          <span aria-hidden="true">+</span> New template
-        </button>
       </header>
 
       {error && <p className="storage-notice" role="alert">{error}</p>}
+      {notice && <p className="storage-notice success" role="status">{notice}</p>}
 
       {!selectedProject ? (
         <section className="placeholder-panel">
@@ -119,79 +241,94 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
       ) : (
         <div className="documents-layout">
           <aside className="template-sidebar" aria-label="Document templates">
-            <label className="field-label" htmlFor="document-project">Project</label>
+            <label className="template-list-heading" htmlFor="document-project">Project</label>
             <select
               className="project-select"
               id="document-project"
+              onChange={(event) => {
+                setSelectedProjectId(Number(event.target.value));
+                setCopyTarget(null);
+              }}
               value={selectedProject.id}
-              onChange={(event) => setSelectedProjectId(Number(event.target.value))}
             >
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>{project.name}</option>
               ))}
             </select>
-            <p className="project-meta">
-              {projectStatusLabels[selectedProject.status]} · {formatDay(selectedProject.startDate)} –{" "}
-              {formatDay(selectedProject.endDate)} · {selectedProject.tasks.length} tasks ·{" "}
-              {selectedProject.members.length} members
-            </p>
 
-            <div className="template-list-heading">
-              <span>Templates</span>
-              <span>{templates.length}</span>
-            </div>
+            <p className="template-list-heading">Built-in</p>
             <div className="template-list">
-              {templates.map((template) => (
-                <button
-                  className={`template-card${selectedTemplate.id === template.id ? " selected" : ""}`}
-                  key={template.id}
-                  type="button"
-                  onClick={() => selectTemplate(template.id)}
-                  aria-pressed={selectedTemplate.id === template.id}
-                >
-                  <span className="template-icon" aria-hidden="true">
-                    {template.isBuiltIn ? "▤" : "✎"}
-                  </span>
-                  <span className="template-card-copy">
-                    <strong>{template.name}</strong>
-                    <span>{template.description || `${template.blocks.length} blocks`}</span>
-                    <em>{template.isBuiltIn ? "Built-in" : "My template"}</em>
-                  </span>
-                </button>
-              ))}
+              {projectTemplates.filter((template) => template.isBuiltIn).map(templateCard)}
+            </div>
+
+            <p className="template-list-heading">Your templates</p>
+            <div className="template-list">
+              {customTemplates.map(templateCard)}
+              <button className="new-template-button" onClick={() => setBuilderSource(blankTemplate)} type="button">
+                <span aria-hidden="true">+</span> New template
+              </button>
             </div>
           </aside>
 
           <section className="document-preview-area" aria-label="Document preview">
             <div className="preview-toolbar">
-              <div>
-                <p className="eyebrow">DOCUMENT PREVIEW</p>
+              {renaming ? (
+                <h2>
+                  <input
+                    aria-label="Template name"
+                    autoFocus
+                    className="template-title-input"
+                    defaultValue={selectedTemplate.name}
+                    maxLength={templateLimits.name}
+                    onBlur={(event) => rename(event.target.value)}
+                    onFocus={(event) => event.target.select()}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") event.currentTarget.value = selectedTemplate.name;
+                      if (event.key === "Enter" || event.key === "Escape") event.currentTarget.blur();
+                    }}
+                  />
+                </h2>
+              ) : selectedTemplate.isBuiltIn ? (
                 <h2>{selectedTemplate.name}</h2>
-              </div>
-              <div className="heading-actions">
-                {selectedTemplate.isBuiltIn ? (
-                  <button className="secondary-button" type="button" onClick={() => setBuilderSource(selectedTemplate)}>
-                    Customize a copy
+              ) : (
+                <h2>
+                  <button className="template-title" onClick={() => setRenaming(true)} title="Rename" type="button">
+                    {selectedTemplate.name}
+                    <svg aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" viewBox="0 0 16 16">
+                      <path d="M10.5 3.5l2 2L6 12H4v-2zM9 5l2 2" />
+                    </svg>
                   </button>
-                ) : confirmingDelete ? (
-                  <>
-                    <button className="secondary-button" type="button" onClick={() => setConfirmingDelete(false)}>
-                      Keep
-                    </button>
-                    <button className="danger-button" disabled={isDeleting} type="button" onClick={handleDelete}>
-                      {isDeleting ? "Deleting…" : "Delete template"}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button className="secondary-button" type="button" onClick={() => setConfirmingDelete(true)}>
-                      Delete
-                    </button>
-                    <button className="secondary-button" type="button" onClick={() => setBuilderSource(selectedTemplate)}>
-                      Edit
-                    </button>
-                  </>
+                </h2>
+              )}
+              <div className="heading-actions">
+                {!selectedTemplate.isBuiltIn && copyTargets.length > 0 && (
+                  <details className="copy-menu" key={`copy-${selectedTemplate.id}`}>
+                    <summary>Copy to project</summary>
+                    <div className="copy-menu-list">
+                      {copyTargets.map((project) => (
+                        <button
+                          key={project.id}
+                          onClick={(event) => {
+                            event.currentTarget.closest("details")?.removeAttribute("open");
+                            setNotice("");
+                            setCopyTarget(project);
+                          }}
+                          type="button"
+                        >
+                          {project.name}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
                 )}
+                {!selectedTemplate.isBuiltIn && (
+                  <button className="secondary-button" type="button" onClick={() => setConfirmingDelete(true)}>
+                    Delete
+                  </button>
+                )}
+                <button className="secondary-button" type="button" onClick={() => setBuilderSource(selectedTemplate)}>
+                  {selectedTemplate.isBuiltIn ? "Customize a copy" : "Edit"}
+                </button>
                 <button className="primary-button" type="button" onClick={exportPdf}>
                   <span aria-hidden="true">↓</span> Export PDF
                 </button>
@@ -201,6 +338,35 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
             <DocumentSheet project={selectedProject} template={selectedTemplate} today={today} />
           </section>
         </div>
+      )}
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          busy={isDeleting}
+          busyLabel="Deleting…"
+          confirmLabel="Delete"
+          onClose={() => setConfirmingDelete(false)}
+          onConfirm={handleDelete}
+          title="Delete this template?"
+          tone="danger"
+        >
+          <strong>{selectedTemplate.name}</strong> will be removed for good. PDFs you already exported are not affected.
+        </ConfirmDialog>
+      )}
+
+      {copyTarget && (
+        <ConfirmDialog
+          busy={isCopying}
+          busyLabel="Copying…"
+          confirmLabel="Copy template"
+          onClose={() => setCopyTarget(null)}
+          onConfirm={() => handleCopy(copyTarget)}
+          title="Copy to another project?"
+          tone="accent"
+        >
+          A copy of <strong>{selectedTemplate.name}</strong> will be added to <strong>{copyTarget.name}</strong>. Editing one
+          later does not change the other.
+        </ConfirmDialog>
       )}
     </div>
   );

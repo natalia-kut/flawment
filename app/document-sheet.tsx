@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import {
   buildVariables,
   describeTiming,
@@ -30,10 +30,13 @@ import {
 } from "@/lib/documents/types";
 import DocumentChart from "./document-charts";
 
+export type BlockFrame = HTMLAttributes<HTMLElement> & { controls?: ReactNode };
+
 type SheetProps = {
   template: DocumentTemplate;
   project: DocumentProject;
   today: string;
+  frame?: (block: TemplateBlock, index: number) => BlockFrame;
 };
 
 const variableLabels = Object.fromEntries(variableOptions.map((option) => [option.key, option.label]));
@@ -249,11 +252,11 @@ function renderBlock(block: TemplateBlock, project: DocumentProject, today: stri
       );
 
     case "pageBreak":
-      return <div className="document-page-break" aria-hidden="true"><span>Page break</span></div>;
+      return <span aria-hidden="true">Page break</span>;
   }
 }
 
-export default function DocumentSheet({ template, project, today }: SheetProps) {
+export default function DocumentSheet({ template, project, today, frame }: SheetProps) {
   const variables = buildVariables(project, today);
   const tone = healthTone(variables.scheduleHealth);
 
@@ -262,14 +265,16 @@ export default function DocumentSheet({ template, project, today }: SheetProps) 
       <header className="document-cover">
         <div className="document-cover-top">
           <span>flawment<b>.</b></span>
-          <span>{template.name}</span>
+          {template.showName && <span>{template.name}</span>}
         </div>
         <h2>{project.name}</h2>
         {project.description && <p>{project.description}</p>}
-        <span className={`health-pill tone-${tone}`}>
-          <span aria-hidden="true">{tone === "good" ? "✓" : tone === "neutral" ? "•" : "!"}</span>
-          {variables.scheduleHealth}
-        </span>
+        {template.showStatus && (
+          <span className={`health-pill tone-${tone}`}>
+            <span aria-hidden="true">{tone === "good" ? "✓" : tone === "neutral" ? "•" : "!"}</span>
+            {variables.scheduleHealth}
+          </span>
+        )}
       </header>
       <dl className="document-meta">
         <div><dt>Owner</dt><dd>{project.owner.name}</dd></div>
@@ -277,19 +282,19 @@ export default function DocumentSheet({ template, project, today }: SheetProps) 
         <div><dt>Team</dt><dd>{variables.memberCount}</dd></div>
         <div><dt>Generated</dt><dd>{formatDay(today)}</dd></div>
       </dl>
-      {template.blocks.map((block) => (
-        <Fragment key={block.id}>
-          {block.type === "pageBreak" ? (
-            renderBlock(block, project, today, variables)
-          ) : (
-            <section className={`document-section block-${block.type}`}>
-              {renderBlock(block, project, today, variables)}
-            </section>
-          )}
-        </Fragment>
-      ))}
+      {template.blocks.map((block, index) => {
+        const { className, controls, ...props } = frame?.(block, index) ?? {};
+        const Element = block.type === "pageBreak" ? "div" : "section";
+        const baseClass = block.type === "pageBreak" ? "document-page-break" : `document-section block-${block.type}`;
+        return (
+          <Element key={block.id} {...props} className={className ? `${baseClass} ${className}` : baseClass}>
+            {renderBlock(block, project, today, variables)}
+            {controls}
+          </Element>
+        );
+      })}
       <footer className="document-footer">
-        <span>{template.name} · generated with Flawment from live project data</span>
+        <span>{template.showName ? `${template.name} · generated with Flawment` : "Generated with Flawment"}</span>
         <span>{project.owner.name} · {project.owner.email}</span>
       </footer>
     </article>
