@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { prisma } from "../../lib/prisma";
-import { createTask } from "../../lib/tasks/service";
+import { createTask, updateTask } from "../../lib/tasks/service";
 
 function form(values: Record<string, string | number>) {
   const data = new FormData();
@@ -11,10 +11,11 @@ function form(values: Record<string, string | number>) {
   return data;
 }
 
-test("task creation validates project permissions, assignees and input", async () => {
+test("task creation and editing validate permissions, project boundaries and input", async () => {
   const prefix = "task-test-" + randomUUID();
   const users: number[] = [];
   let projectId: number | undefined;
+  let otherProjectId: number | undefined;
   try {
     for (const suffix of ["owner", "manager", "participant", "outsider"]) {
       const user = await prisma.user.create({ data: {
@@ -45,19 +46,57 @@ test("task creation validates project permissions, assignees and input", async (
     const unassigned = await createTask(actor(1), input());
     assert.equal((await prisma.task.findUniqueOrThrow({ where: { id: unassigned.id } })).assigned_to, null);
 
+    const editInput = (extra: Record<string, string | number> = {}) =>
+      input({ task_id: created.id, status: "IN_PROGRESS", ...extra });
+    await updateTask(actor(1), editInput({
+      title: "Updated report", description: "Updated description", priority: "HIGH",
+      deadline: "2026-12-01", assigned_to: users[1],
+    }));
+    const edited = await prisma.task.findUniqueOrThrow({ where: { id: created.id } });
+    assert.equal(edited.title, "Updated report");
+    assert.equal(edited.description, "Updated description");
+    assert.equal(edited.priority, "HIGH");
+    assert.equal(edited.deadline?.toISOString().slice(0, 10), "2026-12-01");
+    assert.equal(edited.assigned_to, users[1]);
+    assert.equal(edited.status, "IN_PROGRESS");
+    assert.equal(edited.created_by, users[0], "editing preserves the original author");
+    for (const status of ["TO_DO", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "CANCELLED"]) {
+      await updateTask(actor(0), editInput({ status }));
+      assert.equal((await prisma.task.findUniqueOrThrow({ where: { id: created.id } })).status, status);
+    }
+    const cleared = await prisma.task.findUniqueOrThrow({ where: { id: created.id } });
+    assert.equal(cleared.assigned_to, null);
+    assert.equal(cleared.deadline, null);
+    assert.equal(cleared.description, null);
+    await assert.rejects(updateTask(actor(2), editInput()), /permission/);
+    await assert.rejects(updateTask(actor(3), editInput()), /permission/);
+    await assert.rejects(updateTask(actor(0), editInput({ status: "INVALID" })), /status/);
+    await assert.rejects(updateTask(actor(0), editInput({ title: " " })), /title/);
+    await assert.rejects(updateTask(actor(0), editInput({ priority: "INVALID" })), /priority/);
+    await assert.rejects(updateTask(actor(0), editInput({ deadline: "2026-02-30" })), /deadline/);
+    await assert.rejects(updateTask(actor(0), editInput({ assigned_to: users[3] })), /active project member/);
+    const otherProject = await prisma.project.create({ data: {
+      name: prefix + "-other", start_date: new Date("2026-10-25"), owner_id: users[0],
+      memberships: { create: { user_id: users[0], role: "ADMIN" } },
+    } });
+    otherProjectId = otherProject.id;
+    await assert.rejects(updateTask(actor(0), editInput({ project_id: otherProject.id })), /no longer available/);
+    await assert.rejects(updateTask(actor(0), editInput({ task_id: "999999999" })), /no longer available/);
+    assert.equal((await prisma.task.findUniqueOrThrow({ where: { id: created.id } })).status, "CANCELLED", "rejected updates do not change the task");
     await assert.rejects(createTask(actor(2), input()), /permission/);
     await assert.rejects(createTask(actor(3), input()), /permission/);
     await assert.rejects(createTask(actor(0), input({ assigned_to: users[3] })), /active project member/);
     await prisma.user.update({ where: { id: users[2] }, data: { is_active: false } });
     await assert.rejects(createTask(actor(0), input({ assigned_to: users[2] })), /active project member/);
+    await assert.rejects(updateTask(actor(0), editInput({ assigned_to: users[2] })), /active project member/);
     await assert.rejects(createTask(actor(0), input({ title: " " })), /title/);
     await assert.rejects(createTask(actor(0), input({ priority: "INVALID" })), /priority/);
     await assert.rejects(createTask(actor(0), input({ deadline: "2026-02-30" })), /deadline/);
     assert.equal(await prisma.task.count({ where: { project_id: project.id } }), 2);
   } finally {
+    if (otherProjectId) await prisma.project.deleteMany({ where: { id: otherProjectId } });
     if (projectId) await prisma.project.deleteMany({ where: { id: projectId } });
     if (users.length) await prisma.user.deleteMany({ where: { id: { in: users } } });
     await prisma.$disconnect();
   }
 });
-

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { can, type Actor } from "@/lib/rbac";
-import type { TaskPriority } from "@/src/generated/prisma/client";
+import type { TaskPriority, TaskStatus } from "@/src/generated/prisma/client";
 
 export class TaskError extends Error {}
 
@@ -14,7 +14,20 @@ function recordId(value: string) {
   return Number(value);
 }
 
+export const taskStatuses: TaskStatus[] = ["TO_DO", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "CANCELLED"];
+
 export async function createTask(actor: Actor, data: FormData) {
+  return saveTask(actor, data, false);
+}
+
+export async function updateTask(actor: Actor, data: FormData) {
+  return saveTask(actor, data, true);
+}
+
+async function saveTask(actor: Actor, data: FormData, editing: boolean) {
+  const taskId = editing ? recordId(text(data, "task_id")) : null;
+  const status = editing ? text(data, "status") as TaskStatus : "TO_DO";
+  if (!taskStatuses.includes(status)) throw new TaskError("Choose a valid task status.");
   const projectId = recordId(text(data, "project_id"));
   const title = text(data, "title");
   const description = text(data, "description");
@@ -37,7 +50,11 @@ export async function createTask(actor: Actor, data: FormData) {
     });
     const role = project?.memberships.find((m) => m.user_id === actor.id)?.role ?? null;
     if (!project || !can(role, "tasks:manage", actor.role)) {
-      throw new TaskError("You do not have permission to create tasks in this project.");
+      throw new TaskError("You do not have permission to manage tasks in this project.");
+    }
+    if (taskId !== null) {
+      const existing = await tx.task.findFirst({ where: { id: taskId, project_id: projectId }, select: { id: true } });
+      if (!existing) throw new TaskError("This task is no longer available in this project.");
     }
     if (assignedTo !== null) {
       const member = await tx.projectMembership.findUnique({
@@ -48,14 +65,20 @@ export async function createTask(actor: Actor, data: FormData) {
         throw new TaskError("Choose an active project member.");
       }
     }
-    const task = await tx.task.create({
-      data: {
-        project_id: projectId, title, description: description || null,
-        priority, deadline: deadline ? new Date(deadline) : null,
-        assigned_to: assignedTo, created_by: actor.id, status: "TO_DO",
-      },
+    const values = {
+      title, description: description || null, priority,
+      deadline: deadline ? new Date(deadline) : null,
+      assigned_to: assignedTo, status,
+    };
+    if (taskId !== null) {
+      return tx.task.update({
+        where: { id: taskId, project_id: projectId },
+        data: values, select: { id: true },
+      });
+    }
+    return tx.task.create({
+      data: { ...values, project_id: projectId, created_by: actor.id },
       select: { id: true },
     });
-    return task;
   }, { isolationLevel: "Serializable" });
 }

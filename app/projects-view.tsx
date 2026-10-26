@@ -76,7 +76,9 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
   const selected = search.get("project");
   const project = projects.find((p) => String(p.id) === selected);
   const [modal, setModal] = useState<"create" | "edit" | "add" | "task" | null>(null);
-  const close = () => setModal(null);
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const editingTask = project?.tasks.find((task) => task.id === editingTaskId);
+  const close = () => { setModal(null); setEditingTaskId(null); };
   return <div className="projects-workspace">
     <nav className="project-breadcrumbs" aria-label="Breadcrumb">
       <ol>
@@ -117,7 +119,10 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
     <ul>
       {project.tasks.map((task) => (
         <li key={task.id}>
-          <h3>{task.title}</h3>
+          <div className="section-heading">
+            <h3>{task.title}</h3>
+            {project.canManageTasks && <button className="secondary-button" aria-label={`Edit task: ${task.title}`} onClick={() => { setModal(null); setEditingTaskId(task.id); }}>Edit task</button>}
+          </div>
           {task.description && <p>{task.description}</p>}
           <dl>
             <div>
@@ -163,6 +168,9 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
       </div>
     </>}
 
+    {editingTask && project?.canManageTasks && <ProjectDialog title="Edit task" description="Update the task details and track its progress." onClose={close}>
+      <CreateTaskForm key={editingTask.id} project={project} task={editingTask} onCancel={close} onSuccess={close} />
+    </ProjectDialog>}
     {modal === "task" && project?.canManageTasks && <ProjectDialog title="Create a task" description="Plan the next piece of work for your project." onClose={close}>
       <CreateTaskForm project={project} onCancel={close} onSuccess={close} />
     </ProjectDialog>}
@@ -180,4 +188,3 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
     </ProjectDialog>}
   </div>;
 }
-

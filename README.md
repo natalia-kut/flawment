@@ -148,9 +148,9 @@ The owner always remains a project admin and cannot be removed or demoted.
 The available-user selector excludes existing members. Removing a member clears
 their task assignments in that project. Deleted projects cascade to tasks and
 memberships. Standard users only see projects they belong to; super admins see
-all projects. Project permissions live in `lib/rbac.ts`, with `tasks:manage` and
-`tasks:update-assigned` reserved for future task endpoints (task management UI is
-not part of this implementation).
+all projects. Project permissions live in `lib/rbac.ts`, with
+`tasks:manage` used for task creation and editing. The `tasks:update-assigned`
+permission is reserved for future participant updates.
 
 Super admins have access without project membership. They never appear in the
 available-user selector, and server-side checks reject adding or changing them
@@ -199,3 +199,19 @@ project as one, add the other, and sign in as each to check role-specific action
 `npm run db:down` preserves the named `postgres_data` volume. To deliberately
 delete all local database data, use `docker compose down --volumes`, then rerun
 bootstrap. This deletion cannot be undone.
+
+### Project task management
+
+Open a project in **Projects** to view its tasks. Project admins, managers and
+super admins can use **New task** and **Edit task**. The edit dialog supports
+title, description, priority, deadline, assignment and these statuses:
+TO DO, IN PROGRESS, IN REVIEW, COMPLETED and CANCELLED.
+
+Tasks can only be assigned to active standard users who belong to the project.
+Participants can view tasks; editing assigned tasks as a participant is not yet
+implemented. Failed validation keeps the dialog values for correction.
+No database migration is needed for these features.
+
+To check editing manually, create a task, open **Edit task**, change its status
+and priority, save and refresh the project. Confirm the changes remain visible.
+Run the database integration coverage with npm run test:integration.
