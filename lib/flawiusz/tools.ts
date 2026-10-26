@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { saveTemplate } from "@/lib/documents/actions";
 import { builtInTemplates } from "@/lib/documents/built-in-templates";
-import { getDocumentTemplates } from "@/lib/documents/data";
+import { getDocumentProjects, getDocumentTemplates } from "@/lib/documents/data";
 import {
   assignmentFilterOptions,
   blockTypeOptions,
@@ -9,17 +9,21 @@ import {
   dueFilterOptions,
   memberColumnOptions,
   memberSortOptions,
+  parseTemplateInput,
   signerOptions,
   taskColumnOptions,
   taskSortOptions,
   templateLimits,
   variableOptions,
+  type TemplateInput,
 } from "@/lib/documents/template-schema";
 import { taskPriorities, taskStatuses } from "@/lib/documents/types";
 
-// Flawiusz's tools for the in-app chat (lib/flawiusz/agent.ts).
-
 type ToolResult = { ok: true; value: unknown } | { ok: false; error: string };
+
+// The project the user picked with the buttons in this chat: an id, null for
+// all projects, or undefined when they have not picked one.
+export type ToolContext = { chosenProjectId: number | null | undefined };
 
 type ToolDefinition<Input extends z.ZodObject> = {
   name: string;
@@ -27,7 +31,7 @@ type ToolDefinition<Input extends z.ZodObject> = {
   // Shown in the chat while the tool runs.
   status: string;
   input: Input;
-  run: (args: z.infer<Input>) => Promise<ToolResult>;
+  run: (args: z.infer<Input>, context: ToolContext) => Promise<ToolResult>;
 };
 
 type FlawiuszTool = ToolDefinition<z.ZodObject>;
@@ -103,6 +107,75 @@ function cleanBlock(block: z.infer<typeof blockSchema>) {
   return block;
 }
 
+const templateSchema = z.object({
+  template_id: z.string().optional().describe('A custom template id such as "custom-3", to replace that template.'),
+  name: z.string().min(1).max(templateLimits.name),
+  description: z.string().max(templateLimits.description).optional(),
+  project_id: z
+    .number()
+    .int()
+    .nullable()
+    .optional()
+    .describe("Required for a new template: a project id from list_projects or ask_project, or null for all of the user's projects. Ignored when replacing a template."),
+  blocks: blocksSchema,
+});
+
+export type TemplateProposal = TemplateInput & {
+  templateId: string | null;
+  // null: available in all of the user's projects.
+  projectId: number | null;
+  projectName: string | null;
+};
+
+export type ProjectChoice = { id: number; name: string };
+
+async function projectList(): Promise<ProjectChoice[]> {
+  return (await getDocumentProjects()).map(({ id, name }) => ({ id, name }));
+}
+
+// Turns the model's arguments into what the app stores. Replacing a template
+// keeps the settings the model does not know about.
+async function prepareTemplate(
+  { template_id, name, description, project_id, blocks }: z.infer<typeof templateSchema>,
+  { chosenProjectId }: ToolContext,
+) {
+  const existing = template_id
+    ? (await getDocumentTemplates()).find((template) => template.id === template_id && !template.isBuiltIn)
+    : undefined;
+  if (template_id && !existing) return { ok: false as const, error: `There is no custom template ${template_id}.` };
+
+  // A saved template stays in its project; a new one needs an explicit choice.
+  const projectId = existing ? existing.projectId : (project_id === undefined ? chosenProjectId : project_id);
+  if (projectId === undefined) {
+    return {
+      ok: false as const,
+      error:
+        "project_id is missing. Pass the id of the project the user chose, or null if they chose all projects. " +
+        "If you do not know yet, ask the user.",
+    };
+  }
+  const project = projectId === null ? null : (await getDocumentProjects()).find((item) => item.id === projectId);
+  if (project === undefined) return { ok: false as const, error: `There is no project ${projectId}; use an id from list_projects or ask_project.` };
+
+  const parsed = parseTemplateInput({
+    name,
+    description: description ?? existing?.description ?? "",
+    blocks: blocks.map(cleanBlock),
+    showStatus: existing?.showStatus,
+    showName: existing?.showName,
+  });
+  if (!parsed.ok) return parsed;
+  return {
+    ok: true as const,
+    value: {
+      ...parsed.value,
+      templateId: template_id ?? null,
+      projectId,
+      projectName: project?.name ?? null,
+    } satisfies TemplateProposal,
+  };
+}
+
 // --- Tools -----------------------------------------------------------------
 
 export const flawiuszTools: FlawiuszTool[] = [
@@ -121,6 +194,11 @@ export const flawiuszTools: FlawiuszTool[] = [
             "A template is an ordered list of blocks rendered against one project's live data. " +
             "Text and heading blocks may use {{variableKey}} placeholders. Task tables filter the project's tasks; " +
             "an empty statuses or priorities list means no restriction. Charts are drawn automatically from the data.",
+          header:
+            "Every document starts with a fixed header above the blocks: the template name, the project name and " +
+            "description, the schedule health, the owner, the project period (start and end dates), the team size " +
+            "and the date the document was generated. Do not add blocks that repeat it, such as a heading with the " +
+            "project name or today's date, or facts with the owner or project dates.",
           blockTypes: blockTypeOptions,
           variables: variableOptions,
           chartKinds: chartKindOptions,
@@ -138,11 +216,39 @@ export const flawiuszTools: FlawiuszTool[] = [
           example: builtInTemplates[0],
           // Last, so smaller models still have it in mind when they reply.
           reminder:
-            "Nothing is saved yet. Propose the template first; call save_template once the user confirms. " +
-            "{{variables}} and block types are for template blocks only. When describing a template to the user, " +
-            "list its sections in plain words, without placeholders or tables.",
+            "Nothing is saved yet. Show the template with propose_template; the user saves it from there. " +
+            "{{variables}} and block types are for template blocks only, never for replies. " +
+            "The header already shows the project name, owner, dates and generation date; start with the content.",
         },
       };
+    },
+  }),
+
+  defineTool({
+    name: "list_projects",
+    description: "Lists the projects the user can access, with their ids. Shows nothing to the user.",
+    status: "Counting the projects…",
+    input: z.object({}),
+    async run() {
+      return { ok: true, value: await projectList() };
+    },
+  }),
+
+  defineTool({
+    name: "ask_project",
+    description:
+      "Asks the user which project a template is for: shows a button for each of their projects and one for " +
+      "all projects. Returns the projects with their ids.",
+    status: "Counting the projects…",
+    input: z.object({}),
+    async run(_, { chosenProjectId }) {
+      if (chosenProjectId !== undefined) {
+        return {
+          ok: false,
+          error: `The user already chose: project_id ${chosenProjectId}. Do not ask again; continue with the template.`,
+        };
+      }
+      return { ok: true, value: await projectList() };
     },
   }),
 
@@ -157,31 +263,34 @@ export const flawiuszTools: FlawiuszTool[] = [
   }),
 
   defineTool({
+    name: "propose_template",
+    description:
+      "Shows a template to the user as a card with a live preview and a Save button. Nothing is saved. " +
+      "Pass template_id to propose changes to an existing custom template.",
+    status: "Sketching the template…",
+    input: templateSchema,
+    run: prepareTemplate,
+  }),
+
+  defineTool({
     name: "save_template",
     description:
-      "Saves a custom document template so it appears on the app's Documents page. " +
-      "Omit template_id to create a new one; pass a custom template's id to replace it. Built-ins cannot be changed.",
+      "Saves a custom document template so it appears on the app's Documents page. Only use it when the user " +
+      "asks you to save without a proposal. Omit template_id to create a new one; pass a custom template's id " +
+      "to replace it. Built-ins cannot be changed.",
     status: "Stacking the template log by log…",
-    input: z.object({
-      template_id: z.string().optional().describe('A custom template id such as "custom-3".'),
-      name: z.string().min(1).max(templateLimits.name),
-      description: z.string().max(templateLimits.description).optional(),
-      blocks: blocksSchema,
-    }),
-    async run({ template_id, name, description, blocks }) {
-      const result = await saveTemplate(template_id ?? null, {
-        name,
-        description: description ?? "",
-        blocks: blocks.map(cleanBlock),
-      });
+    input: templateSchema,
+    async run(args, context) {
+      const prepared = await prepareTemplate(args, context);
+      if (!prepared.ok) return prepared;
+      const result = await saveTemplate(prepared.value.templateId, prepared.value, prepared.value.projectId);
       if (!result.ok) return result;
       return { ok: true, value: { id: result.value.id, name: result.value.name, blocks: result.value.blocks.length } };
     },
   }),
 ];
 
-// Validates the model's raw arguments and runs the tool.
-export async function runTool(name: string, args: unknown): Promise<ToolResult> {
+export async function runTool(name: string, args: unknown, context: ToolContext): Promise<ToolResult> {
   const tool = flawiuszTools.find((candidate) => candidate.name === name);
   if (!tool) return { ok: false, error: `Unknown tool ${name}.` };
 
@@ -191,7 +300,7 @@ export async function runTool(name: string, args: unknown): Promise<ToolResult> 
   }
 
   try {
-    return await tool.run(parsed.data);
+    return await tool.run(parsed.data, context);
   } catch (error) {
     console.error(`Flawiusz tool ${name} failed`, error);
     return { ok: false, error: "The tool failed unexpectedly. Try again." };

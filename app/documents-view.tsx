@@ -97,7 +97,9 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
       ? requestedTemplateId!
       : (initialTemplates[0]?.id ?? ""),
   );
-  const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id ?? 0);
+  const [selectedProjectId, setSelectedProjectId] = useState(
+    initialTemplates.find((template) => template.id === requestedTemplateId)?.projectId ?? projects[0]?.id ?? 0,
+  );
   // Template the builder starts from; null while the builder is closed.
   const [builderSource, setBuilderSource] = useState<DocumentTemplate | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);

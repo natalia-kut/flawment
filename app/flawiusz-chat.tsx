@@ -3,9 +3,18 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
-import { variableOptions } from "@/lib/documents/template-schema";
+import { saveTemplate } from "@/lib/documents/actions";
+import {
+  blockTypeOptions,
+  chartKindOptions,
+  variableOptions,
+  type DocumentTemplate,
+  type TemplateBlock,
+} from "@/lib/documents/template-schema";
 import type { AgentEvent } from "@/lib/flawiusz/agent";
 import { busyPhrases, unavailableMessage } from "@/lib/flawiusz/phrases";
+import type { ProjectChoice, TemplateProposal } from "@/lib/flawiusz/tools";
+import TemplatePreviewDialog from "./template-preview-dialog";
 import "./flawiusz.css";
 
 // Shown when the user stops Flawiusz before it wrote anything; never sent back to the model.
@@ -13,18 +22,39 @@ const stoppedText = "*The request was interrupted*";
 
 type SavedTemplate = { id: string; name: string };
 
+type ChatProposal = TemplateProposal & { savedId?: string; saving?: boolean; error?: string };
+
 type Message = {
   id: number;
   role: "user" | "assistant";
   content: string;
   templates: SavedTemplate[];
+  proposals: ChatProposal[];
+  // Projects offered as buttons when Flawiusz asks which project a template is for.
+  projectChoices: ProjectChoice[];
+  // On a user message sent with one of those buttons: the project id, or null for all projects.
+  chosenProjectId?: number | null;
   error?: string;
 };
 
-// Saved templates are not part of the visible text, so remind the model of them
-// on later turns (it needs the id to edit a template again).
+// Saved templates and proposals are not part of the visible text, so remind the
+// model of them on later turns (it needs the id or the sections to change them).
 function historyContent(message: Message) {
   const notes = message.templates.map((template) => `\n[Saved template "${template.name}" (${template.id})]`);
+  if (message.projectChoices.length > 0) {
+    const choices = message.projectChoices.map((project) => `"${project.name}" = project_id ${project.id}`);
+    notes.push(`\n[Showed project buttons: ${choices.join("; ")}; "All my projects" = project_id null]`);
+  }
+  for (const proposal of message.proposals) {
+    if (proposal.savedId) {
+      notes.push(`\n[Saved template "${proposal.name}" (${proposal.savedId})]`);
+      continue;
+    }
+    const sections = proposal.blocks.map((block, index) => `${index + 1}. ${blockLabels[block.type]}: ${blockDetail(block)}`);
+    const target = proposal.templateId ? ` replacing ${proposal.templateId}` : "";
+    const scope = proposal.projectId === null ? "all projects" : `project ${proposal.projectId}`;
+    notes.push(`\n[Proposed template "${proposal.name}"${target} for ${scope}, not saved yet. Sections: ${sections.join("; ")}]`);
+  }
   return message.content + notes.join("");
 }
 
@@ -40,15 +70,36 @@ export function useFlawiuszChat() {
 
   const busy = status !== null;
 
-  async function send(text: string) {
+  async function send(text: string, chosenProjectId?: number | null) {
     const prompt = text.trim();
     if (!prompt || busy) return;
 
-    const question: Message = { id: nextId.current++, role: "user", content: prompt, templates: [] };
-    const reply: Message = { id: nextId.current++, role: "assistant", content: "", templates: [] };
-    // Keep replies that saved a template even without text, so the model still knows the template's id.
+    const question: Message = {
+      id: nextId.current++,
+      role: "user",
+      content: prompt,
+      templates: [],
+      proposals: [],
+      projectChoices: [],
+      chosenProjectId,
+    };
+    // The latest pick, so Flawiusz does not have to work it out from the text.
+    // A saved template ends it, so the next template gets its own question.
+    let chosen: number | null | undefined;
+    for (const message of [...messages, question].reverse()) {
+      if (message.templates.length > 0 || message.proposals.some((proposal) => proposal.savedId)) break;
+      if (message.chosenProjectId !== undefined) {
+        chosen = message.chosenProjectId;
+        break;
+      }
+    }
+    const reply: Message = { id: nextId.current++, role: "assistant", content: "", templates: [], proposals: [], projectChoices: [] };
+    // Keep replies with templates even without text, so the model still knows about them.
     const keep = (message: Message) =>
-      message.templates.length > 0 || (message.content && message.content !== stoppedText && !message.error);
+      message.templates.length > 0 ||
+      message.proposals.length > 0 ||
+      message.projectChoices.length > 0 ||
+      (message.content && message.content !== stoppedText && !message.error);
     const history = [...messages.filter(keep), question].map(
       (message) => ({ role: message.role, content: historyContent(message) }),
     );
@@ -70,8 +121,13 @@ export function useFlawiuszChat() {
           break;
         case "template":
           update((message) => ({ ...message, templates: [...message.templates, { id: event.id, name: event.name }] }));
-          // Reload server data so the Documents page lists the new template.
           router.refresh();
+          break;
+        case "projects":
+          update((message) => ({ ...message, projectChoices: event.projects }));
+          break;
+        case "proposal":
+          update((message) => ({ ...message, proposals: [...message.proposals, event.proposal] }));
           break;
         case "error":
           update((message) => ({ ...message, error: event.message }));
@@ -83,10 +139,9 @@ export function useFlawiuszChat() {
       const response = await fetch("/api/flawiusz", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, chosenProjectId: chosen }),
         signal: controller.signal,
       });
-      // The session expired while the page was open.
       if (response.status === 401) {
         router.push("/login");
         return;
@@ -115,6 +170,34 @@ export function useFlawiuszChat() {
     }
   }
 
+  // Saved straight from the card, without asking the model again.
+  async function saveProposal(messageId: number, index: number) {
+    const proposal = messages.find((message) => message.id === messageId)?.proposals[index];
+    if (!proposal || proposal.saving || proposal.savedId) return;
+
+    const change = (patch: Partial<ChatProposal>) =>
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === messageId
+            ? { ...message, proposals: message.proposals.map((item, i) => (i === index ? { ...item, ...patch } : item)) }
+            : message,
+        ),
+      );
+
+    change({ saving: true, error: undefined });
+    try {
+      const result = await saveTemplate(proposal.templateId, proposal, proposal.projectId);
+      if (!result.ok) {
+        change({ saving: false, error: result.error });
+        return;
+      }
+      change({ saving: false, savedId: result.value.id });
+      router.refresh();
+    } catch {
+      change({ saving: false, error: "The template could not be saved. Try again." });
+    }
+  }
+
   function stop() {
     abortRef.current?.abort();
   }
@@ -124,7 +207,7 @@ export function useFlawiuszChat() {
     setMessages([]);
   }
 
-  return { messages, status, busy, send, stop, reset };
+  return { messages, status, busy, send, saveProposal, stop, reset };
 }
 
 export type FlawiuszChat = ReturnType<typeof useFlawiuszChat>;
@@ -132,6 +215,32 @@ export type FlawiuszChat = ReturnType<typeof useFlawiuszChat>;
 const variableLabels: Record<string, string> = Object.fromEntries(
   variableOptions.map((option) => [option.key, option.label.toLowerCase()]),
 );
+
+const blockLabels = Object.fromEntries(blockTypeOptions.map((option) => [option.type, option.label])) as Record<
+  TemplateBlock["type"],
+  string
+>;
+const chartLabels: Record<string, string> = Object.fromEntries(chartKindOptions.map((option) => [option.key, option.label]));
+
+// What a block shows, in a few words.
+function blockDetail(block: TemplateBlock) {
+  switch (block.type) {
+    case "heading":
+    case "text":
+      return humanize(block.text).replace(/\s+/g, " ");
+    case "chart":
+      return block.title || chartLabels[block.kind];
+    case "metrics":
+      return block.metrics.map((key) => variableLabels[key] ?? key).join(", ");
+    case "facts":
+    case "taskTable":
+    case "memberTable":
+    case "signatures":
+      return block.title;
+    case "pageBreak":
+      return "";
+  }
+}
 
 // Small models sometimes leak template placeholders into replies; show them as plain words.
 function humanize(text: string) {
@@ -220,10 +329,15 @@ export function ChatLog({
   className: string;
 }) {
   const logRef = useRef<HTMLDivElement>(null);
+  const [previewing, setPreviewing] = useState<{ messageId: number; index: number } | null>(null);
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [chat.messages, chat.status]);
+
+  const previewed = previewing
+    ? chat.messages.find((message) => message.id === previewing.messageId)?.proposals[previewing.index]
+    : undefined;
 
   // While Flawiusz works, its status shows inside the reply bubble it is writing.
   const workingId = chat.busy ? chat.messages.at(-1)?.id : undefined;
@@ -237,6 +351,30 @@ export function ChatLog({
           ) : (
             <>
               {message.content && <Markdown text={message.content} />}
+              {message.projectChoices.length > 0 && (
+                <div className="flawiusz-choices">
+                  {[...message.projectChoices, { id: null, name: "All my projects" }].map((choice) => (
+                    <button
+                      // Only the latest question can be answered.
+                      disabled={chat.busy || message.id !== chat.messages.at(-1)?.id}
+                      key={choice.id ?? "all"}
+                      onClick={() => void chat.send(choice.name, choice.id)}
+                      type="button"
+                    >
+                      {choice.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {message.proposals.map((proposal, index) => (
+                <ProposalCard
+                  key={index}
+                  onOpen={() => proposal.savedId && onOpenTemplate(proposal.savedId)}
+                  onPreview={() => setPreviewing({ messageId: message.id, index })}
+                  onSave={() => void chat.saveProposal(message.id, index)}
+                  proposal={proposal}
+                />
+              ))}
               {message.templates.map((template) => (
                 <div className="flawiusz-template" key={template.id}>
                   <span>
@@ -262,6 +400,85 @@ export function ChatLog({
           )}
         </div>
       ))}
+
+      {previewing && previewed && (
+        <TemplatePreviewDialog
+          initialProjectId={previewed.projectId}
+          onClose={() => setPreviewing(null)}
+          onSave={() => void chat.saveProposal(previewing.messageId, previewing.index)}
+          saved={Boolean(previewed.savedId)}
+          saving={Boolean(previewed.saving)}
+          template={proposalTemplate(previewed)}
+        />
+      )}
+    </div>
+  );
+}
+
+function proposalTemplate(proposal: ChatProposal): DocumentTemplate {
+  return {
+    id: proposal.templateId ?? "proposal",
+    name: proposal.name,
+    description: proposal.description,
+    blocks: proposal.blocks,
+    isBuiltIn: false,
+    projectId: proposal.projectId,
+    showStatus: proposal.showStatus,
+    showName: proposal.showName,
+  };
+}
+
+function ProposalCard({
+  proposal,
+  onPreview,
+  onSave,
+  onOpen,
+}: {
+  proposal: ChatProposal;
+  onPreview: () => void;
+  onSave: () => void;
+  onOpen: () => void;
+}) {
+  return (
+    <div className="flawiusz-proposal">
+      <div className="flawiusz-proposal-heading">
+        <span>{proposal.templateId ? "Proposed changes" : "Template proposal"}</span>
+        <strong>{proposal.name}</strong>
+        {proposal.description && <p>{proposal.description}</p>}
+        <em>For {proposal.projectName ?? "all your projects"}</em>
+      </div>
+      <ol>
+        {proposal.blocks.map((block) => {
+          const detail = blockDetail(block);
+          return (
+            <li key={block.id}>
+              <b>{blockLabels[block.type]}</b>
+              {detail && <span>{detail}</span>}
+            </li>
+          );
+        })}
+      </ol>
+      {proposal.error && <p className="flawiusz-error" role="alert">{proposal.error}</p>}
+      <div className="flawiusz-proposal-actions">
+        {proposal.savedId ? (
+          <>
+            <span className="flawiusz-proposal-saved">✓ Saved</span>
+            <button className="secondary-button" onClick={onOpen} type="button">
+              Open in Documents
+            </button>
+          </>
+        ) : (
+          <>
+            <button className="secondary-button" onClick={onPreview} type="button">
+              Preview
+            </button>
+            <button className="primary-button" disabled={proposal.saving} onClick={onSave} type="button">
+              {proposal.saving ? "Saving…" : "Save template"}
+            </button>
+            <span className="flawiusz-proposal-hint">or tell me what to change</span>
+          </>
+        )}
+      </div>
     </div>
   );
 }

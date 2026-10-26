@@ -21,6 +21,13 @@ function parseConversation(body: unknown): ConversationMessage[] | null {
   return conversation.at(-1)?.role === "user" ? conversation : null;
 }
 
+// The project picked with Flawiusz's buttons: a project id or null for all projects.
+function parseChosenProject(body: unknown): number | null | undefined {
+  if (typeof body !== "object" || body === null || !("chosenProjectId" in body)) return undefined;
+  const value = (body as { chosenProjectId: unknown }).chosenProjectId;
+  return value === null || (typeof value === "number" && Number.isInteger(value)) ? value : undefined;
+}
+
 export async function POST(request: Request) {
   // Checked before the model is called, so signed-out requests cost nothing.
   if (!(await currentUser())) return Response.json({ error: "Sign in to use Flawiusz." }, { status: 401 });
@@ -36,7 +43,7 @@ export async function POST(request: Request) {
         if (!request.signal.aborted) controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
       };
       try {
-        await runFlawiusz(conversation, emit, request.signal);
+        await runFlawiusz(conversation, emit, request.signal, { chosenProjectId: parseChosenProject(body) });
       } catch (error) {
         if (!request.signal.aborted) {
           console.error("Flawiusz failed", error);

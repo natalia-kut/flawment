@@ -80,7 +80,7 @@
 }
 
 .flawiusz-log.in-hero {
-  max-height: min(42vh, 420px);
+  max-height: min(62vh, 640px);
   margin: 0 -8px;
   padding: 14px 8px;
   border-top: 1px solid var(--border);
@@ -328,7 +328,7 @@
 }
 
 .flawiusz-message > * + * {
-  margin-top: 7px;
+  margin-top: 10px;
 }
 
 /* Tailwind's preflight removes list markers. */
@@ -347,7 +347,35 @@
 }
 
 .flawiusz-message li + li {
-  margin-top: 3px;
+  margin-top: 5px;
+}
+
+.flawiusz-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.flawiusz-choices button {
+  padding: 7px 13px;
+  border: 1px solid #e6c6b1;
+  border-radius: 999px;
+  background: #fff8f2;
+  color: var(--foreground);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.flawiusz-choices button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: #f8e8dc;
+}
+
+.flawiusz-choices button:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 .flawiusz-message code {
@@ -375,6 +403,184 @@
 .flawiusz-template .secondary-button {
   min-height: 34px;
   justify-self: start;
+}
+
+/* --- Template proposal ------------------------------------------------------ */
+
+.flawiusz-proposal {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #ecd2bf;
+  border-radius: 11px;
+  background: #fff8f2;
+}
+
+.flawiusz-proposal-heading {
+  display: grid;
+  gap: 2px;
+}
+
+.flawiusz-proposal-heading > span {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.flawiusz-proposal-heading strong {
+  font-size: 16px;
+}
+
+.flawiusz-proposal-heading p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.flawiusz-proposal-heading em {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.flawiusz-message .flawiusz-proposal ol {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid #f0dfd2;
+  counter-reset: section;
+  list-style: none;
+}
+
+.flawiusz-message .flawiusz-proposal li {
+  display: grid;
+  grid-template-columns: 22px auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0dfd2;
+  counter-increment: section;
+  font-size: 13px;
+}
+
+.flawiusz-proposal li::before {
+  color: var(--muted);
+  content: counter(section);
+  font-variant-numeric: tabular-nums;
+}
+
+.flawiusz-proposal li b {
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.flawiusz-proposal li span {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flawiusz-proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.flawiusz-proposal-actions button {
+  min-height: 34px;
+}
+
+.flawiusz-proposal-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.flawiusz-proposal-saved {
+  color: #24562f;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+/* --- Template preview -------------------------------------------------------- */
+
+.template-preview-dialog {
+  display: none;
+  width: min(900px, calc(100vw - 32px));
+  height: min(88dvh, 1000px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: var(--background);
+  box-shadow: 0 30px 80px rgb(36 23 13 / 28%);
+  color: var(--foreground);
+}
+
+.template-preview-dialog[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.template-preview-dialog::backdrop {
+  background: rgb(33 24 16 / 45%);
+  backdrop-filter: blur(3px);
+}
+
+.template-preview-header,
+.template-preview-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 22px;
+  background: var(--card);
+}
+
+.template-preview-header {
+  border-bottom: 1px solid var(--border);
+}
+
+.template-preview-header h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.template-preview-header p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.template-preview-body {
+  overflow-y: auto;
+  padding: 22px;
+}
+
+.template-preview-note {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.template-preview-footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 560px) {
+  .template-preview-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .template-preview-body {
+    padding: 12px;
+  }
 }
 
 .flawiusz-error {
