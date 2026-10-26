@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import TemplatePreviewDialog from "@/app/template-preview-dialog";
+import TemplatePreviewDialog from "@/components/documents/template-preview-dialog";
 import { DocumentProposalCard, proposalTemplate } from "./document-proposal-card";
 import { Markdown } from "./markdown";
 import type { FlawiuszChat } from "./use-flawiusz-chat";

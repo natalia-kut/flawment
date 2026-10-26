@@ -7,7 +7,7 @@ import { createBlock, templateLimits, type DocumentTemplate } from "@/lib/docume
 import type { DocumentProject } from "@/lib/documents/types";
 import DocumentSheet from "./document-sheet";
 import TemplateBuilder from "./template-builder";
-import { RequestedTemplateContext } from "./workspace-context";
+import { RequestedTemplateContext } from "./requested-template-context";
 import "./documents.css";
 
 type DocumentsViewProps = {
