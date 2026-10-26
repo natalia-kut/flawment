@@ -34,6 +34,7 @@ export async function getWorkspaceProjects() {
           status: true,
           priority: true,
           deadline: true,
+          assigned_to: true,
           assignee: {
             select: {
               first_name: true,
@@ -81,6 +82,7 @@ export async function getWorkspaceProjects() {
           description: task.description,
           status: task.status,
           priority: task.priority,
+          assignedTo: task.assignee?.role === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN" ? null : task.assigned_to,
           deadline: task.deadline?.toISOString().slice(0, 10) ?? "",
           assigneeName: task.assignee
             ? task.assignee.role === "SUPER_ADMIN" &&
