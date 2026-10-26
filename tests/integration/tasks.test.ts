@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { prisma } from "../../lib/prisma";
-import { createTask, updateTask, deleteTask } from "../../lib/tasks/service";
+import { createTask, updateTask, deleteTask, changeTaskStatus } from "../../lib/tasks/service";
 
 function form(values: Record<string, string | number>) {
   const data = new FormData();
@@ -93,6 +93,25 @@ test("task creation, editing and deletion enforce permissions and project bounda
     await assert.rejects(createTask(actor(0), input({ priority: "INVALID" })), /priority/);
     await assert.rejects(createTask(actor(0), input({ deadline: "2026-02-30" })), /deadline/);
     assert.equal(await prisma.task.count({ where: { project_id: project.id } }), 2);
+    await prisma.user.update({ where: { id: users[2] }, data: { is_active: true } });
+    await updateTask(actor(0), editInput({ status: "TO_DO", assigned_to: users[2], title: "Board task" }));
+    const statusInput = (extra: Record<string, string | number> = {}) =>
+      form({ project_id: project.id, task_id: created.id, status: "IN_PROGRESS", expected_status: "TO_DO", ...extra });
+    await changeTaskStatus(actor(2), statusInput());
+    const moved = await prisma.task.findUniqueOrThrow({ where: { id: created.id } });
+    assert.equal(moved.status, "IN_PROGRESS");
+    assert.equal(moved.title, "Board task");
+    assert.equal(moved.assigned_to, users[2]);
+    await assert.rejects(changeTaskStatus(actor(2), statusInput()), /changed/);
+    await assert.rejects(changeTaskStatus(actor(3), statusInput({ expected_status: "IN_PROGRESS" })), /permission/);
+    await assert.rejects(changeTaskStatus(actor(2), statusInput({ task_id: unassigned.id })), /permission/);
+    await assert.rejects(changeTaskStatus(actor(0), statusInput({ project_id: otherProject.id })), /no longer available/);
+    await assert.rejects(changeTaskStatus(actor(0), statusInput({ status: "INVALID" })), /valid task status/);
+    await changeTaskStatus(actor(1), statusInput({ expected_status: "IN_PROGRESS", status: "IN_REVIEW" }));
+    await changeTaskStatus(actor(0), statusInput({ expected_status: "IN_REVIEW", status: "COMPLETED" }));
+    assert.equal((await prisma.task.findUniqueOrThrow({ where: { id: created.id } })).status, "COMPLETED");
+    await prisma.projectMembership.delete({ where: { project_id_user_id: { project_id: project.id, user_id: users[2] } } });
+    await assert.rejects(changeTaskStatus(actor(2), statusInput({ expected_status: "COMPLETED" })), /permission/);
     const deletion = (extra: Record<string, string | number> = {}) =>
       form({ project_id: project.id, task_id: created.id, ...extra });
     await assert.rejects(deleteTask(actor(2), deletion()), /permission/);

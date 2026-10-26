@@ -102,3 +102,29 @@ export async function deleteTask(actor: Actor, data: FormData) {
     }
   }, { isolationLevel: "Serializable" });
 }
+
+export async function changeTaskStatus(actor: Actor, data: FormData) {
+  const projectId = recordId(text(data, "project_id"));
+  const taskId = recordId(text(data, "task_id"));
+  const status = text(data, "status") as TaskStatus;
+  const expected = text(data, "expected_status") as TaskStatus;
+  if (!taskStatuses.includes(status) || !taskStatuses.includes(expected)) {
+    throw new TaskError("Choose a valid task status.");
+  }
+  return prisma.$transaction(async (tx) => {
+    const task = await tx.task.findFirst({
+      where: { id: taskId, project_id: projectId },
+      include: { project: { include: { memberships: true } } },
+    });
+    if (!task) throw new TaskError("This task is no longer available in this project.");
+    const role = task.project.memberships.find((member) => member.user_id === actor.id)?.role ?? null;
+    const allowed = can(role, "tasks:manage", actor.role) ||
+      (task.assigned_to === actor.id && can(role, "tasks:update-assigned", actor.role));
+    if (!allowed) throw new TaskError("You do not have permission to change this task status.");
+    const changed = await tx.task.updateMany({
+      where: { id: taskId, project_id: projectId, status: expected },
+      data: { status },
+    });
+    if (changed.count !== 1) throw new TaskError("This task changed. Refresh the board and try again.");
+  }, { isolationLevel: "Serializable" });
+}
