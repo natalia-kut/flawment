@@ -1,10 +1,6 @@
 import { getDocumentProjects, getDocumentTemplates } from "@/lib/documents/data";
+import { localDay } from "@/lib/documents/engine";
 import DocumentsView from "./documents-view";
-
-function localDay(date: Date) {
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
-}
 
 export default async function DocumentsSection() {
   const [projects, templates] = await Promise.all([getDocumentProjects(), getDocumentTemplates()]);
@@ -12,5 +8,8 @@ export default async function DocumentsSection() {
   // Read after the queries so the date is taken at request time, not prerender time.
   const today = localDay(new Date());
 
-  return <DocumentsView projects={projects} initialTemplates={templates} today={today} />;
+  // Templates saved elsewhere (e.g. by Flawiusz) arrive on refresh; remount to pick them up.
+  const templateKey = templates.map((template) => template.id).join(",");
+
+  return <DocumentsView key={templateKey} projects={projects} initialTemplates={templates} today={today} />;
 }

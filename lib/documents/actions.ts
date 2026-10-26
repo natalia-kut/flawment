@@ -4,8 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { visibleProjects, type Actor } from "@/lib/rbac";
 import type { Prisma } from "@/src/generated/prisma/client";
-import { toCustomTemplate } from "./data";
+import { getDocumentProjects, toCustomTemplate } from "./data";
+import { localDay } from "./engine";
 import { parseTemplateInput, type DocumentTemplate } from "./template-schema";
+import type { DocumentProject } from "./types";
 
 type ActionResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -94,4 +96,8 @@ export async function deleteTemplate(templateId: string): Promise<ActionResult<n
   } catch {
     return { ok: false, error: "The template could not be deleted. Try again." };
   }
+}
+
+export async function getPreviewData(): Promise<{ projects: DocumentProject[]; today: string }> {
+  return { projects: await getDocumentProjects(), today: localDay() };
 }

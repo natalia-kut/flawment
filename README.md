@@ -3,6 +3,11 @@
 Flawment is an early-stage project management application built with Next.js 16
 (App Router), React 19, TypeScript, Tailwind CSS 4, Prisma 7, and PostgreSQL 17.
 
+It includes **Flawiusz**, an AI assistant on the dashboard and in a side panel on
+every page. It answers questions about projects, deadlines and the team, and
+creates document templates. It runs on a free model from OpenRouter, so it needs
+no paid API; see [Set up Flawiusz](#set-up-flawiusz).
+
 ## First-time setup (Windows and macOS)
 
 Install these prerequisites yourself:
@@ -182,6 +187,24 @@ migrated PostgreSQL database, create temporary accounts/projects, test auth and
 role boundaries, and delete their test records afterward. Run them against a local
 development database. To check the UI manually, register two users, create a
 project as one, add the other, and sign in as each to check role-specific actions.
+
+## Set up Flawiusz
+
+Flawiusz uses the free
+[NVIDIA: Nemotron 3.5 Super VL](https://openrouter.ai/nvidia/nemotron-3.5-super-vl)
+model through [OpenRouter](https://openrouter.ai/). The app works without Flawiusz;
+the chat then shows that the assistant is not set up.
+
+1. Create an API key at [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys).
+2. Add these lines to `.env`:
+
+   ```dotenv
+   LLM_BASE_URL=https://openrouter.ai/api/v1
+   LLM_MODEL=nvidia/nemotron-3.5-super-vl:free
+   LLM_API_KEY=sk-or-...
+   ```
+
+3. Restart `npm run dev`.
 
 ## Troubleshooting
 
