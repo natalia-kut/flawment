@@ -3,7 +3,8 @@
 import { useState, useActionState, type ReactNode } from "react";
 import { logout } from "@/lib/auth/actions";
 import Dashboard from "./dashboard";
-import { FlawiuszPanel, useFlawiuszChat } from "./flawiusz-chat";
+import { FlawiuszPanel } from "@/components/flawiusz/panel";
+import { useFlawiuszChat } from "@/components/flawiusz/use-flawiusz-chat";
 import { RequestedTemplateContext } from "./workspace-context";
 
 const navigation = [

@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { ChatLog, Composer, type FlawiuszChat } from "./flawiusz-chat";
+import { ChatLog } from "@/components/flawiusz/chat-log";
+import { Composer } from "@/components/flawiusz/composer";
+import type { FlawiuszChat } from "@/components/flawiusz/use-flawiusz-chat";
 
 // The dashboard starts with Flawiusz; the conversation stays inside this card.
 export default function Dashboard({
