@@ -215,3 +215,14 @@ No database migration is needed for these features.
 To check editing manually, create a task, open **Edit task**, change its status
 and priority, save and refresh the project. Confirm the changes remain visible.
 Run the database integration coverage with npm run test:integration.
+
+### Deleting project tasks
+
+Project admins, managers and super admins can use **Delete task** in a project's
+task list. Confirming the browser prompt permanently removes that task; Cancel
+keeps it. Participants cannot delete tasks. Permissions and project ownership of
+the task are checked again on the server. Deleting a task does not delete its
+project or other tasks.
+
+For a manual check, create a disposable task, click **Delete task**, cancel once,
+then confirm on a second attempt. Refresh and confirm the task stays removed.

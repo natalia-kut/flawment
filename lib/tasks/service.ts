@@ -82,3 +82,23 @@ async function saveTask(actor: Actor, data: FormData, editing: boolean) {
     });
   }, { isolationLevel: "Serializable" });
 }
+
+export async function deleteTask(actor: Actor, data: FormData) {
+  const projectId = recordId(text(data, "project_id"));
+  const taskId = recordId(text(data, "task_id"));
+  return prisma.$transaction(async (tx) => {
+    const project = await tx.project.findUnique({
+      where: { id: projectId }, include: { memberships: true },
+    });
+    const role = project?.memberships.find((member) => member.user_id === actor.id)?.role ?? null;
+    if (!project || !can(role, "tasks:manage", actor.role)) {
+      throw new TaskError("You do not have permission to delete tasks in this project.");
+    }
+    const deleted = await tx.task.deleteMany({
+      where: { id: taskId, project_id: projectId },
+    });
+    if (deleted.count !== 1) {
+      throw new TaskError("This task is no longer available in this project.");
+    }
+  }, { isolationLevel: "Serializable" });
+}

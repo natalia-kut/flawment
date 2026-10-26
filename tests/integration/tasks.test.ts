@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { prisma } from "../../lib/prisma";
-import { createTask, updateTask } from "../../lib/tasks/service";
+import { createTask, updateTask, deleteTask } from "../../lib/tasks/service";
 
 function form(values: Record<string, string | number>) {
   const data = new FormData();
@@ -11,7 +11,7 @@ function form(values: Record<string, string | number>) {
   return data;
 }
 
-test("task creation and editing validate permissions, project boundaries and input", async () => {
+test("task creation, editing and deletion enforce permissions and project boundaries", async () => {
   const prefix = "task-test-" + randomUUID();
   const users: number[] = [];
   let projectId: number | undefined;
@@ -93,6 +93,25 @@ test("task creation and editing validate permissions, project boundaries and inp
     await assert.rejects(createTask(actor(0), input({ priority: "INVALID" })), /priority/);
     await assert.rejects(createTask(actor(0), input({ deadline: "2026-02-30" })), /deadline/);
     assert.equal(await prisma.task.count({ where: { project_id: project.id } }), 2);
+    const deletion = (extra: Record<string, string | number> = {}) =>
+      form({ project_id: project.id, task_id: created.id, ...extra });
+    await assert.rejects(deleteTask(actor(2), deletion()), /permission/);
+    await assert.rejects(deleteTask(actor(3), deletion()), /permission/);
+    await assert.rejects(deleteTask(actor(0), deletion({ project_id: otherProject.id })), /no longer available/);
+    await assert.rejects(deleteTask(actor(0), deletion({ task_id: "invalid" })), /Invalid record ID/);
+    await assert.rejects(deleteTask(actor(0), deletion({ task_id: "999999999" })), /no longer available/);
+    assert.equal(await prisma.task.count({ where: { project_id: project.id } }), 2, "rejected deletions preserve tasks");
+    await deleteTask(actor(1), deletion());
+    assert.equal(await prisma.task.findUnique({ where: { id: created.id } }), null);
+    assert.ok(await prisma.task.findUnique({ where: { id: unassigned.id } }), "other tasks remain");
+    await assert.rejects(deleteTask(actor(0), deletion()), /no longer available/);
+    await deleteTask(actor(0), deletion({ task_id: unassigned.id }));
+    assert.equal(await prisma.task.count({ where: { project_id: project.id } }), 0);
+    const rootTask = await createTask(actor(0), input());
+    await prisma.user.update({ where: { id: users[3] }, data: { role: "SUPER_ADMIN" } });
+    await deleteTask({ id: users[3], role: "SUPER_ADMIN" }, deletion({ task_id: rootTask.id }));
+    assert.equal(await prisma.task.findUnique({ where: { id: rootTask.id } }), null);
+    assert.ok(await prisma.project.findUnique({ where: { id: project.id } }), "deleting tasks preserves the project");
   } finally {
     if (otherProjectId) await prisma.project.deleteMany({ where: { id: otherProjectId } });
     if (projectId) await prisma.project.deleteMany({ where: { id: projectId } });
