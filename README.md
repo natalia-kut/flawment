@@ -226,3 +226,16 @@ project or other tasks.
 
 For a manual check, create a disposable task, click **Delete task**, cancel once,
 then confirm on a second attempt. Refresh and confirm the task stays removed.
+
+### Searching and filtering project tasks
+
+In a project's Tasks section, search titles and descriptions or filter by status,
+priority and assignee (including Unassigned). Filters combine, search ignores
+letter case, and the result count shows how many tasks match. **Clear filters**
+restores the complete project task list. Filters reset when another project is
+opened and do not change stored tasks. They operate in the browser on the tasks
+already loaded for the current project; existing server authorization still applies.
+
+Manual check: create tasks with different statuses and priorities, search for a
+word from a description, combine filters, check a no-results case, then clear.
+Run npm test for search and filter coverage.

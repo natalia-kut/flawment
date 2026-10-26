@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import CreateTaskForm from "./create-task-form";
-import DeleteTaskForm from "./delete-task-form";
+import ProjectTaskList from "./project-task-list";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, type ReactNode, type FormEventHandler } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
@@ -103,52 +103,9 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
       <header className="page-header projects-page-heading"><div><h1>{project.name}</h1><p>{project.description || "Add a description to tell your team what this project is about."}</p></div>
         {project.canEdit && <button className="secondary-button" onClick={() => setModal("edit")}>Edit project</button>}
       </header>
-      <section className="workspace-card">
-  <div className="section-heading">
-    <div>
-      <h2>
-        Tasks <span className="role-badge">{project.tasks.length}</span>
-      </h2>
-      <p>Work planned for this project.</p>
-    </div>
-    {project.canManageTasks && <button className="primary-button" onClick={() => setModal("task")}>+ New task</button>}
-  </div>
-
-  {project.tasks.length === 0 ? (
-    <p>No tasks yet.</p>
-  ) : (
-    <ul>
-      {project.tasks.map((task) => (
-        <li key={task.id}>
-          <div className="section-heading">
-            <h3>{task.title}</h3>
-            {project.canManageTasks && <button className="secondary-button" aria-label={`Edit task: ${task.title}`} onClick={() => { setModal(null); setEditingTaskId(task.id); }}>Edit task</button>}
-          </div>
-          {project.canManageTasks && <DeleteTaskForm projectId={project.id} taskId={task.id} title={task.title} />}
-          {task.description && <p>{task.description}</p>}
-          <dl>
-            <div>
-              <dt>Status</dt>
-              <dd>{task.status.replaceAll("_", " ")}</dd>
-            </div>
-            <div>
-              <dt>Priority</dt>
-              <dd>{task.priority}</dd>
-            </div>
-            <div>
-              <dt>Assigned to</dt>
-              <dd>{task.assigneeName}</dd>
-            </div>
-            <div>
-              <dt>Deadline</dt>
-              <dd>{task.deadline || "No deadline"}</dd>
-            </div>
-          </dl>
-        </li>
-      ))}
-    </ul>
-  )}
-</section>
+      <ProjectTaskList key={project.id} project={project}
+        onCreate={() => { setEditingTaskId(null); setModal("task"); }}
+        onEdit={(id) => { setModal(null); setEditingTaskId(id); }} />
       <div className="project-detail-layout">
         <section className="workspace-card project-team" key={project.id}>
           <div className="section-heading"><div><h2>People <span className="role-badge">{project.members.length}</span></h2><p>The team making it happen.</p></div>{project.canManage && <button className="primary-button" onClick={() => setModal("add")}>Add member</button>}</div>
