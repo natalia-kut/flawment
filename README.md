@@ -239,8 +239,6 @@ already loaded for the current project; existing server authorization still appl
 Manual check: create tasks with different statuses and priorities, search for a
 word from a description, combine filters, check a no-results case, then clear.
 Run npm test for search and filter coverage.
-<<<<<<< Updated upstream
-=======
 
 ### Workspace Tasks page
 
@@ -278,4 +276,3 @@ The Cancelled column appears for groups that contain cancelled tasks.
 Manual check: move a disposable task from TO DO to IN PROGRESS, refresh and
 confirm the saved status. Check By participant, Only my tasks and Overdue.
 Use the Move to select as a keyboard alternative and check a participant account.
->>>>>>> Stashed changes

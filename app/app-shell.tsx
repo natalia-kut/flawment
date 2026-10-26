@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useActionState, type ReactNode } from "react";
+import { useActionState, type ReactNode } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { logout } from "@/lib/auth/actions";
 
 const navigation = [
@@ -23,23 +25,31 @@ function SignOut() {
   </form>;
 }
 
-export default function AppShell({ documents, projects, user, projectCount }: {
-  documents: ReactNode; projects: ReactNode; projectCount: number;
+export default function AppShell({ documents, projects, tasks, user, projectCount }: {
+  documents: ReactNode; projects: ReactNode; tasks: ReactNode; projectCount: number;
   user: { first_name: string; last_name: string; role: string };
 }) {
-  const [activePage, setActivePage] = useState<NavigationItem>("Projects");
+  const router = useRouter();
+  const search = useSearchParams();
+  const activePage = navigation.find((item) => item.toLowerCase() === search.get("view")) ?? "Projects";
+  function setActivePage(item: NavigationItem) {
+    const params = new URLSearchParams(search.toString());
+    params.delete("project");
+    if (item === "Projects") params.delete("view");
+    else params.set("view", item.toLowerCase());
+    router.push(params.size ? "/?" + params.toString() : "/");
+  }
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a
+        <Link
           className="brand"
-          href="#dashboard"
-          onClick={() => setActivePage("Dashboard")}
+          href="/?view=dashboard"
           aria-label="Flawment home"
         >
           flawment<span>.</span>
-        </a>
+        </Link>
         <nav className="main-nav" aria-label="Main navigation">
           {navigation.map((item) => (
             <button
@@ -67,7 +77,7 @@ export default function AppShell({ documents, projects, user, projectCount }: {
       <main className="main-content">
         {activePage === "Documents" ? (
           documents
-        ) : activePage === "Projects" ? projects : activePage === "Dashboard" ? (
+        ) : activePage === "Tasks" ? tasks : activePage === "Projects" ? projects : activePage === "Dashboard" ? (
           <><header className="page-header"><h1>Welcome, {user.first_name}</h1></header>
           <section className="workspace-card"><h2>{projectCount} accessible projects</h2><p>Create projects and manage memberships from Projects.</p><button className="primary-button" onClick={() => setActivePage("Projects")}>Open projects</button></section></>
         ) : (
