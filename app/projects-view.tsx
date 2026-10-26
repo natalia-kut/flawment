@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import CreateTaskForm from "./create-task-form";
+import DeleteTaskForm from "./delete-task-form";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, type ReactNode, type FormEventHandler } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
@@ -123,6 +124,7 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
             <h3>{task.title}</h3>
             {project.canManageTasks && <button className="secondary-button" aria-label={`Edit task: ${task.title}`} onClick={() => { setModal(null); setEditingTaskId(task.id); }}>Edit task</button>}
           </div>
+          {project.canManageTasks && <DeleteTaskForm projectId={project.id} taskId={task.id} title={task.title} />}
           {task.description && <p>{task.description}</p>}
           <dl>
             <div>
