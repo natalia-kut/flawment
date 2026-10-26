@@ -79,6 +79,7 @@ export async function getWorkspaceProjects() {
         tasks: project.tasks.map((task) => ({
           id: task.id,
           title: task.title,
+          canChangeStatus: can(role, "tasks:manage", user.role) || (task.assigned_to === user.id && can(role, "tasks:update-assigned", user.role)),
           description: task.description,
           status: task.status,
           priority: task.priority,

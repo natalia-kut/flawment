@@ -239,3 +239,43 @@ already loaded for the current project; existing server authorization still appl
 Manual check: create tasks with different statuses and priorities, search for a
 word from a description, combine filters, check a no-results case, then clear.
 Run npm test for search and filter coverage.
+<<<<<<< Updated upstream
+=======
+
+### Workspace Tasks page
+
+The sidebar **Tasks** page lists tasks across projects returned by the existing
+authorized workspace loader. Standard users see their projects; super admins see
+all accessible projects. Search and filter by project, status, priority or assignee.
+**Open project** navigates to the owning project, where existing task management
+permissions apply. No tasks are fetched from a separate unrestricted endpoint.
+
+Sidebar selection is now stored in the view query parameter (for example,
+ /?view=tasks), so refresh and browser back/forward retain the selected page.
+The per-project task lists and their management actions remain available.
+
+Manual check: open Tasks, combine filters, clear them, then use Open project.
+Refresh the Tasks page and check browser back/forward. Sign in as a user belonging
+to fewer projects to confirm that only their project tasks are visible.
+
+### Tasks Kanban board
+
+The workspace Tasks page groups cards by project or participant. Drag a card
+between status columns within the same group to save a status change. Click a card to open its details. The Move to select in task details provides keyboard and touch access. Only status
+changes: drag does not reassign a task or move it to a different project.
+
+Admins, managers and super admins can move project tasks. Participants can move
+their own assigned tasks while they remain members. The server rechecks access,
+project boundaries and the previous status; stale changes are rejected with an
+error. Cards remain in their saved column if the request fails.
+
+Search and filter by project, participant, priority, Overdue or Only my tasks.
+Overdue means a deadline before today's Warsaw date, excluding completed and
+cancelled tasks. Progress counts completed tasks out of non-cancelled tasks and
+is calculated for the complete group, independently of filters.
+The Cancelled column appears for groups that contain cancelled tasks.
+
+Manual check: move a disposable task from TO DO to IN PROGRESS, refresh and
+confirm the saved status. Check By participant, Only my tasks and Overdue.
+Use the Move to select as a keyboard alternative and check a participant account.
+>>>>>>> Stashed changes

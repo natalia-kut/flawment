@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/session";
-import { createTask, updateTask, deleteTask, TaskError } from "./service";
+import { createTask, updateTask, deleteTask, changeTaskStatus, TaskError } from "./service";
 
 export type TaskState = { error?: string; success?: boolean };
 
@@ -36,5 +36,16 @@ export async function deleteTaskAction(_state: TaskState, data: FormData): Promi
     return { success: true };
   } catch (error) {
     return { error: error instanceof TaskError ? error.message : "Could not delete the task. Please try again." };
+  }
+}
+
+export async function changeTaskStatusAction(data: FormData): Promise<TaskState> {
+  const actor = await requireUser();
+  try {
+    await changeTaskStatus(actor, data);
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof TaskError ? error.message : "Could not move the task. Refresh and try again." };
   }
 }
