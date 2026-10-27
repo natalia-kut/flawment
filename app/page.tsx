@@ -14,7 +14,7 @@ async function Workspace() {
       user={user}
       projectCount={projects.length}
       tasks={<TasksOverview projects={projects} currentUserId={user.id} today={new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())} />}
-      projects={<ProjectsView projects={projects} />}
+      projects={<ProjectsView projects={projects} today={new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())} />}
       documents={
         <Suspense fallback={<p className="documents-loading">Loading project data…</p>}>
           <DocumentsSection />
