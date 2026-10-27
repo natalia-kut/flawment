@@ -130,7 +130,7 @@ project `ADMIN` while retaining the standard account role. Select a project to
 edit details, add existing active users, change member roles, remove members,
 or delete the project, according to these permissions:
 
-Projects opens as a card list. Opening a card shows a dedicated project view;
+Projects opens as a table. Clicking a project name shows its dedicated view;
 use the **Projects → project name** breadcrumb to return to the list. The selected
 project is stored in the URL, so refresh and browser back/forward preserve
 navigation. **New project**, **Edit project**, and **Add member** open dialogs
@@ -143,14 +143,20 @@ with Cancel, Escape, and backdrop dismissal. Creating a project opens its overvi
 | Add/remove participants | — | Yes | Yes | Yes |
 | Assign ADMIN/MANAGER roles or remove elevated members | — | — | Yes | Yes |
 | Delete project and its tasks | — | — | Yes | Yes |
+| View project tasks and stages | Yes | Yes | Yes | Every project |
+| Create, fully edit or delete tasks | — | Yes | Yes | Yes |
+| Change task status | Own assigned tasks | Yes | Yes | Yes |
+| Create, edit or delete stages | — | Yes | Yes | Yes |
 
 The owner always remains a project admin and cannot be removed or demoted.
 The available-user selector excludes existing members. Removing a member clears
-their task assignments in that project. Deleted projects cascade to tasks and
-memberships. Standard users only see projects they belong to; super admins see
+their task assignments in that project. Deleting a project also deletes its tasks,
+stages, memberships and project-specific document templates. Standard users only
+see projects they belong to; super admins see
 all projects. Project permissions live in `lib/rbac.ts`, with
-`tasks:manage` used for task creation and editing. The `tasks:update-assigned`
-permission is reserved for future participant updates.
+`tasks:manage` used for task creation, editing, deletion and status changes.
+The `tasks:update-assigned` permission allows participants to change the status
+of their own assigned tasks while they remain project members.
 
 Super admins have access without project membership. They never appear in the
 available-user selector, and server-side checks reject adding or changing them
@@ -177,10 +183,14 @@ npm run test:integration
 npm run lint
 ```
 
-Unit tests check password hashing and permissions. Integration tests require the
-migrated PostgreSQL database, create temporary accounts/projects, test auth and
-role boundaries, and delete their test records afterward. Run them against a local
-development database. To check the UI manually, register two users, create a
+Unit tests cover password hashing, permissions, project and task filters, overdue
+dates, progress and workspace task aggregation. Integration tests check account
+and project access, task creation/editing/deletion, status changes, stage
+management and task-stage assignment. They require the migrated PostgreSQL
+database, create temporary records and remove them afterward. They run
+sequentially to avoid interfering transactions on the shared database. Run them
+against a local development database. To check the UI manually, register two
+users, create a
 project as one, add the other, and sign in as each to check role-specific actions.
 
 ## Troubleshooting
@@ -208,13 +218,15 @@ title, description, priority, deadline, assignment and these statuses:
 TO DO, IN PROGRESS, IN REVIEW, COMPLETED and CANCELLED.
 
 Tasks can only be assigned to active standard users who belong to the project.
-Participants can view tasks; editing assigned tasks as a participant is not yet
-implemented. Failed validation keeps the dialog values for correction.
-No database migration is needed for these features.
+Participants can view project tasks and change the status of their own assigned
+tasks on the workspace board, by dragging a card or using **Move to** in task
+details. They cannot create, fully edit, delete or reassign tasks.
+Failed validation in the task form keeps its values for correction.
+Apply the committed migrations before using task and stage features.
 
 To check editing manually, create a task, open **Edit task**, change its status
 and priority, save and refresh the project. Confirm the changes remain visible.
-Run the database integration coverage with npm run test:integration.
+Run the database integration coverage with `npm run test:integration`.
 
 ### Deleting project tasks
 
@@ -230,7 +242,8 @@ then confirm on a second attempt. Refresh and confirm the task stays removed.
 ### Searching and filtering project tasks
 
 In a project's Tasks section, search titles and descriptions or filter by status,
-priority and assignee (including Unassigned). Filters combine, search ignores
+priority, stage and assignee (including **No stage** and **Unassigned**). Filters
+combine, search ignores
 letter case, and the result count shows how many tasks match. **Clear filters**
 restores the complete project task list. Filters reset when another project is
 opened and do not change stored tasks. They operate in the browser on the tasks
@@ -238,36 +251,41 @@ already loaded for the current project; existing server authorization still appl
 
 Manual check: create tasks with different statuses and priorities, search for a
 word from a description, combine filters, check a no-results case, then clear.
-Run npm test for search and filter coverage.
+Run `npm test` for search and filter coverage.
 
 ### Workspace Tasks page
 
-The sidebar **Tasks** page lists tasks across projects returned by the existing
-authorized workspace loader. Standard users see their projects; super admins see
-all accessible projects. Search and filter by project, status, priority or assignee.
-**Open project** navigates to the owning project, where existing task management
-permissions apply. No tasks are fetched from a separate unrestricted endpoint.
+The sidebar **Tasks** page displays an interactive board across projects returned
+by the authorized workspace loader. Standard users see their projects; super
+admins see all projects. Search titles and descriptions, or filter by project,
+participant, stage, priority, **Overdue** and **Only my tasks**.
+Click a card to open task details, then use **Open project** to navigate to its
+project. Existing project permissions apply. No tasks are fetched from a separate
+unrestricted endpoint.
 
 Sidebar selection is now stored in the view query parameter (for example,
- /?view=tasks), so refresh and browser back/forward retain the selected page.
+`/?view=tasks`), so refresh and browser back/forward retain the selected page.
 The per-project task lists and their management actions remain available.
 
 Manual check: open Tasks, combine filters, clear them, then use Open project.
 Refresh the Tasks page and check browser back/forward. Sign in as a user belonging
 to fewer projects to confirm that only their project tasks are visible.
 
-### Tasks Kanban board
+### Interactive task board
 
 The workspace Tasks page groups cards by project or participant. Drag a card
-between status columns within the same group to save a status change. Click a card to open its details. The Move to select in task details provides keyboard and touch access. Only status
-changes: drag does not reassign a task or move it to a different project.
+between status columns within the same group to save a status change. Click a
+card to open its details. The **Move to** selector in task details provides
+keyboard and touch access. Only the status changes: drag does not reassign a task
+or move it to a different project.
 
 Admins, managers and super admins can move project tasks. Participants can move
 their own assigned tasks while they remain members. The server rechecks access,
 project boundaries and the previous status; stale changes are rejected with an
 error. Cards remain in their saved column if the request fails.
 
-Search and filter by project, participant, priority, Overdue or Only my tasks.
+Search and filter by project, participant, stage, priority, **Overdue** or
+**Only my tasks**.
 Overdue means a deadline before today's Warsaw date, excluding completed and
 cancelled tasks. Progress counts completed tasks out of non-cancelled tasks and
 is calculated for the complete group, independently of filters.
@@ -289,10 +307,19 @@ from the same project, or **No stage**. Filter tasks by stage in both project ta
 lists and the workspace board. Task details show the stage without enlarging
 board cards. Deleting a stage preserves its tasks and clears their stage link.
 
-After pulling these changes, run npm run bootstrap (or npm run db:deploy followed
-by npm run db:generate for an already installed environment). The committed
-migration adds ProjectStage and a nullable task stage reference; existing tasks
-start without a stage. Do not reset the database.
+After pulling schema changes into an installed environment, start Docker Desktop,
+stop the development server and run:
+
+```sh
+npm run db:up
+npm run db:deploy
+npm run db:generate
+npm run dev
+```
+
+Alternatively, run `npm run bootstrap` and then `npm run dev`.
+The stage migration adds `ProjectStage` and a nullable task-stage reference;
+existing tasks start without a stage. Do not reset the database.
 
 Manual check: create Planning, assign a task to it, filter by Planning, rename
 the stage, then delete it. The task must remain visible with No stage.
@@ -308,4 +335,6 @@ projects. Clear filters restores the default view, which excludes archived items
 Completion is calculated from task statuses: completed tasks divided by all
 non-cancelled tasks. A project without active tasks shows 0%. Project status
 remains an independently managed value. Click a project name to open its details.
-The project table follows the mockup: named statuses, long dates, overdue task counts and segmented task progress. Search and status controls are available under Filters.
+The table displays named statuses, long dates, overdue task counts and segmented
+task progress. Search and status controls are available under **Filters**.
+The displayed **Planned** status corresponds to `TO_DO` in the database.
