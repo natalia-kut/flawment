@@ -4,6 +4,7 @@ import Link from "next/link";
 import CreateTaskForm from "./create-task-form";
 import ProjectTaskList from "./project-task-list";
 import ProjectStages from "./project-stages";
+import ProjectBrowser from "./project-browser";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, type ReactNode, type FormEventHandler } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
@@ -72,7 +73,7 @@ function ProjectDialog({ title, description, onClose, children }: {
   </dialog>;
 }
 
-export default function ProjectsView({ projects }: { projects: WorkspaceProject[] }) {
+export default function ProjectsView({ projects, today }: { projects: WorkspaceProject[]; today: string }) {
   const router = useRouter();
   const search = useSearchParams();
   const selected = search.get("project");
@@ -91,15 +92,11 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
 
     {!selected ? <>
       <header className="page-header projects-page-heading">
-        <div><h1>Projects</h1><p>A place for every idea. Choose a project to pick up where you left off.</p></div>
+        <div><p className="eyebrow">MANAGE</p><h1>Projects</h1></div>
         <button className="primary-button" onClick={() => setModal("create")}><span aria-hidden="true">+</span> New project</button>
       </header>
       {projects.length === 0 ? <section className="project-empty-state"><span aria-hidden="true">↗</span><h2>Make room for your next idea</h2><p>Create a project and bring your team together.</p><button className="primary-button" onClick={() => setModal("create")}>Create your first project</button></section> :
-        <div className="project-browser-grid">{projects.map((item) => <Link href={`/?project=${item.id}`} key={item.id} className="project-browser-card">
-          <div className="project-card-topline"><span className="role-badge">{item.status.replaceAll("_", " ")}</span><span aria-hidden="true">↗</span></div>
-          <h2>{item.name}</h2><p>{item.description || "Your next chapter starts here."}</p>
-          <div className="project-card-meta"><span>{item.members.length} {item.members.length === 1 ? "member" : "members"}</span><span>{item.role?.replaceAll("_", " ")}</span></div>
-        </Link>)}</div>}
+        <ProjectBrowser projects={projects} today={today} />}
     </> : !project ? <section className="project-empty-state"><h1>Project unavailable</h1><p>This project was deleted or you no longer have access.</p><Link href="/" className="secondary-button">Back to projects</Link></section> : <>
       <header className="page-header projects-page-heading"><div><h1>{project.name}</h1><p>{project.description || "Add a description to tell your team what this project is about."}</p></div>
         {project.canEdit && <button className="secondary-button" onClick={() => setModal("edit")}>Edit project</button>}

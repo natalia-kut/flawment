@@ -297,3 +297,15 @@ start without a stage. Do not reset the database.
 Manual check: create Planning, assign a task to it, filter by Planning, rename
 the stage, then delete it. The task must remain visible with No stage.
 Tests cover permissions, project boundaries, validation, assignment and deletion.
+
+### Project browser
+
+Projects are displayed in a table with deadline, status, task completion and
+member count. Search names and descriptions, combine with a status filter, or
+enable Show archived. Selecting the Archived status also reveals archived
+projects. Clear filters restores the default view, which excludes archived items.
+
+Completion is calculated from task statuses: completed tasks divided by all
+non-cancelled tasks. A project without active tasks shows 0%. Project status
+remains an independently managed value. Click a project name to open its details.
+The project table follows the mockup: named statuses, long dates, overdue task counts and segmented task progress. Search and status controls are available under Filters.
