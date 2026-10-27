@@ -88,6 +88,7 @@ model Project {
 
   memberships        ProjectMembership[]
   tasks              Task[]
+  stages             ProjectStage[]
   document_templates DocumentTemplate[]
 
   created_at DateTime @default(now())
@@ -102,6 +103,9 @@ model Task {
   project_id Int
   project    Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
 
+  stage_id Int?
+  stage ProjectStage? @relation(fields: [stage_id], references: [id], onDelete: SetNull)
+
   assigned_to Int?
   assignee    User? @relation("TaskAssignee", fields: [assigned_to], references: [id], onDelete: SetNull)
 
@@ -114,6 +118,7 @@ model Task {
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+  @@index([stage_id])
 }
 
 model ProjectMembership {
@@ -150,5 +155,20 @@ model DocumentTemplate {
   updated_at DateTime @updatedAt
 
   @@index([owner_id])
+  @@index([project_id])
+}
+
+model ProjectStage {
+  id          Int      @id @default(autoincrement())
+  project_id  Int
+  project     Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  deadline    DateTime? @db.Date
+  tasks       Task[]
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@unique([project_id, name])
   @@index([project_id])
 }

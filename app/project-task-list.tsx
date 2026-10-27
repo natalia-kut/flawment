@@ -13,7 +13,7 @@ export default function ProjectTaskList({ project, onCreate, onEdit }: {
 }) {
   const [filters, setFilters] = useState<TaskFilters>({ ...emptyTaskFilters });
   const tasks = filterTasks(project.tasks, filters);
-  const hasFilters = filters.query.trim() !== "" || !!filters.status || !!filters.priority || !!filters.assignee;
+  const hasFilters = filters.query.trim() !== "" || !!filters.status || !!filters.priority || !!filters.assignee || !!filters.stage;
   const assignees = Array.from(new Map(project.tasks.map((task) =>
     [taskAssigneeKey(task), task.assigneeName] as const
   ))).filter(([key]) => key !== "unassigned")
@@ -38,6 +38,10 @@ export default function ProjectTaskList({ project, onCreate, onEdit }: {
           <input type="search" placeholder="Search title or description" value={filters.query}
             onChange={(event) => update("query", event.target.value)} />
         </label>
+        <label>Stage<select value={filters.stage} onChange={(event) => update("stage", event.target.value)}>
+          <option value="">All stages</option><option value="none">No stage</option>
+          {project.stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+        </select></label>
         <label>Status
           <select value={filters.status} onChange={(event) => update("status", event.target.value)}>
             <option value="">All statuses</option>
@@ -79,6 +83,7 @@ export default function ProjectTaskList({ project, onCreate, onEdit }: {
               <DeleteTaskForm projectId={project.id} taskId={task.id} title={task.title} />
             </div>}
           </div>
+          <p>Stage: {task.stageName}</p>
           {task.description && <p className={styles.description}>{task.description}</p>}
           <dl className={styles.facts}>
             <div><dt>Status</dt><dd>{task.status.replaceAll("_", " ")}</dd></div>

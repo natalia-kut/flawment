@@ -34,3 +34,10 @@ test("clearing filters restores all tasks without modifying data or order", () =
   assert.deepEqual(tasks, snapshot);
   assert.deepEqual(filterTasks([], emptyTaskFilters), []);
 });
+
+test("stage filters combine with search and distinguish tasks without stages", () => {
+  const staged = tasks.map((task) => ({ ...task, stageId: task.id === 1 ? 10 : null }));
+  assert.deepEqual(filterTasks(staged, { ...emptyTaskFilters, stage: "10", query: "report" }).map((task) => task.id), [1]);
+  assert.deepEqual(filterTasks(staged, { ...emptyTaskFilters, stage: "none" }).map((task) => task.id), [2, 3, 4]);
+  assert.equal(filterTasks(staged, { ...emptyTaskFilters, stage: "999" }).length, 0);
+});

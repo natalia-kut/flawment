@@ -3,6 +3,7 @@ export type TaskFilters = {
   status: string;
   priority: string;
   assignee: string;
+  stage: string;
 };
 
 type FilterableTask = {
@@ -12,10 +13,11 @@ type FilterableTask = {
   priority: string;
   assignedTo: number | null;
   assigneeName: string;
+  stageId?: number | null;
 };
 
 export const emptyTaskFilters: TaskFilters = {
-  query: "", status: "", priority: "", assignee: "",
+  query: "", status: "", priority: "", assignee: "", stage: "",
 };
 
 export function taskAssigneeKey(task: Pick<FilterableTask, "assignedTo" | "assigneeName">) {
@@ -30,6 +32,7 @@ export function filterTasks<T extends FilterableTask>(tasks: readonly T[], filte
       (task.description ?? "").toLowerCase().includes(query)) &&
     (!filters.status || task.status === filters.status) &&
     (!filters.priority || task.priority === filters.priority) &&
-    (!filters.assignee || taskAssigneeKey(task) === filters.assignee)
+    (!filters.assignee || taskAssigneeKey(task) === filters.assignee) &&
+    (!filters.stage || (filters.stage === "none" ? task.stageId == null : String(task.stageId) === filters.stage))
   );
 }
