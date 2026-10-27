@@ -29,6 +29,8 @@ async function saveTask(actor: Actor, data: FormData, editing: boolean) {
   const status = editing ? text(data, "status") as TaskStatus : "TO_DO";
   if (!taskStatuses.includes(status)) throw new TaskError("Choose a valid task status.");
   const projectId = recordId(text(data, "project_id"));
+  const stageValue = text(data, "stage_id");
+  const stageId = stageValue ? recordId(stageValue) : null;
   const title = text(data, "title");
   const description = text(data, "description");
   const priority = text(data, "priority") as TaskPriority;
@@ -65,7 +67,11 @@ async function saveTask(actor: Actor, data: FormData, editing: boolean) {
         throw new TaskError("Choose an active project member.");
       }
     }
+    if (stageId !== null && !await tx.projectStage.findFirst({ where: { id: stageId, project_id: projectId }, select: { id: true } })) {
+      throw new TaskError("Choose a stage from this project.");
+    }
     const values = {
+      stage_id: stageId,
       title, description: description || null, priority,
       deadline: deadline ? new Date(deadline) : null,
       assigned_to: assignedTo, status,

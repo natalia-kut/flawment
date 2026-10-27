@@ -8,6 +8,7 @@ export default function CreateTaskForm({ project, task, onCancel, onSuccess }: {
   project: WorkspaceProject; task?: WorkspaceProject["tasks"][number]; onCancel: () => void; onSuccess: () => void;
 }) {
   const [fields, setFields] = useState({
+    stage_id: task?.stageId?.toString() ?? "",
     title: task?.title ?? "", description: task?.description ?? "",
     priority: task?.priority ?? "MEDIUM", deadline: task?.deadline ?? "",
     assigned_to: task?.assignedTo?.toString() ?? "", status: task?.status ?? "TO_DO",
@@ -29,6 +30,10 @@ export default function CreateTaskForm({ project, task, onCancel, onSuccess }: {
       {task && <label>Status<select name="status" value={fields.status} onChange={(e) => update("status", e.target.value)}>
         {["TO_DO", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "CANCELLED"].map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}
       </select></label>}
+      <label>Stage<select name="stage_id" value={fields.stage_id} onChange={(e) => update("stage_id", e.target.value)}>
+        <option value="">No stage</option>
+        {project.stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
+      </select></label>
       <label>Priority<select name="priority" value={fields.priority} onChange={(e) => update("priority", e.target.value)}>
         {["LOW", "MEDIUM", "HIGH", "URGENT"].map((priority) => <option key={priority} value={priority}>{priority}</option>)}
       </select></label>

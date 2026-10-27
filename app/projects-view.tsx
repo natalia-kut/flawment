@@ -3,6 +3,7 @@
 import Link from "next/link";
 import CreateTaskForm from "./create-task-form";
 import ProjectTaskList from "./project-task-list";
+import ProjectStages from "./project-stages";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, type ReactNode, type FormEventHandler } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
@@ -103,6 +104,7 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
       <header className="page-header projects-page-heading"><div><h1>{project.name}</h1><p>{project.description || "Add a description to tell your team what this project is about."}</p></div>
         {project.canEdit && <button className="secondary-button" onClick={() => setModal("edit")}>Edit project</button>}
       </header>
+      <ProjectStages key={"stages-" + project.id} project={project} />
       <ProjectTaskList key={project.id} project={project}
         onCreate={() => { setEditingTaskId(null); setModal("task"); }}
         onEdit={(id) => { setModal(null); setEditingTaskId(id); }} />

@@ -76,12 +76,17 @@ export default function TasksOverview({ projects, currentUserId, today }: {
         <button aria-pressed={groupBy === "project"} onClick={() => setGroupBy("project")}>By project</button>
         <button aria-pressed={groupBy === "person"} onClick={() => setGroupBy("person")}>By participant</button>
       </div>
-      <label>Project<select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+      <label>Project<select value={projectId} onChange={(e) => { setProjectId(e.target.value); update("stage", ""); }}>
         <option value="">All projects</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
       </select></label>
       <label>Participant<select value={filters.assignee} onChange={(e) => update("assignee", e.target.value)}>
         <option value="">All participants</option><option value="unassigned">Unassigned</option>
         {assignees.map(([key, name]) => <option key={key} value={key}>{name}</option>)}
+      </select></label>
+      <label>Stage<select value={filters.stage} onChange={(e) => update("stage", e.target.value)}>
+        <option value="">All stages</option><option value="none">No stage</option>
+        {projects.filter((project) => !projectId || String(project.id) === projectId).flatMap((project) =>
+          project.stages.map((stage) => <option key={stage.id} value={stage.id}>{project.name} · {stage.name}</option>))}
       </select></label>
       <label>Priority<select value={filters.priority} onChange={(e) => update("priority", e.target.value)}>
         <option value="">Any priority</option>{["LOW", "MEDIUM", "HIGH", "URGENT"].map((value) => <option key={value}>{value}</option>)}
@@ -148,6 +153,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
     {detailsTask && <TaskDetailsDialog title={detailsTask.title} onClose={() => setDetailsId(null)}>
       <p>{detailsTask.description || "No description"}</p>
       <dl className={styles.detailsFacts}>
+        <div><dt>Stage</dt><dd>{detailsTask.stageName}</dd></div>
         <div><dt>Project</dt><dd>{detailsTask.projectName}</dd></div>
         <div><dt>Assigned to</dt><dd>{detailsTask.assigneeName}</dd></div>
         <div><dt>Priority</dt><dd>{detailsTask.priority}</dd></div>

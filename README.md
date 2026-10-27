@@ -276,3 +276,24 @@ The Cancelled column appears for groups that contain cancelled tasks.
 Manual check: move a disposable task from TO DO to IN PROGRESS, refresh and
 confirm the saved status. Check By participant, Only my tasks and Overdue.
 Use the Move to select as a keyboard alternative and check a participant account.
+
+### Project stages
+
+Project details now include **Stages**. Project admins, managers and super admins
+can create, edit and delete a stage with a name, description and optional deadline.
+Participants can read stages. Names are checked for duplicates within the project.
+Stage cards show the number of completed tasks and total tasks assigned.
+
+The task create/edit dialog includes **Stage**. A task can belong to one stage
+from the same project, or **No stage**. Filter tasks by stage in both project task
+lists and the workspace board. Task details show the stage without enlarging
+board cards. Deleting a stage preserves its tasks and clears their stage link.
+
+After pulling these changes, run npm run bootstrap (or npm run db:deploy followed
+by npm run db:generate for an already installed environment). The committed
+migration adds ProjectStage and a nullable task stage reference; existing tasks
+start without a stage. Do not reset the database.
+
+Manual check: create Planning, assign a task to it, filter by Planning, rename
+the stage, then delete it. The task must remain visible with No stage.
+Tests cover permissions, project boundaries, validation, assignment and deletion.
