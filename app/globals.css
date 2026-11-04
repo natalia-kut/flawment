@@ -614,3 +614,27 @@ h1 {
 @media (min-width: 1280px) {
   .app-shell:has(.projects-workspace) > .main-content { width: auto; flex: 1; max-width: none; margin: 0; padding: 52px clamp(40px, 5.5vw, 108px) 60px; min-width: 0; }
 }
+
+/* Account profiles and project-specific skills */
+.user-avatar { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 50%; overflow: hidden; background: #f2e4d6; color: #825335; font-size: 13px; font-weight: 700; }
+.user-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+a.sidebar-profile { color: inherit; text-decoration: none; border-radius: 7px; padding: 4px; }
+a.sidebar-profile:hover { background: #493429; }
+.profile-editor { max-width: 760px; }
+.profile-heading { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; overflow-wrap: anywhere; }
+.profile-heading h2 { margin-bottom: 6px; }
+.profile-heading p { margin: 0; }
+.workspace-form .checkbox-label { display: flex; align-items: center; gap: 10px; }
+.workspace-form .checkbox-label input { width: auto; }
+.field-help { font-size: 13px; margin: 0; color: var(--muted); line-height: 1.5; }
+.specialization-badge { display: inline-block; padding: 4px 7px; border-radius: 4px; background: #e2efe8; color: #2f6647; font-size: 11px; font-weight: 600; margin-left: 6px; }
+.workspace-card details.member-bio { padding-top: 8px; margin-top: 6px; border: 0; }
+.member-bio summary { font-size: 12px; color: #8d4c2b; }
+.member-bio p { max-width: 520px; white-space: pre-wrap; font-size: 14px; }
+.project-overview-sidebar { display: grid; gap: 24px; }
+.project-specializations > p { font-size: 13px; }
+.specialization-list { list-style: none; padding: 0; }
+.specialization-list > li { padding: 12px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; font-size: 14px; }
+.specialization-list details { margin-top: 8px; border: 0; padding-top: 0; }
+.specialization-form { max-width: 100%; font-size: 13px; }
+@media (max-width: 560px) { .profile-heading { align-items: start; flex-direction: column; } }

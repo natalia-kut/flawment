@@ -338,3 +338,44 @@ remains an independently managed value. Click a project name to open its details
 The table displays named statuses, long dates, overdue task counts and segmented
 task progress. Search and status controls are available under **Filters**.
 The displayed **Planned** status corresponds to `TO_DO` in the database.
+
+### User profiles and project specializations
+
+Open **Profile** in the sidebar (or click your name/photo in the footer) to edit
+an account-wide description and upload or remove a profile photo. Descriptions
+are limited to 2000 characters. Photos accept non-animated JPEG, PNG or WebP,
+up to 2 MB and 16 megapixels. The server decodes the image, removes metadata,
+crops/resizes it to a square of at most 512 pixels, and encodes WebP. The result
+is stored in `User.photo`, a PostgreSQL `BYTEA` column (Prisma `Bytes`). Photo
+bytes are never included in workspace JSON or session data.
+
+Photos appear in the sidebar, profile editor and project People list. Expand
+**About** on a member to read their description. The authenticated photo endpoint
+allows only the owner, a teammate sharing a project, or a super admin. It uses
+private, non-cached responses and does not expose super-admin photos to standard
+users. Removing a member also removes their photo access unless they still share
+another project with that person.
+
+Each project has its own **Specializations** panel. Project admins and super
+admins can create, rename and delete specializations, and use **Assign
+specialization** on any standard member (including the project owner). Each
+membership has one optional specialization; choose **No specialization** to
+clear it. A person can be Backend in one project and Frontend in another.
+Names must be 1–80 characters and unique within a project, ignoring letter case
+and repeated whitespace. Managers and participants can view specializations but
+cannot manage them. Specializations do not grant permissions or change RBAC roles.
+
+Deleting a specialization clears its assignments and preserves memberships.
+Deleting a project removes its specializations. A composite database foreign key
+also prevents assigning a specialization from another project.
+
+For existing installations, stop the dev server, run `npm install`,
+`npm run db:deploy` and `npm run db:generate`, then restart `npm run dev`.
+`npm run bootstrap` includes the migration and generation for fresh installations.
+The migration adds nullable profile/assignment fields and preserves existing data.
+
+Verification: run `npm test`, `npm run test:integration` and `npm run lint`.
+For the UI, upload/remove a photo, edit your description, create Backend in a
+project, assign it to a member and inspect their profile as a teammate. Sign in
+as a manager to check that specialization management is unavailable. Assign a
+different specialization to the same user in another project to check isolation.

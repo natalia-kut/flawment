@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: { serverActions: { bodySizeLimit: "3mb" } },
   turbopack: {
     rules: {
       // Tailwind processes the global entry only; CSS Modules use Next.js handling.

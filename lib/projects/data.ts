@@ -8,6 +8,8 @@ const person = {
   first_name: true,
   last_name: true,
   email: true,
+  description: true,
+  photo_updated_at: true,
 } as const;
 
 export async function getWorkspaceProjects() {
@@ -17,6 +19,7 @@ export async function getWorkspaceProjects() {
     where: visibleProjects(user),
     orderBy: { created_at: "desc" },
     include: {
+      specializations: { orderBy: { name: "asc" } },
       stages: { orderBy: [{ created_at: "asc" }, { id: "asc" }] },
       memberships: {
         where:
@@ -74,8 +77,14 @@ export async function getWorkspaceProjects() {
         canManage: manage,
         canManageTasks: can(role, "tasks:manage", user.role),
         canAssignRoles: can(role, "members:roles", user.role),
+        canManageSpecializations: can(role, "specializations:manage", user.role),
+        specializations: project.specializations.map((item) => ({ id: item.id, name: item.name })),
         members: project.memberships.map((m) => ({
-          ...m.user,
+          id: m.user.id, first_name: m.user.first_name, last_name: m.user.last_name, email: m.user.email,
+          description: m.user.description,
+          photoVersion: m.user.photo_updated_at?.toISOString() ?? null,
+          specializationId: m.specialization_id,
+          specializationName: project.specializations.find((item) => item.id === m.specialization_id)?.name ?? null,
           role: m.role,
         })),
         eligible,

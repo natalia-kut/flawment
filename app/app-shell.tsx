@@ -4,6 +4,7 @@ import { useActionState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { logout } from "@/lib/auth/actions";
+import UserAvatar from "./user-avatar";
 
 const navigation = [
   "Dashboard",
@@ -11,6 +12,7 @@ const navigation = [
   "Team",
   "Tasks",
   "Documents",
+  "Profile",
 ] as const;
 
 type NavigationItem = (typeof navigation)[number];
@@ -25,9 +27,9 @@ function SignOut() {
   </form>;
 }
 
-export default function AppShell({ documents, projects, tasks, user, projectCount }: {
-  documents: ReactNode; projects: ReactNode; tasks: ReactNode; projectCount: number;
-  user: { first_name: string; last_name: string; role: string };
+export default function AppShell({ documents, projects, tasks, profile, user, projectCount }: {
+  documents: ReactNode; projects: ReactNode; tasks: ReactNode; profile: ReactNode; projectCount: number;
+  user: { id: number; first_name: string; last_name: string; role: string; photoVersion: string | null };
 }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -64,18 +66,16 @@ export default function AppShell({ documents, projects, tasks, user, projectCoun
           ))}
         </nav>
         <div className="sidebar-footer">
-          <div className="sidebar-profile">
-          <span className="avatar" aria-hidden="true">
-            {user.first_name.slice(0, 1)}
-          </span>
+          <Link href="/?view=profile" className="sidebar-profile" aria-label="Edit your profile">
+          <UserAvatar id={user.id} firstName={user.first_name} lastName={user.last_name} photoVersion={user.photoVersion} size={36} />
           <span className="profile-name">{user.first_name} {user.last_name}<small>{user.role === "SUPER_ADMIN" ? "Super admin" : "Standard user"}</small></span>
-          </div>
+          </Link>
           <SignOut />
         </div>
       </aside>
 
       <main className="main-content">
-        {activePage === "Documents" ? (
+        {activePage === "Profile" ? profile : activePage === "Documents" ? (
           documents
         ) : activePage === "Tasks" ? tasks : activePage === "Projects" ? projects : activePage === "Dashboard" ? (
           <><header className="page-header"><h1>Welcome, {user.first_name}</h1></header>

@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth/session";
 import { getWorkspaceProjects } from "@/lib/projects/data";
 import ProjectsView from "./projects-view";
 import TasksOverview from "./tasks-overview";
+import ProfileSection from "./profile-section";
 
 async function Workspace() {
   const user = await requireUser();
@@ -12,6 +13,7 @@ async function Workspace() {
   return (
     <AppShell
       user={user}
+      profile={<ProfileSection />}
       projectCount={projects.length}
       tasks={<TasksOverview projects={projects} currentUserId={user.id} today={new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())} />}
       projects={<ProjectsView projects={projects} today={new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())} />}

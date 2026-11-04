@@ -5,6 +5,8 @@ import CreateTaskForm from "./create-task-form";
 import ProjectTaskList from "./project-task-list";
 import ProjectStages from "./project-stages";
 import ProjectBrowser from "./project-browser";
+import UserAvatar from "./user-avatar";
+import ProjectSpecializations, { MemberSpecialization } from "./project-specializations";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, type ReactNode, type FormEventHandler } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
@@ -110,7 +112,11 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
           <div className="section-heading"><div><h2>People <span className="role-badge">{project.members.length}</span></h2><p>The team making it happen.</p></div>{project.canManage && <button className="primary-button" onClick={() => setModal("add")}>Add member</button>}</div>
           {project.members.length === 0 && <p>No team members yet.</p>}
           <ul className="member-list">{project.members.map((member) => <li key={member.id}>
-            <div className="member-identity"><span className="member-avatar" aria-hidden="true">{member.first_name.slice(0, 1)}{member.last_name.slice(0, 1)}</span><div><strong>{member.first_name} {member.last_name}</strong><small>{member.email}</small><span className="role-badge">{member.role}{member.id === project.owner_id ? " · Owner" : ""}</span></div></div>
+            <div className="member-identity"><UserAvatar id={member.id} firstName={member.first_name} lastName={member.last_name} photoVersion={member.photoVersion} /><div><strong>{member.first_name} {member.last_name}</strong><small>{member.email}</small><span className="role-badge">{member.role}{member.id === project.owner_id ? " · Owner" : ""}</span>
+              {member.specializationName && <span className="specialization-badge">{member.specializationName}</span>}
+              <details className="member-bio"><summary>About</summary><p>{member.description || "No description yet."}</p></details>
+              {project.canManageSpecializations && <details className="member-bio"><summary>Assign specialization</summary><MemberSpecialization project={project} member={member} /></details>}
+            </div></div>
             {project.canManage && member.id !== project.owner_id && (project.canAssignRoles || member.role === "PARTICIPANT") && <details className="member-settings"><summary>Manage</summary><div className="member-controls">
               {project.canAssignRoles && <ChangeForm operation="role" projectId={project.id} className="compact-form"><input type="hidden" name="user_id" value={member.id} /><RoleSelect elevated value={member.role} /><button className="secondary-button">Save role</button></ChangeForm>}
               <ChangeForm operation="remove" projectId={project.id} className="compact-form" onSubmit={(event) => { if (!window.confirm(`Remove ${member.first_name} from this project?`)) event.preventDefault(); }}>
@@ -120,6 +126,7 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
           </li>)}</ul>
         </section>
         <aside className="project-overview-sidebar">
+          <ProjectSpecializations project={project} />
           <section className="workspace-card project-facts"><h2>At a glance</h2><dl><div><dt>Status</dt><dd>{project.status.replaceAll("_", " ")}</dd></div><div><dt>Start date</dt><dd>{project.start_date}</dd></div><div><dt>End date</dt><dd>{project.end_date || "No deadline"}</dd></div><div><dt>Your role</dt><dd>{project.role?.replaceAll("_", " ")}</dd></div></dl></section>
           {project.canDelete && <details className="project-danger-zone"><summary>Project settings</summary><p>Deleting this project also deletes its tasks and memberships.</p><ChangeForm operation="delete" projectId={project.id} onSuccess={() => router.push("/")} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}><button className="danger-button">Delete project</button></ChangeForm></details>}
         </aside>
