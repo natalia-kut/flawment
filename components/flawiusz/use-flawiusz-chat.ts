@@ -32,6 +32,7 @@ type Message = {
 // model of them on later turns (it needs the id or the sections to change them).
 function historyContent(message: Message) {
   const notes = message.templates.map((template) => `\n[Saved template "${template.name}" (${template.id})]`);
+  if (message.chosenProjectId !== undefined) notes.push(`\n[Chose project_id ${message.chosenProjectId}]`);
   if (message.projectChoices.length > 0) {
     const choices = message.projectChoices.map((project) => `"${project.name}" = project_id ${project.id}`);
     notes.push(`\n[Showed project buttons: ${choices.join("; ")}; "All my projects" = project_id null]`);

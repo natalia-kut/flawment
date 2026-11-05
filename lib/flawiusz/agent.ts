@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { llmConfig, streamCompletion, type ChatMessage, type ToolSpec } from "./llm";
-import { randomBusyPhrase, unavailableMessage } from "./phrases";
+import { randomBusyPhrase, stuckMessage, unavailableMessage } from "./phrases";
 import { systemPrompt } from "./prompt";
 import { flawiuszTools, runTool, type ProjectChoice, type TemplateProposal, type ToolContext } from "./tools/tool-list";
 
@@ -17,7 +17,8 @@ export type AgentEvent =
   | { type: "projects"; projects: ProjectChoice[] }
   | { type: "error"; message: string };
 
-const maxSteps = 10;
+// Failsafe: ends the turn if the model keeps repeating the same tool call.
+const maxIdenticalCalls = 3;
 
 const toolSpecs: ToolSpec[] = flawiuszTools.map((tool) => ({
   type: "function",
@@ -37,27 +38,18 @@ export async function runFlawiusz(
     return;
   }
 
-  const messages: ChatMessage[] = [{ role: "system", content: systemPrompt(context.chosenProjectId) }, ...conversation];
+  const messages: ChatMessage[] = [{ role: "system", content: systemPrompt }, ...conversation];
+  const callCounts = new Map<string, number>();
   let wroteText = false;
 
-  for (let step = 0; step < maxSteps; step++) {
+  for (;;) {
     emit({ type: "status", label: randomBusyPhrase() });
-
-    // On the last step, take the tools away so the model has to wrap up in the user's language.
-    const lastStep = step === maxSteps - 1;
-    if (lastStep) {
-      // A user turn, since some chat templates reject a system message mid-conversation.
-      messages.push({
-        role: "user",
-        content: "(Automatic note) You have used all your steps. Answer now with what you have, and say what is still unfinished.",
-      });
-    }
 
     let startedStep = false;
     const reply = await streamCompletion(
       config,
       messages,
-      lastStep ? [] : toolSpecs,
+      toolSpecs,
       (text) => {
         // Separate text written before and after tool calls.
         if (!startedStep && wroteText) text = `\n\n${text}`;
@@ -67,11 +59,20 @@ export async function runFlawiusz(
       signal,
     );
 
-    if (reply.toolCalls.length === 0 || lastStep) return;
-    messages.push({ role: "assistant", content: reply.content, tool_calls: reply.toolCalls });
+    if (reply.toolCalls.length === 0) return;
+    messages.push({ role: "assistant", content: reply.content, reasoning: reply.reasoning, tool_calls: reply.toolCalls });
     let question: string | undefined;
 
     for (const call of reply.toolCalls) {
+      const signature = `${call.function.name}:${call.function.arguments}`;
+      const count = (callCounts.get(signature) ?? 0) + 1;
+      if (count > maxIdenticalCalls) {
+        console.error(`Flawiusz stopped: ${call.function.name} called more than ${maxIdenticalCalls} times with the same arguments.`);
+        emit({ type: "error", message: stuckMessage });
+        return;
+      }
+      callCounts.set(signature, count);
+
       const tool = flawiuszTools.find((candidate) => candidate.name === call.function.name);
       emit({ type: "status", label: tool?.status ?? "Working…" });
 

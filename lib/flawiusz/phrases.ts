@@ -14,3 +14,5 @@ export function randomBusyPhrase() {
 }
 
 export const unavailableMessage = "Flawiusz is unavailable right now. Please try again later.";
+
+export const stuckMessage = "Flawiusz got stuck and stopped. Please try rephrasing your request.";

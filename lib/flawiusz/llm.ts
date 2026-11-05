@@ -4,7 +4,7 @@ export type ToolCall = { id: string; type: "function"; function: { name: string;
 
 export type ChatMessage =
   | { role: "system" | "user"; content: string }
-  | { role: "assistant"; content: string; tool_calls?: ToolCall[] }
+  | { role: "assistant"; content: string; reasoning?: string; tool_calls?: ToolCall[] }
   | { role: "tool"; tool_call_id: string; content: string };
 
 export type ToolSpec = {
@@ -25,19 +25,11 @@ type StreamChunk = {
   choices?: {
     delta?: {
       content?: string | null;
+      reasoning?: string | null;
       tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string } }[];
     };
   }[];
 };
-
-// Some models write their reasoning inline as <think>…</think>; hide it, and hold
-// back a half-received "<think" so it never flashes in the chat.
-function visibleText(content: string) {
-  return content
-    .replace(/<think>[\s\S]*?(<\/think>|$)/g, "")
-    .replace(/<\/?t?h?i?n?k?$/, "")
-    .trimStart();
-}
 
 export async function streamCompletion(
   config: LlmConfig,
@@ -45,15 +37,14 @@ export async function streamCompletion(
   tools: ToolSpec[],
   onText: (text: string) => void,
   signal: AbortSignal,
-): Promise<{ content: string; toolCalls: ToolCall[] }> {
+): Promise<{ content: string; reasoning: string; toolCalls: ToolCall[] }> {
   const response = await fetch(`${config.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${config.apiKey}`,
     },
-    // Some servers reject an empty tools list, so leave it out instead.
-    body: JSON.stringify({ model: config.model, messages, tools: tools.length > 0 ? tools : undefined, stream: true }),
+    body: JSON.stringify({ model: config.model, messages, tools, stream: true }),
     signal,
   });
   if (!response.ok || !response.body) {
@@ -61,7 +52,7 @@ export async function streamCompletion(
   }
 
   let content = "";
-  let emitted = "";
+  let reasoning = "";
   const calls: { id: string; name: string; arguments: string }[] = [];
 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -89,13 +80,10 @@ export async function streamCompletion(
       const delta = chunk.choices?.[0]?.delta;
       if (!delta) continue;
 
+      if (delta.reasoning) reasoning += delta.reasoning;
       if (delta.content) {
         content += delta.content;
-        const visible = visibleText(content);
-        if (visible.startsWith(emitted) && visible.length > emitted.length) {
-          onText(visible.slice(emitted.length));
-          emitted = visible;
-        }
+        onText(delta.content);
       }
 
       for (const part of delta.tool_calls ?? []) {
@@ -108,7 +96,8 @@ export async function streamCompletion(
   }
 
   return {
-    content: visibleText(content),
+    content,
+    reasoning,
     toolCalls: calls
       .filter((call) => call.name)
       .map((call, index) => ({
