@@ -17,6 +17,7 @@ export async function getWorkspaceProjects() {
     where: visibleProjects(user),
     orderBy: { created_at: "desc" },
     include: {
+      stages: { orderBy: [{ created_at: "asc" }, { id: "asc" }] },
       memberships: {
         where:
           user.role === "SUPER_ADMIN"
@@ -34,6 +35,9 @@ export async function getWorkspaceProjects() {
           status: true,
           priority: true,
           deadline: true,
+          assigned_to: true,
+          stage_id: true,
+          stage: { select: { name: true } },
           assignee: {
             select: {
               first_name: true,
@@ -75,12 +79,22 @@ export async function getWorkspaceProjects() {
           role: m.role,
         })),
         eligible,
+        stages: project.stages.map((stage) => ({
+          id: stage.id, name: stage.name, description: stage.description,
+          deadline: stage.deadline?.toISOString().slice(0, 10) ?? "",
+          taskCount: project.tasks.filter((task) => task.stage_id === stage.id).length,
+          doneCount: project.tasks.filter((task) => task.stage_id === stage.id && task.status === "COMPLETED").length,
+        })),
         tasks: project.tasks.map((task) => ({
           id: task.id,
           title: task.title,
+          canChangeStatus: can(role, "tasks:manage", user.role) || (task.assigned_to === user.id && can(role, "tasks:update-assigned", user.role)),
           description: task.description,
           status: task.status,
           priority: task.priority,
+          stageId: task.stage_id,
+          stageName: task.stage?.name ?? "No stage",
+          assignedTo: task.assignee?.role === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN" ? null : task.assigned_to,
           deadline: task.deadline?.toISOString().slice(0, 10) ?? "",
           assigneeName: task.assignee
             ? task.assignee.role === "SUPER_ADMIN" &&

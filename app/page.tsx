@@ -4,6 +4,7 @@ import DocumentsSection from "@/components/documents/documents-section";
 import { requireUser } from "@/lib/auth/session";
 import { getWorkspaceProjects } from "@/lib/projects/data";
 import ProjectsView from "./projects-view";
+import TasksOverview from "./tasks-overview";
 
 async function Workspace() {
   const user = await requireUser();
@@ -12,7 +13,8 @@ async function Workspace() {
     <AppShell
       user={user}
       projectCount={projects.length}
-      projects={<ProjectsView projects={projects} />}
+      tasks={<TasksOverview projects={projects} currentUserId={user.id} today={new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())} />}
+      projects={<ProjectsView projects={projects} today={new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())} />}
       documents={
         <Suspense fallback={<p className="documents-loading">Loading project data…</p>}>
           <DocumentsSection />

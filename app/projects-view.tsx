@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import CreateTaskForm from "./create-task-form";
+import ProjectTaskList from "./project-task-list";
+import ProjectStages from "./project-stages";
+import ProjectBrowser from "./project-browser";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, type ReactNode, type FormEventHandler } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
@@ -70,78 +73,38 @@ function ProjectDialog({ title, description, onClose, children }: {
   </dialog>;
 }
 
-export default function ProjectsView({ projects }: { projects: WorkspaceProject[] }) {
+export default function ProjectsView({ projects, today }: { projects: WorkspaceProject[]; today: string }) {
   const router = useRouter();
   const search = useSearchParams();
   const selected = search.get("project");
   const project = projects.find((p) => String(p.id) === selected);
   const [modal, setModal] = useState<"create" | "edit" | "add" | "task" | null>(null);
-  const close = () => setModal(null);
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const editingTask = project?.tasks.find((task) => task.id === editingTaskId);
+  const close = () => { setModal(null); setEditingTaskId(null); };
   return <div className="projects-workspace">
     {selected && <nav className="project-breadcrumbs" aria-label="Breadcrumb">
       <ol>
-        <li><Link href="/">Projects</Link></li>
+        <li><Link href="/?view=projects">Projects</Link></li>
         <li><span className="breadcrumb-separator" aria-hidden="true">/</span><span aria-current="page">{project?.name ?? "Unavailable project"}</span></li>
       </ol>
     </nav>}
 
     {!selected ? <>
       <header className="page-header projects-page-heading">
-        <div><h1>Projects</h1><p>A place for every idea. Choose a project to pick up where you left off.</p></div>
+        <div><p className="eyebrow">MANAGE</p><h1>Projects</h1></div>
         <button className="primary-button" onClick={() => setModal("create")}><span aria-hidden="true">+</span> New project</button>
       </header>
       {projects.length === 0 ? <section className="project-empty-state"><span aria-hidden="true">↗</span><h2>Make room for your next idea</h2><p>Create a project and bring your team together.</p><button className="primary-button" onClick={() => setModal("create")}>Create your first project</button></section> :
-        <div className="project-browser-grid">{projects.map((item) => <Link href={`/?project=${item.id}`} key={item.id} className="project-browser-card">
-          <div className="project-card-topline"><span className="role-badge">{item.status.replaceAll("_", " ")}</span><span aria-hidden="true">↗</span></div>
-          <h2>{item.name}</h2><p>{item.description || "Your next chapter starts here."}</p>
-          <div className="project-card-meta"><span>{item.members.length} {item.members.length === 1 ? "member" : "members"}</span><span>{item.role?.replaceAll("_", " ")}</span></div>
-        </Link>)}</div>}
-    </> : !project ? <section className="project-empty-state"><h1>Project unavailable</h1><p>This project was deleted or you no longer have access.</p><Link href="/" className="secondary-button">Back to projects</Link></section> : <>
+        <ProjectBrowser projects={projects} today={today} />}
+    </> : !project ? <section className="project-empty-state"><h1>Project unavailable</h1><p>This project was deleted or you no longer have access.</p><Link href="/?view=projects" className="secondary-button">Back to projects</Link></section> : <>
       <header className="page-header projects-page-heading"><div><h1>{project.name}</h1><p>{project.description || "Add a description to tell your team what this project is about."}</p></div>
         {project.canEdit && <button className="secondary-button" onClick={() => setModal("edit")}>Edit project</button>}
       </header>
-      <section className="workspace-card">
-  <div className="section-heading">
-    <div>
-      <h2>
-        Tasks <span className="role-badge">{project.tasks.length}</span>
-      </h2>
-      <p>Work planned for this project.</p>
-    </div>
-    {project.canManageTasks && <button className="primary-button" onClick={() => setModal("task")}>+ New task</button>}
-  </div>
-
-  {project.tasks.length === 0 ? (
-    <p>No tasks yet.</p>
-  ) : (
-    <ul>
-      {project.tasks.map((task) => (
-        <li key={task.id}>
-          <h3>{task.title}</h3>
-          {task.description && <p>{task.description}</p>}
-          <dl>
-            <div>
-              <dt>Status</dt>
-              <dd>{task.status.replaceAll("_", " ")}</dd>
-            </div>
-            <div>
-              <dt>Priority</dt>
-              <dd>{task.priority}</dd>
-            </div>
-            <div>
-              <dt>Assigned to</dt>
-              <dd>{task.assigneeName}</dd>
-            </div>
-            <div>
-              <dt>Deadline</dt>
-              <dd>{task.deadline || "No deadline"}</dd>
-            </div>
-          </dl>
-        </li>
-      ))}
-    </ul>
-  )}
-</section>
+      <ProjectStages key={"stages-" + project.id} project={project} />
+      <ProjectTaskList key={project.id} project={project}
+        onCreate={() => { setEditingTaskId(null); setModal("task"); }}
+        onEdit={(id) => { setModal(null); setEditingTaskId(id); }} />
       <div className="project-detail-layout">
         <section className="workspace-card project-team" key={project.id}>
           <div className="section-heading"><div><h2>People <span className="role-badge">{project.members.length}</span></h2><p>The team making it happen.</p></div>{project.canManage && <button className="primary-button" onClick={() => setModal("add")}>Add member</button>}</div>
@@ -158,11 +121,14 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
         </section>
         <aside className="project-overview-sidebar">
           <section className="workspace-card project-facts"><h2>At a glance</h2><dl><div><dt>Status</dt><dd>{project.status.replaceAll("_", " ")}</dd></div><div><dt>Start date</dt><dd>{project.start_date}</dd></div><div><dt>End date</dt><dd>{project.end_date || "No deadline"}</dd></div><div><dt>Your role</dt><dd>{project.role?.replaceAll("_", " ")}</dd></div></dl></section>
-          {project.canDelete && <details className="project-danger-zone"><summary>Project settings</summary><p>Deleting this project also deletes its tasks and memberships.</p><ChangeForm operation="delete" projectId={project.id} onSuccess={() => router.push("/")} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}><button className="danger-button">Delete project</button></ChangeForm></details>}
+          {project.canDelete && <details className="project-danger-zone"><summary>Project settings</summary><p>Deleting this project also deletes its tasks and memberships.</p><ChangeForm operation="delete" projectId={project.id} onSuccess={() => router.push("/?view=projects")} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}><button className="danger-button">Delete project</button></ChangeForm></details>}
         </aside>
       </div>
     </>}
 
+    {editingTask && project?.canManageTasks && <ProjectDialog title="Edit task" description="Update the task details and track its progress." onClose={close}>
+      <CreateTaskForm key={editingTask.id} project={project} task={editingTask} onCancel={close} onSuccess={close} />
+    </ProjectDialog>}
     {modal === "task" && project?.canManageTasks && <ProjectDialog title="Create a task" description="Plan the next piece of work for your project." onClose={close}>
       <CreateTaskForm project={project} onCancel={close} onSuccess={close} />
     </ProjectDialog>}
@@ -180,4 +146,3 @@ export default function ProjectsView({ projects }: { projects: WorkspaceProject[
     </ProjectDialog>}
   </div>;
 }
-

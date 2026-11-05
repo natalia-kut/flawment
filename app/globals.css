@@ -607,3 +607,10 @@ h1 {
 .optional-label { font-size: 11px; font-weight: 400; color: var(--muted); }
 @media (max-width: 1100px) { .project-detail-layout { grid-template-columns: 1fr; } .project-facts dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .projects-page-heading { flex-direction: column; gap: 16px; } .project-dialog-content { padding: 20px; } .section-heading { flex-direction: column; } .sidebar-profile { font-size: 12px; } }
+
+.projects-page-heading .eyebrow { margin: 0 0 10px; color: #82766b; font-family: var(--font-geist-mono), monospace; font-size: 12px; letter-spacing: .16em; }
+.projects-page-heading:has(.eyebrow) { align-items: end; margin-bottom: 46px; }
+.projects-page-heading:has(.eyebrow) h1 { font-size: 44px; line-height: 1.1; }
+@media (min-width: 1280px) {
+  .app-shell:has(.projects-workspace) > .main-content { width: auto; flex: 1; max-width: none; margin: 0; padding: 52px clamp(40px, 5.5vw, 108px) 60px; min-width: 0; }
+}

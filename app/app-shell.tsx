@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useActionState, type ReactNode } from "react";
+import { useActionState, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { logout } from "@/lib/auth/actions";
 import Dashboard from "./dashboard";
 import { FlawiuszPanel } from "@/components/flawiusz/panel";
@@ -27,14 +29,27 @@ function SignOut() {
   </form>;
 }
 
-export default function AppShell({ documents, projects, user, projectCount }: {
-  documents: ReactNode; projects: ReactNode; projectCount: number;
+export default function AppShell({ documents, projects, tasks, user, projectCount }: {
+  documents: ReactNode; projects: ReactNode; tasks: ReactNode; projectCount: number;
   user: { first_name: string; last_name: string; role: string };
 }) {
-  const [activePage, setActivePage] = useState<NavigationItem>("Dashboard");
+  const router = useRouter();
+  const search = useSearchParams();
+  // A project link has no view of its own: project details live under Projects.
+  const activePage = search.has("project")
+    ? "Projects"
+    : navigation.find((item) => item.toLowerCase() === search.get("view")) ?? "Dashboard";
   const [chatOpen, setChatOpen] = useState(false);
   const [requestedTemplateId, setRequestedTemplateId] = useState<string | null>(null);
   const chat = useFlawiuszChat();
+
+  function setActivePage(item: NavigationItem) {
+    const params = new URLSearchParams(search.toString());
+    params.delete("project");
+    if (item === "Dashboard") params.delete("view");
+    else params.set("view", item.toLowerCase());
+    router.push(params.size ? "/?" + params.toString() : "/");
+  }
 
   function openTemplate(templateId: string) {
     setRequestedTemplateId(templateId);
@@ -45,14 +60,13 @@ export default function AppShell({ documents, projects, user, projectCount }: {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a
+        <Link
           className="brand"
-          href="#dashboard"
-          onClick={() => setActivePage("Dashboard")}
+          href="/"
           aria-label="Flawment home"
         >
           flawment<span>.</span>
-        </a>
+        </Link>
         <nav className="main-nav" aria-label="Main navigation">
           {navigation.map((item) => (
             <button
@@ -83,7 +97,7 @@ export default function AppShell({ documents, projects, user, projectCount }: {
           <RequestedTemplateContext value={requestedTemplateId} key={requestedTemplateId ?? "documents"}>
             {documents}
           </RequestedTemplateContext>
-        ) : activePage === "Projects" ? projects : activePage === "Dashboard" ? (
+        ) : activePage === "Tasks" ? tasks : activePage === "Projects" ? projects : activePage === "Dashboard" ? (
           <Dashboard
             chat={chat}
             firstName={user.first_name}
