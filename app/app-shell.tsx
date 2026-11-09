@@ -1,9 +1,13 @@
 "use client";
 
-import { useActionState, type ReactNode } from "react";
+import { useActionState, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { logout } from "@/lib/auth/actions";
+import Dashboard from "./dashboard";
+import { FlawiuszPanel } from "@/components/flawiusz/panel";
+import { useFlawiuszChat } from "@/components/flawiusz/use-flawiusz-chat";
+import { RequestedTemplateContext } from "@/components/documents/requested-template-context";
 
 const navigation = [
   "Dashboard",
@@ -31,13 +35,26 @@ export default function AppShell({ documents, projects, tasks, user, projectCoun
 }) {
   const router = useRouter();
   const search = useSearchParams();
-  const activePage = navigation.find((item) => item.toLowerCase() === search.get("view")) ?? "Projects";
+  // A project link has no view of its own: project details live under Projects.
+  const activePage = search.has("project")
+    ? "Projects"
+    : navigation.find((item) => item.toLowerCase() === search.get("view")) ?? "Dashboard";
+  const [chatOpen, setChatOpen] = useState(false);
+  const [requestedTemplateId, setRequestedTemplateId] = useState<string | null>(null);
+  const chat = useFlawiuszChat();
+
   function setActivePage(item: NavigationItem) {
     const params = new URLSearchParams(search.toString());
     params.delete("project");
-    if (item === "Projects") params.delete("view");
+    if (item === "Dashboard") params.delete("view");
     else params.set("view", item.toLowerCase());
     router.push(params.size ? "/?" + params.toString() : "/");
+  }
+
+  function openTemplate(templateId: string) {
+    setRequestedTemplateId(templateId);
+    setActivePage("Documents");
+    setChatOpen(false);
   }
 
   return (
@@ -45,7 +62,7 @@ export default function AppShell({ documents, projects, tasks, user, projectCoun
       <aside className="sidebar">
         <Link
           className="brand"
-          href="/?view=dashboard"
+          href="/"
           aria-label="Flawment home"
         >
           flawment<span>.</span>
@@ -76,10 +93,18 @@ export default function AppShell({ documents, projects, tasks, user, projectCoun
 
       <main className="main-content">
         {activePage === "Documents" ? (
-          documents
+          // Remount when Flawiusz asks to open a template, so the page selects it.
+          <RequestedTemplateContext value={requestedTemplateId} key={requestedTemplateId ?? "documents"}>
+            {documents}
+          </RequestedTemplateContext>
         ) : activePage === "Tasks" ? tasks : activePage === "Projects" ? projects : activePage === "Dashboard" ? (
-          <><header className="page-header"><h1>Welcome, {user.first_name}</h1></header>
-          <section className="workspace-card"><h2>{projectCount} accessible projects</h2><p>Create projects and manage memberships from Projects.</p><button className="primary-button" onClick={() => setActivePage("Projects")}>Open projects</button></section></>
+          <Dashboard
+            chat={chat}
+            firstName={user.first_name}
+            projectCount={projectCount}
+            onOpenProjects={() => setActivePage("Projects")}
+            onOpenTemplate={openTemplate}
+          />
         ) : (
           <>
             <header className="page-header">
@@ -98,6 +123,11 @@ export default function AppShell({ documents, projects, tasks, user, projectCoun
           </>
         )}
       </main>
+
+      {/* The dashboard has Flawiusz built in; other pages get the side panel. */}
+      {activePage !== "Dashboard" && (
+        <FlawiuszPanel chat={chat} onOpenChange={setChatOpen} onOpenTemplate={openTemplate} open={chatOpen} />
+      )}
     </div>
   );
 }

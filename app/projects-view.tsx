@@ -85,7 +85,7 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
   return <div className="projects-workspace">
     {selected && <nav className="project-breadcrumbs" aria-label="Breadcrumb">
       <ol>
-        <li><Link href="/">Projects</Link></li>
+        <li><Link href="/?view=projects">Projects</Link></li>
         <li><span className="breadcrumb-separator" aria-hidden="true">/</span><span aria-current="page">{project?.name ?? "Unavailable project"}</span></li>
       </ol>
     </nav>}
@@ -97,7 +97,7 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
       </header>
       {projects.length === 0 ? <section className="project-empty-state"><span aria-hidden="true">↗</span><h2>Make room for your next idea</h2><p>Create a project and bring your team together.</p><button className="primary-button" onClick={() => setModal("create")}>Create your first project</button></section> :
         <ProjectBrowser projects={projects} today={today} />}
-    </> : !project ? <section className="project-empty-state"><h1>Project unavailable</h1><p>This project was deleted or you no longer have access.</p><Link href="/" className="secondary-button">Back to projects</Link></section> : <>
+    </> : !project ? <section className="project-empty-state"><h1>Project unavailable</h1><p>This project was deleted or you no longer have access.</p><Link href="/?view=projects" className="secondary-button">Back to projects</Link></section> : <>
       <header className="page-header projects-page-heading"><div><h1>{project.name}</h1><p>{project.description || "Add a description to tell your team what this project is about."}</p></div>
         {project.canEdit && <button className="secondary-button" onClick={() => setModal("edit")}>Edit project</button>}
       </header>
@@ -121,7 +121,7 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
         </section>
         <aside className="project-overview-sidebar">
           <section className="workspace-card project-facts"><h2>At a glance</h2><dl><div><dt>Status</dt><dd>{project.status.replaceAll("_", " ")}</dd></div><div><dt>Start date</dt><dd>{project.start_date}</dd></div><div><dt>End date</dt><dd>{project.end_date || "No deadline"}</dd></div><div><dt>Your role</dt><dd>{project.role?.replaceAll("_", " ")}</dd></div></dl></section>
-          {project.canDelete && <details className="project-danger-zone"><summary>Project settings</summary><p>Deleting this project also deletes its tasks and memberships.</p><ChangeForm operation="delete" projectId={project.id} onSuccess={() => router.push("/")} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}><button className="danger-button">Delete project</button></ChangeForm></details>}
+          {project.canDelete && <details className="project-danger-zone"><summary>Project settings</summary><p>Deleting this project also deletes its tasks and memberships.</p><ChangeForm operation="delete" projectId={project.id} onSuccess={() => router.push("/?view=projects")} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}><button className="danger-button">Delete project</button></ChangeForm></details>}
         </aside>
       </div>
     </>}

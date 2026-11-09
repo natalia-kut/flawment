@@ -100,7 +100,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
     </div>
     <p role="status" aria-live="polite">{saving !== null ? "Saving task status…" : message || "Showing " + tasks.length + " of " + allTasks.length + " tasks"}</p>
     {error && <p className="form-error" role="alert">{error}</p>}
-    {allTasks.length === 0 ? <section className="workspace-card"><h2>No tasks yet</h2><p>Create tasks inside a project to get started.</p><Link href="/">Open projects</Link></section>
+    {allTasks.length === 0 ? <section className="workspace-card"><h2>No tasks yet</h2><p>Create tasks inside a project to get started.</p><Link href="/?view=projects">Open projects</Link></section>
       : tasks.length === 0 ? <section className="workspace-card"><h2>No tasks match your filters</h2><p>Try another search or clear the filters.</p></section>
       : groups.map(([key, name]) => {
         const groupTasks = tasks.filter((task) => groupKey(task) === key);
