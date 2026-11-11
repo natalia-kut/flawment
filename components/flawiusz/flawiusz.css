@@ -210,7 +210,7 @@
   gap: 11px;
   padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 16px 18px;
   background: var(--sidebar);
-  color: #fffaf3;
+  color: var(--surface);
 }
 
 .flawiusz-panel-header img {
@@ -229,7 +229,7 @@
 
 .flawiusz-panel-header p {
   margin: 1px 0 0;
-  color: #bdb3a9;
+  color: var(--text-faint);
   font-size: 12px;
 }
 
@@ -239,7 +239,7 @@
   border: 1px solid rgb(255 250 243 / 22%);
   border-radius: 7px;
   background: none;
-  color: #fffaf3;
+  color: var(--surface);
   cursor: pointer;
   font-size: 12.5px;
 }
@@ -358,9 +358,9 @@
 
 .flawiusz-choices button {
   padding: 7px 13px;
-  border: 1px solid #e6c6b1;
+  border: 1px solid var(--accent-border);
   border-radius: 999px;
-  background: #fff8f2;
+  background: var(--surface);
   color: var(--foreground);
   cursor: pointer;
   font: inherit;
@@ -370,7 +370,7 @@
 
 .flawiusz-choices button:hover:not(:disabled) {
   border-color: var(--accent);
-  background: #f8e8dc;
+  background: var(--accent-soft);
 }
 
 .flawiusz-choices button:disabled {
@@ -381,7 +381,7 @@
 .flawiusz-message code {
   padding: 1px 5px;
   border-radius: 4px;
-  background: #f3ece2;
+  background: var(--surface-sunken);
   font-family: var(--font-geist-mono), monospace;
   font-size: 12.5px;
 }
@@ -394,9 +394,9 @@
   display: grid;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid #ecd2bf;
+  border: 1px solid var(--accent-border);
   border-radius: 9px;
-  background: #fff6ef;
+  background: var(--surface);
   font-size: 13px;
 }
 
@@ -411,9 +411,9 @@
   display: grid;
   gap: 12px;
   padding: 14px;
-  border: 1px solid #ecd2bf;
+  border: 1px solid var(--accent-border);
   border-radius: 11px;
-  background: #fff8f2;
+  background: var(--surface);
 }
 
 .flawiusz-proposal-heading {
@@ -502,7 +502,7 @@
 }
 
 .flawiusz-proposal-saved {
-  color: #24562f;
+  color: var(--success-strong);
   font-size: 13px;
   font-weight: 650;
 }
@@ -560,7 +560,7 @@
   min-height: 42px;
   max-height: 140px;
   padding: 10px 12px;
-  border: 1px solid #dccfc1;
+  border: 1px solid var(--border-strong);
   border-radius: 9px;
   background: #fff;
   color: var(--foreground);

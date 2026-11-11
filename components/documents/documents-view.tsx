@@ -9,6 +9,7 @@ import DocumentSheet from "./document-sheet";
 import TemplateBuilder from "./template-builder";
 import { RequestedTemplateContext } from "./requested-template-context";
 import "./documents.css";
+import PageHeader from "@/components/page-header";
 
 type DocumentsViewProps = {
   projects: DocumentProject[];
@@ -230,12 +231,8 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
 
   return (
     <div className="documents-page">
-      <header className="documents-heading">
-        <div>
-          <h1>Documents</h1>
-          <p className="section-description">Create reports from your project&apos;s tasks, deadlines and team.</p>
-        </div>
-      </header>
+      <PageHeader title="Documents"
+        description="Create reports from your project's tasks, deadlines and team." />
 
       {error && <p className="storage-notice" role="alert">{error}</p>}
       {notice && <p className="storage-notice success" role="status">{notice}</p>}

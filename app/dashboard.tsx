@@ -4,6 +4,7 @@ import Image from "next/image";
 import { ChatLog } from "@/components/flawiusz/chat-log";
 import { Composer } from "@/components/flawiusz/composer";
 import type { FlawiuszChat } from "@/components/flawiusz/use-flawiusz-chat";
+import PageHeader from "@/components/page-header";
 
 // The dashboard starts with Flawiusz; the conversation stays inside this card.
 export default function Dashboard({
@@ -23,10 +24,7 @@ export default function Dashboard({
 
   return (
     <>
-      <header className="page-header">
-        <p className="eyebrow">WORKSPACE</p>
-        <h1>Welcome, {firstName}</h1>
-      </header>
+      <PageHeader title={<>Welcome, {firstName}</>} />
 
       <section className={`flawiusz-hero${started ? " started" : ""}`} aria-labelledby="flawiusz-hero-title">
         <div className="flawiusz-hero-intro">

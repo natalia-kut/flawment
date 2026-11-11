@@ -1,0 +1,8 @@
+.progress { display: flex; align-items: center; gap: .75rem; min-width: 0; font-family: var(--font-geist-mono), monospace; font-size: .75rem; color: var(--muted); }
+.track { flex: 0 1 9rem; min-width: 3rem; height: .5rem; overflow: hidden; background: var(--surface-sunken); border-radius: 1rem; }
+.track > span { display: block; height: 100%; background: var(--fill); border-radius: inherit; transition: width 400ms cubic-bezier(.2, .8, .2, 1), background-color 400ms ease; }
+.track[data-level=low] { --fill: var(--accent); }
+.track[data-level=mid] { --fill: var(--warning); }
+.track[data-level=high] { --fill: #8aa23a; }
+.track[data-level=done] { --fill: var(--success); }
+.caption { white-space: nowrap; }

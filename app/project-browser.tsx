@@ -5,33 +5,41 @@ import { useState } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { filterProjects } from "@/lib/projects/filters";
 import { taskProgress, isTaskOverdue } from "@/lib/tasks/board";
+import ProgressBar from "@/components/ui/progress-bar";
+import controls from "@/components/ui/filter-bar.module.css";
+import { projectStatusLabels as statusLabels } from "@/lib/projects/labels";
 import styles from "./project-browser.module.css";
+
+const formatDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const SHOWN_PEOPLE = 3;
 
 export default function ProjectBrowser({ projects, today }: { projects: WorkspaceProject[]; today: string }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const labels: Record<string, string> = { TO_DO: "Planned", IN_PROGRESS: "In progress", COMPLETED: "Completed", ARCHIVED: "Archived", CANCELLED: "Cancelled" };
   const results = filterProjects(projects, { query, status, showArchived });
+  const filtered = Boolean(query || status || showArchived);
+
   return <>
-    <div className={styles.controls}>
-      <label className={styles.check}><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />Show archived</label>
-      <button className={styles.filterButton} aria-expanded={filtersOpen} aria-controls="project-filters" onClick={() => setFiltersOpen(!filtersOpen)}>Filters{query || status ? " · Active" : ""}</button>
+    <div className={controls.toolbar} role="group" aria-label="Project filters">
+      <div className={controls.toolbarRow}>
+        <input className={controls.search} type="search" aria-label="Search projects" placeholder="Search projects by name or description"
+          value={query} onChange={(e) => setQuery(e.target.value)} />
+        <select className={controls.filter} aria-label="Status" data-active={status !== ""} value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="">Any status</option>
+          {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+        <label className={controls.chip}><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />Show archived</label>
+      </div>
     </div>
-    {filtersOpen && <div id="project-filters" className={styles.filters} role="group" aria-label="Project filters">
-      <label className={styles.search}>Search projects
-        <input type="search" placeholder="Search name or description" value={query} onChange={(e) => setQuery(e.target.value)} />
-      </label>
-      <label>Status<select value={status} onChange={(e) => setStatus(e.target.value)}>
-        <option value="">All statuses</option>
-        {["TO_DO", "IN_PROGRESS", "COMPLETED", "ARCHIVED", "CANCELLED"].map((value) =>
-          <option key={value} value={value}>{labels[value]}</option>)}
-      </select></label>
-      <button className="secondary-button" disabled={!query && !status && !showArchived}
-        onClick={() => { setQuery(""); setStatus(""); setShowArchived(false); }}>Clear filters</button>
-    </div>}
-    <p role="status" aria-live="polite" className={query || status ? styles.results : styles.caption}>Showing {results.length} of {projects.length} projects</p>
+    <div className={controls.statusRow}>
+      <div className={controls.statusText}>
+        <p className={controls.status} role="status" aria-live="polite">Showing {results.length} of {projects.length} projects</p>
+        {filtered && <button type="button" className={controls.clear}
+          onClick={() => { setQuery(""); setStatus(""); setShowArchived(false); }}>Clear filters</button>}
+      </div>
+    </div>
+
     {results.length === 0 ? <section className="project-empty-state">
       <h2>No projects match your filters</h2><p>Try another search or clear the filters.</p>
     </section> : <div className={styles.tableWrap}><table className={styles.table}>
@@ -41,23 +49,27 @@ export default function ProjectBrowser({ projects, today }: { projects: Workspac
       <tbody>{results.map((project) => {
         const progress = taskProgress(project.tasks);
         const overdue = project.tasks.filter((task) => isTaskOverdue(task, today)).length;
-        const ongoing = project.tasks.filter((task) => task.status === "IN_PROGRESS" || task.status === "IN_REVIEW").length;
+        const extra = project.members.length - SHOWN_PEOPLE;
         return <tr key={project.id}>
-          <th scope="row"><Link href={"/?project=" + project.id}>{project.name}</Link>
-            {overdue > 0 && <p className={styles.overdue}>{overdue} overdue {overdue === 1 ? "task" : "tasks"}</p>}</th>
-          <td>{project.end_date ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(project.end_date + "T00:00:00Z")) : "No deadline"}</td>
-          <td><span className={styles.status} data-status={project.status}>{labels[project.status]}</span></td>
-          <td><div className={styles.progress}>
-            <div className={styles.track} role="progressbar" aria-label={project.name + " task completion"} aria-valuenow={progress.percent} aria-valuemin={0} aria-valuemax={100}>
-              <span className={styles.done} style={{ width: progress.percent + "%" }} />
-              <span className={styles.ongoing} style={{ width: (progress.total ? ongoing / progress.total * 100 : 0) + "%" }} />
-            </div>
-            <span>{progress.percent}%</span>
-          </div></td>
-          <td>{project.members.length}</td>
+          {/* The name link stretches over the whole row, so any part of it opens the project. */}
+          <th scope="row"><Link className={styles.rowLink} href={"/?project=" + project.id}>{project.name}</Link>
+            {overdue > 0 && <Link className={styles.overdue} href={"/?view=tasks&in=" + project.id + "&overdue=1"}>{overdue} overdue {overdue === 1 ? "task" : "tasks"} →</Link>}</th>
+          <td>{project.end_date ? formatDate.format(new Date(project.end_date + "T00:00:00Z")) : <span className={styles.none}>No deadline</span>}</td>
+          <td><span className={styles.status} data-status={project.status}>{statusLabels[project.status]}</span></td>
+          <td>{progress.total === 0
+            ? <span className={styles.none}>No tasks yet</span>
+            : <ProgressBar label={project.name} percent={progress.percent} caption={progress.percent + "%"} />}</td>
+          <td>
+            <span className={styles.people} aria-label={project.members.length + " people: " + project.members.map((m) => m.first_name + " " + m.last_name).join(", ")}>
+              {project.members.slice(0, SHOWN_PEOPLE).map((member) =>
+                <span key={member.id} className={styles.avatar} title={member.first_name + " " + member.last_name} aria-hidden="true">
+                  {member.first_name.charAt(0)}{member.last_name.charAt(0)}
+                </span>)}
+              {extra > 0 && <span className={styles.avatar + " " + styles.more} aria-hidden="true">+{extra}</span>}
+            </span>
+          </td>
         </tr>;
       })}</tbody>
     </table></div>}
   </>;
 }
-
