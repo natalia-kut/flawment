@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "./password";
+import { isValidName, NAME_RULE } from "./names";
 type AuthResult = { error: string; userId?: never } | { userId: number; error?: never };
 const text = (data: FormData, name: string) => String(data.get(name) ?? "").trim();
 // The dummy hash keeps unknown-account login attempts on the same expensive password path.
@@ -15,6 +16,7 @@ export async function registerAccount(data: FormData): Promise<AuthResult> {
   if (!/^[a-z0-9_.-]{3,40}$/.test(username)) return { error: "Username must be 3–40 letters, numbers, dots, underscores or hyphens." };
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email address." };
   if (!first_name || !last_name || first_name.length > 80 || last_name.length > 80) return { error: "Enter your first and last name (up to 80 characters each)." };
+  if (!isValidName(first_name) || !isValidName(last_name)) return { error: NAME_RULE };
   if (password.length < 10 || password.length > 128) return { error: "Use a password between 10 and 128 characters." };
   if (password !== String(data.get("confirm_password") ?? "")) return { error: "Passwords do not match." };
   const existing = await prisma.user.findFirst({ where: { OR: [{ email: { equals: email, mode: "insensitive" } }, { username: { equals: username, mode: "insensitive" } }] } });
