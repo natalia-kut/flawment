@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/auth/session";
 import { getWorkspaceProjects } from "@/lib/projects/data";
 import ProjectsView from "./projects-view";
 import TasksOverview from "./tasks-overview";
+import ProfileSection from "./profile-section";
 
 async function Workspace() {
   const user = await requireUser();
@@ -18,6 +19,7 @@ async function Workspace() {
   return (
     <AppShell
       user={user}
+      profile={<ProfileSection />}
       workspace={{ projects, userId: user.id, today }}
       sidebarCollapsed={sidebarCollapsed}
       tasks={<TasksOverview projects={projects} currentUserId={user.id} today={today} />}

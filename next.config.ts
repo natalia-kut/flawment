@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: { serverActions: { bodySizeLimit: "3mb" } },
   // Keep the dev indicator clear of the Flawiusz launcher in the bottom-right corner.
   devIndicators: { position: "top-right" },
   turbopack: {

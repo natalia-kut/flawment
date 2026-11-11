@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 const cookieName = "flawment_session";
 const lifetime = 60 * 60 * 24 * 7;
 const digest = (token: string) => createHash("sha256").update(token).digest("hex");
-const userSelect = { id: true, username: true, first_name: true, last_name: true, role: true } as const;
+const userSelect = { id: true, username: true, first_name: true, last_name: true, role: true, photo_updated_at: true } as const;
 
 export async function currentUser() {
   const token = (await cookies()).get(cookieName)?.value;
@@ -16,8 +16,8 @@ export async function currentUser() {
     include: { user: { select: { ...userSelect, is_active: true } } },
   });
   if (!session || session.expires_at <= new Date() || !session.user.is_active) return null;
-  const { id, username, first_name, last_name, role } = session.user;
-  return { id, username, first_name, last_name, role };
+  const { id, username, first_name, last_name, role, photo_updated_at } = session.user;
+  return { id, username, first_name, last_name, role, photoVersion: photo_updated_at?.toISOString() ?? null };
 }
 
 export async function requireUser() {

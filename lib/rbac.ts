@@ -1,7 +1,7 @@
 import type { ProjectRole, UserRole } from "@/src/generated/prisma/enums";
 
 export const permissions = {
-  ADMIN: ["project:read", "project:update", "project:delete", "members:manage", "members:roles", "tasks:manage", "tasks:update-assigned"],
+  ADMIN: ["project:read", "project:update", "project:delete", "members:manage", "members:roles", "specializations:manage", "tasks:manage", "tasks:update-assigned"],
   MANAGER: ["project:read", "project:update", "members:manage", "tasks:manage", "tasks:update-assigned"],
   PARTICIPANT: ["project:read", "tasks:update-assigned"],
 } as const;

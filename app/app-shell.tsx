@@ -4,6 +4,7 @@ import { useActionState, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { logout } from "@/lib/auth/actions";
+import UserAvatar from "./user-avatar";
 import Dashboard from "./dashboard";
 import { FlawiuszPanel } from "@/components/flawiusz/panel";
 import { useFlawiuszChat } from "@/components/flawiusz/use-flawiusz-chat";
@@ -18,6 +19,7 @@ const navigation = [
   "Team",
   "Tasks",
   "Documents",
+  "Profile",
 ] as const;
 
 type NavigationItem = (typeof navigation)[number];
@@ -29,6 +31,7 @@ const navIcons: Record<NavigationItem, ReactNode> = {
   Team: <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.2a3 3 0 0 1 0 5.6M17.5 14a5 5 0 0 1 3 5" /></>,
   Tasks: <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m8.5 12.2 2.3 2.3 4.7-5" /></>,
   Documents: <><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5M10 13h6M10 17h6" /></>,
+  Profile: <><circle cx="12" cy="8.5" r="3.6" /><path d="M5 20a7 7 0 0 1 14 0" /></>,
 };
 
 function SignOut({ compact }: { compact: boolean }) {
@@ -41,11 +44,11 @@ function SignOut({ compact }: { compact: boolean }) {
   </form>;
 }
 
-export default function AppShell({ documents, projects, tasks, user, workspace, sidebarCollapsed = false }: {
-  documents: ReactNode; projects: ReactNode; tasks: ReactNode; sidebarCollapsed?: boolean;
+export default function AppShell({ documents, projects, tasks, profile, user, workspace, sidebarCollapsed = false }: {
+  documents: ReactNode; projects: ReactNode; tasks: ReactNode; profile: ReactNode; sidebarCollapsed?: boolean;
   /** What the dashboard summarises: the projects (with tasks) this user can see. */
   workspace: { projects: WorkspaceProject[]; userId: number; today: string };
-  user: { first_name: string; last_name: string; role: string };
+  user: { id: number; first_name: string; last_name: string; role: string; photoVersion: string | null };
 }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -114,18 +117,16 @@ export default function AppShell({ documents, projects, tasks, user, workspace, 
           ))}
         </nav>
         <div className="sidebar-footer">
-          <div className="sidebar-profile">
-          <span className="avatar" aria-hidden="true">
-            {user.first_name.slice(0, 1)}
-          </span>
+          <Link href="/?view=profile" className="sidebar-profile" aria-label="Edit your profile" title={collapsed ? "Your profile" : undefined}>
+          <UserAvatar id={user.id} firstName={user.first_name} lastName={user.last_name} photoVersion={user.photoVersion} size={36} />
           <span className="profile-name sidebar-label">{user.first_name} {user.last_name}<small>{user.role === "SUPER_ADMIN" ? "Super admin" : "Standard user"}</small></span>
-          </div>
+          </Link>
           <SignOut compact={collapsed} />
         </div>
       </aside>
 
       <main className="main-content">
-        {activePage === "Documents" ? (
+        {activePage === "Profile" ? profile : activePage === "Documents" ? (
           // Remount when Flawiusz asks to open a template, so the page selects it.
           <RequestedTemplateContext value={requestedTemplateId} key={requestedTemplateId ?? "documents"}>
             {documents}
