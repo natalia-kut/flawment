@@ -1,0 +1,34 @@
+/* Sign in and register: a calm card over a large, faded wordmark. */
+.page { position: relative; display: grid; place-items: center; min-height: 100dvh; padding: 24px 20px; overflow: hidden; }
+
+/* The whole wordmark, sized to the screen width and resting on the bottom edge; decoration only. */
+.backdrop { position: absolute; left: 50%; bottom: 2vh; z-index: 0; font-size: 19vw; font-weight: 800; line-height: .9; letter-spacing: -.06em; color: var(--foreground); opacity: .045; white-space: nowrap; transform: translateX(-50%); pointer-events: none; user-select: none; }
+.backdrop span { color: var(--accent); }
+
+.card { position: relative; z-index: 1; width: min(100%, 500px); padding: 28px 34px; background: color-mix(in srgb, var(--card) 92%, transparent); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 24px 48px -32px #39220f40; backdrop-filter: blur(6px); }
+.brand { display: inline-block; margin-bottom: 16px; font-size: 25px; font-weight: 800; letter-spacing: -1px; color: var(--foreground); text-decoration: none; }
+.brand span { color: var(--accent); }
+.card h1 { margin: 0; font-size: 28px; }
+.lead { margin: 4px 0 0; color: var(--muted); }
+
+.form { gap: 10px; margin-top: 18px; }
+.form label { align-content: start; gap: 4px; font-size: 13px; }
+.form input:not([type=checkbox]) { height: 2.5rem; }
+.form input::placeholder { font-size: 13px; color: var(--text-subtle); }
+/* Browser autofill paints fields blue; keep them in the app's colours. */
+.form input:-webkit-autofill { -webkit-text-fill-color: var(--foreground); box-shadow: 0 0 0 100px #fff inset; }
+.submit { width: 100%; margin-top: 4px; }
+
+.switch { margin: 14px 0 0; font-size: 14px; color: var(--muted); text-align: center; }
+.switch a { font-weight: 600; color: var(--accent-strong); text-decoration: none; }
+.switch a:hover { text-decoration: underline; }
+
+@media (max-width: 560px) {
+  .card { padding: 24px 20px; }
+  .backdrop { font-size: 21vw; }
+}
+
+/* Field problems: a red outline and a short message under the field. */
+.invalid input { border-color: var(--critical); }
+.invalid input:focus-visible { outline-color: var(--critical-border); }
+.fieldError { font-size: 12px; font-weight: 500; line-height: 1.35; color: var(--critical); }
