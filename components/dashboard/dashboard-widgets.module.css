@@ -1,0 +1,90 @@
+/*
+ * Dashboard widgets: the deadline calendar, the team rings and your progress.
+ * Status colours are the documents' categorical set, validated together on the
+ * card surface (CVD ΔE 11.3, normal 16.6). Amber is below 3:1 on the surface,
+ * so every number is also written out in text, never left to colour alone.
+ */
+.calendar {
+  --s-todo: #7d4f8a;
+  --s-progress: #d65325;
+  --s-review: #d39b1e;
+}
+
+.calendar [data-status=TO_DO] { --fill: var(--s-todo); }
+.calendar [data-status=IN_PROGRESS] { --fill: var(--s-progress); }
+.calendar [data-status=IN_REVIEW] { --fill: var(--s-review); }
+.calendar [data-status=COMPLETED] { --fill: var(--success); }
+.calendar [data-status=CANCELLED] { --fill: var(--text-faint); }
+
+.quiet { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+
+/* ---- Calendar ---- */
+.calendar { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 22px; }
+.calendarHead { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.calendarHead strong { min-width: 9.5rem; font-size: 15px; text-align: center; }
+.calendarHead button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; font: inherit; font-size: 18px; color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.calendarHead button:hover { color: var(--foreground); border-color: var(--border-hover); }
+.calendarHead .todayButton { width: auto; margin-left: auto; padding: 0 10px; font-size: 12px; font-weight: 600; color: var(--accent-strong); }
+
+.grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.weekday { padding-bottom: 4px; font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .08em; text-align: center; text-transform: uppercase; color: var(--muted); }
+.day { position: relative; display: grid; align-content: start; justify-items: center; gap: 4px; min-height: 52px; padding: 6px 2px; font: inherit; color: var(--foreground); background: var(--background); border: 1px solid transparent; border-radius: 9px; cursor: pointer; transition: border-color 140ms ease, background-color 140ms ease; }
+.day:hover { border-color: var(--border-hover); }
+.dayNumber { font-size: 13px; font-weight: 600; line-height: 1; }
+.day[data-today] .dayNumber { display: grid; place-items: center; width: 22px; height: 22px; margin-top: -3px; color: #fff; background: var(--accent); border-radius: 50%; }
+.day[data-selected] { background: var(--card); border-color: var(--accent-border); box-shadow: 0 4px 12px -8px #39220f55; }
+.day[data-late]::after { content: ""; position: absolute; top: 5px; right: 6px; width: 5px; height: 5px; background: var(--critical); border-radius: 50%; }
+.dots { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 3px; }
+.dot { flex-shrink: 0; width: 7px; height: 7px; background: var(--fill, var(--muted)); border-radius: 50%; animation: pop 320ms cubic-bezier(.2, .9, .3, 1.4) both; }
+.more { font-size: 9px; font-weight: 700; line-height: 1; color: var(--muted); }
+
+.dayPanel { min-width: 0; padding-left: 22px; border-left: 1px solid var(--border); }
+.dayPanel h3 { margin: 4px 0 12px; font-size: 15px; }
+.dayPanel ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.dayPanel button { display: grid; width: calc(100% + 16px); font: inherit; text-align: left; background: transparent; border: 0; cursor: pointer; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; margin: 0 -8px; padding: 8px; color: var(--foreground); text-decoration: none; border-radius: 9px; }
+.dayPanel button:hover { background: var(--background); }
+.dayTask { display: grid; gap: 1px; min-width: 0; }
+.dayTask strong { overflow: hidden; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }
+.dayTask span { overflow: hidden; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; color: var(--muted); }
+.dayStatus { font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--muted); }
+.dayStatus[data-late] { color: var(--critical); }
+
+/* ---- Ring labels (used by Your progress) ---- */
+.donutValue { font-size: 30px; font-weight: 750; fill: var(--foreground); }
+.donutLabel { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; fill: var(--muted); }
+
+/* ---- Team rings ---- */
+.team { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: 16px 10px; margin: 0; padding: 0; list-style: none; }
+.member { display: grid; justify-items: center; gap: 4px; text-align: center; }
+.ring { width: 64px; height: 64px; }
+.ringTrack { fill: var(--background); stroke: var(--surface-sunken); stroke-width: 5; }
+.ringFill[data-empty] { opacity: 0; }
+.ringFill { fill: none; stroke: var(--success); stroke-width: 5; stroke-linecap: round; transition: stroke-dasharray 900ms cubic-bezier(.2, .8, .2, 1); }
+.ringFill[data-late] { stroke: var(--accent); }
+.ringInitials { font-size: 15px; font-weight: 700; fill: var(--foreground); }
+.memberName { max-width: 100%; overflow: hidden; font-size: 13px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.memberMeta { font-size: 11px; color: var(--muted); }
+.memberMeta b { color: var(--critical); }
+
+@keyframes pop { from { transform: scale(0); } }
+
+@media (max-width: 760px) {
+  .calendar { grid-template-columns: 1fr; }
+  .dayPanel { padding: 16px 0 0; border-top: 1px solid var(--border); border-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot { animation: none; }
+  .ringFill { transition: none; }
+}
+
+/* ---- Your progress (for people without task management) ---- */
+.myProgress { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
+.bigRing { flex-shrink: 0; width: 160px; height: 160px; }
+.bigRingTrack { fill: none; stroke: var(--surface-sunken); stroke-width: 14; }
+.bigRingFill { fill: none; stroke: var(--success); stroke-width: 14; stroke-linecap: round; transition: stroke-dasharray 900ms cubic-bezier(.2, .8, .2, 1); }
+.bigRingFill[data-empty] { opacity: 0; }
+.myProjects { display: grid; flex: 1; gap: 14px; min-width: 12rem; margin: 0; padding: 0; list-style: none; }
+.myProjects li { display: grid; gap: 6px; }
+.myProjects li > span { overflow: hidden; font-size: 13px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) { .bigRingFill { transition: none; } }

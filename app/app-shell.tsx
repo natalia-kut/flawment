@@ -9,6 +9,7 @@ import { FlawiuszPanel } from "@/components/flawiusz/panel";
 import { useFlawiuszChat } from "@/components/flawiusz/use-flawiusz-chat";
 import { RequestedTemplateContext } from "@/components/documents/requested-template-context";
 import { SIDEBAR_COOKIE } from "@/lib/ui/sidebar";
+import type { WorkspaceProject } from "@/lib/projects/data";
 import PageHeader from "@/components/page-header";
 
 const navigation = [
@@ -40,8 +41,10 @@ function SignOut({ compact }: { compact: boolean }) {
   </form>;
 }
 
-export default function AppShell({ documents, projects, tasks, user, projectCount, sidebarCollapsed = false }: {
-  documents: ReactNode; projects: ReactNode; tasks: ReactNode; projectCount: number; sidebarCollapsed?: boolean;
+export default function AppShell({ documents, projects, tasks, user, workspace, sidebarCollapsed = false }: {
+  documents: ReactNode; projects: ReactNode; tasks: ReactNode; sidebarCollapsed?: boolean;
+  /** What the dashboard summarises: the projects (with tasks) this user can see. */
+  workspace: { projects: WorkspaceProject[]; userId: number; today: string };
   user: { first_name: string; last_name: string; role: string };
 }) {
   const router = useRouter();
@@ -65,7 +68,7 @@ export default function AppShell({ documents, projects, tasks, user, projectCoun
   function setActivePage(item: NavigationItem) {
     const params = new URLSearchParams(search.toString());
     // Links into a view (a project page, a filtered Tasks board) do not carry over to other views.
-    for (const key of ["project", "in", "overdue"]) params.delete(key);
+    for (const key of ["project", "in", "overdue", "mine"]) params.delete(key);
     if (item === "Dashboard") params.delete("view");
     else params.set("view", item.toLowerCase());
     router.push(params.size ? "/?" + params.toString() : "/");
@@ -131,8 +134,7 @@ export default function AppShell({ documents, projects, tasks, user, projectCoun
           <Dashboard
             chat={chat}
             firstName={user.first_name}
-            projectCount={projectCount}
-            onOpenProjects={() => setActivePage("Projects")}
+            workspace={workspace}
             onOpenTemplate={openTemplate}
           />
         ) : (

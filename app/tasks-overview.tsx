@@ -17,6 +17,7 @@ import details from "@/components/ui/details-dialog.module.css";
 import controls from "@/components/ui/filter-bar.module.css";
 import ProgressBar from "@/components/ui/progress-bar";
 import PageHeader from "@/components/page-header";
+import { celebrate } from "@/components/ui/confetti";
 
 // One full row of overdue tiles: 4 fills a row whether the box shows 4, 2 or 1 columns.
 const OVERDUE_PREVIEW = 4;
@@ -76,7 +77,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
   const [groupBy, setGroupBy] = useState<"project" | "person">("project");
   const [overdueOnly, setOverdueOnly] = useState(search.get("overdue") === "1");
   const [showAllOverdue, setShowAllOverdue] = useState(false);
-  const [mineOnly, setMineOnly] = useState(false);
+  const [mineOnly, setMineOnly] = useState(search.get("mine") === "1");
   const [dragging, setDragging] = useState<number | null>(null);
   const [saving, setSaving] = useState<number | null>(null);
   const [message, setMessage] = useState("");
@@ -159,7 +160,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
       return rest;
     }));
   }
-  async function move(task: BoardTask, status: TaskStatus) {
+  async function move(task: BoardTask, status: TaskStatus, origin?: { x: number; y: number }) {
     if (saving !== null || status === task.status || !task.canChangeStatus) return;
     const expected = serverTasks.find((item) => item.id === task.id)?.status ?? task.status;
     setError(""); setMessage("");
@@ -176,7 +177,16 @@ export default function TasksOverview({ projects, currentUserId, today }: {
       data.set("expected_status", expected);
       const result = await changeTaskStatusAction(data);
       if (result.error) { setError(result.error); undoMove(task.id); }
-      else setMessage('Status saved for "' + task.title + '".');
+      else {
+        setMessage('Status saved for "' + task.title + '".');
+        if (status === "COMPLETED") {
+          // Finishing the last open task of a project, or your own last one, earns the big burst.
+          const stillOpen = (other: BoardTask) => other.id !== task.id && other.status !== "COMPLETED" && other.status !== "CANCELLED";
+          const projectCleared = !allTasks.some((other) => other.projectId === task.projectId && stillOpen(other));
+          const mineCleared = task.assignedTo === currentUserId && !allTasks.some((other) => other.assignedTo === currentUserId && stillOpen(other));
+          celebrate(projectCleared || mineCleared ? "big" : "small", origin);
+        }
+      }
       router.refresh();
     } catch {
       setError("Could not move the task. Please try again.");
@@ -339,7 +349,8 @@ export default function TasksOverview({ projects, currentUserId, today }: {
                   event.preventDefault();
                   const task = allTasks.find((item) => item.id === dragging);
                   setDragging(null); setDropTarget(null);
-                  if (task && groupKey(task) === key) void move(task, column.status);
+                  // The confetti for a finished task bursts from where the card was dropped.
+                  if (task && groupKey(task) === key) void move(task, column.status, { x: event.clientX, y: event.clientY });
                   else if (task) setError("Move tasks between status columns within the same group.");
                 }}>
                 <h3>{column.label} · {cards.length}</h3>
@@ -384,7 +395,10 @@ export default function TasksOverview({ projects, currentUserId, today }: {
         <dl className={details.detailsFacts}>
           <div><dt>Status</dt><dd>{detailsTask.canChangeStatus
             ? <select className={details.detailsStatus} aria-label={"Status for " + detailsTask.title} value={detailsTask.status}
-              disabled={saving !== null} onChange={(event) => void move(detailsTask, event.target.value as TaskStatus)}>
+              disabled={saving !== null} onChange={(event) => {
+                const box = event.currentTarget.getBoundingClientRect();
+                void move(detailsTask, event.target.value as TaskStatus, { x: box.left + box.width / 2, y: box.top });
+              }}>
               {boardColumns.map((option) => <option key={option.status} value={option.status}>{taskStatusLabels[option.status]}</option>)}
             </select>
             : taskStatusLabels[detailsTask.status]}</dd></div>

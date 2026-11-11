@@ -6,6 +6,7 @@ import type { WorkspaceProject } from "@/lib/projects/data";
 import { createTaskAction, updateTaskAction, type TaskState } from "@/lib/tasks/actions";
 import { taskPriorityLabels, taskStatusLabels } from "@/lib/tasks/labels";
 import TaskDetailsDialog from "./task-details-dialog";
+import { celebrate } from "@/components/ui/confetti";
 import styles from "./tasks-board.module.css";
 import details from "@/components/ui/details-dialog.module.css";
 
@@ -37,6 +38,11 @@ export default function TaskDetailsForm({ project, task, overdue = false, showOp
 
   const [state, action, pending] = useActionState(async (previous: TaskState, data: FormData) => {
     const result = await (creating ? createTaskAction : updateTaskAction)(previous, data);
+    if (result.success && !creating && data.get("status") === "COMPLETED" && initial.status !== "COMPLETED") {
+      // Burst from the button that saved it (the focused submitter), or the middle of the screen.
+      const box = document.activeElement instanceof HTMLElement ? document.activeElement.getBoundingClientRect() : null;
+      celebrate("small", box && box.width ? { x: box.left + box.width / 2, y: box.top } : undefined);
+    }
     if (result.success) onSaved();
     return result;
   }, {});
