@@ -1,0 +1,72 @@
+/* Project timeline: one row per project on a shared time axis. */
+.timeline { --row: 38px; }
+.quiet { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+
+/* Status colours, same as elsewhere: planned is neutral, in progress the accent, completed green. */
+.timeline [data-status] { --bar: var(--border-hover); --bar-fill: var(--muted); }
+.timeline [data-status=IN_PROGRESS] { --bar: #f2c4ad; --bar-fill: var(--accent); }
+.timeline [data-status=COMPLETED] { --bar: #c5dfc9; --bar-fill: var(--success); }
+.timeline [data-status=CANCELLED] { --bar: var(--surface-sunken); --bar-fill: var(--text-faint); }
+
+/* ---- Project picker ---- */
+.picker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 18px; }
+.picker > button { display: inline-flex; align-items: center; gap: 7px; max-width: 16rem; overflow: hidden; padding: 5px 12px 5px 10px; font: inherit; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; text-overflow: ellipsis; background: transparent; border: 1px dashed var(--border-strong); border-radius: 20px; cursor: pointer; transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease; }
+.picker > button[aria-pressed=true] { color: var(--foreground); background: var(--card); border-style: solid; border-color: var(--border-hover); }
+.picker > button:hover { border-color: var(--accent-border); }
+.pickDot { flex-shrink: 0; width: 8px; height: 8px; background: var(--bar-fill); border-radius: 50%; }
+.picker > button[aria-pressed=false] .pickDot { opacity: .35; }
+.pickerActions { display: inline-flex; gap: 10px; margin-left: auto; }
+.pickerActions button { padding: 0; font: inherit; font-size: 12px; font-weight: 600; color: var(--accent-strong); background: none; border: 0; cursor: pointer; }
+.pickerActions button:hover { text-decoration: underline; }
+
+/* ---- Chart ---- */
+.chart { display: grid; grid-template-columns: minmax(8rem, 13rem) minmax(0, 1fr); gap: 0 14px; }
+/* First row lines up with the month axis, the rest with the bars. */
+.names { display: grid; grid-template-rows: 26px; grid-auto-rows: var(--row); }
+.axisSpacer { height: 26px; }
+.name { display: flex; align-items: center; min-width: 0; overflow: hidden; font-size: 13px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; transition: opacity 140ms ease; }
+.name[data-dim] { opacity: .4; }
+
+.plot { min-width: 0; }
+.axis { position: relative; height: 26px; }
+.axis span { position: absolute; top: 2px; font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; color: var(--muted); transform: translateX(-50%); }
+.rows { position: relative; background: var(--background); border-radius: 10px; }
+.row { position: relative; height: var(--row); }
+.gridline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); }
+/* Overlap bands: soft stripes where two projects run together, stronger for three or more. */
+.band { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, rgb(194 74 31 / 7%) 0 6px, transparent 6px 12px); }
+.band[data-strong] { background: repeating-linear-gradient(135deg, rgb(194 74 31 / 14%) 0 6px, transparent 6px 12px); }
+.today { position: absolute; top: -26px; bottom: 0; z-index: 1; width: 2px; background: var(--accent); pointer-events: none; }
+.today span { position: absolute; top: 0; left: 6px; padding: 1px 6px; font-size: 10px; font-weight: 700; color: #fff; white-space: nowrap; background: var(--accent); border-radius: 6px; }
+
+/* Bars: the light part is the whole span, the strong part how much is done. */
+.bar { position: absolute; top: 9px; z-index: 2; display: flex; align-items: center; height: 20px; overflow: visible; background: var(--bar); border-radius: 6px; transform-origin: left; animation: grow 700ms cubic-bezier(.2, .8, .2, 1) both; transition: opacity 140ms ease, box-shadow 140ms ease; }
+.bar:hover, .bar:focus-visible { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--bar-fill); outline: none; }
+.bar[data-dim] { opacity: .3; }
+.bar[data-related] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent-border); }
+.bar[data-late] { box-shadow: inset 0 0 0 2px var(--critical); }
+.bar[data-open] { background: repeating-linear-gradient(90deg, var(--bar) 0 70%, transparent 70% 100%) right / 100% 100%; mask-image: linear-gradient(90deg, #000 75%, transparent); }
+.fill { height: 100%; background: var(--bar-fill); border-radius: 6px; }
+.barLabel { position: absolute; left: 8px; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / 25%); pointer-events: none; }
+.milestone { position: absolute; top: 50%; width: 9px; height: 9px; background: var(--card); border: 2px solid var(--foreground); border-radius: 2px; transform: translate(-50%, -50%) rotate(45deg); }
+
+.tooltip { position: absolute; bottom: calc(100% - 4px); z-index: 5; display: grid; gap: 2px; padding: 7px 10px; font-size: 12px; white-space: nowrap; color: #fff; background: var(--foreground); border-radius: 8px; box-shadow: 0 8px 20px -8px #00000055; transform: translateX(-50%); pointer-events: none; }
+.tooltip span { color: #e9dfd4; }
+
+/* ---- Key ---- */
+.key { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; padding: 0; font-size: 12px; color: var(--muted); list-style: none; }
+.key li { display: flex; align-items: center; gap: 7px; }
+.keyBar { width: 22px; height: 10px; background: linear-gradient(90deg, var(--accent) 55%, #f2c4ad 55%); border-radius: 3px; }
+.keyBand { width: 22px; height: 12px; background: repeating-linear-gradient(135deg, rgb(194 74 31 / 18%) 0 4px, transparent 4px 8px); border-radius: 3px; }
+.keyMilestone { width: 8px; height: 8px; margin: 0 4px; border: 2px solid var(--foreground); border-radius: 2px; transform: rotate(45deg); }
+.keyOpen { width: 22px; height: 10px; background: linear-gradient(90deg, var(--border-hover), transparent); border-radius: 3px; }
+
+@keyframes grow { from { transform: scaleX(0); } }
+
+@media (max-width: 720px) {
+  .chart { grid-template-columns: 6.5rem minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar { animation: none; }
+}

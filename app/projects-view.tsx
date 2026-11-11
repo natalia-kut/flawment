@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import CreateTaskForm from "./create-task-form";
+import TaskDetailsForm from "./task-details-form";
+import ProjectDetailsForm from "./project-details-form";
+import { isTaskOverdue } from "@/lib/tasks/board";
 import ProjectTaskList from "./project-task-list";
 import ProjectStages from "./project-stages";
 import ProjectBrowser from "./project-browser";
@@ -11,20 +13,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, type ReactNode, type FormEventHandler } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { projectAction } from "@/lib/projects/actions";
-
-function ProjectFields({ project }: { project?: WorkspaceProject }) {
-  return <>
-    <label>Project name<input name="name" required maxLength={120} defaultValue={project?.name} placeholder="Give your project a name" /></label>
-    <label>Description<textarea name="description" maxLength={4000} defaultValue={project?.description ?? ""} placeholder="What will your team work on?" /></label>
-    <div className="form-row">
-      <label>Start date<input name="start_date" type="date" required defaultValue={project?.start_date ?? new Date().toISOString().slice(0, 10)} /></label>
-      <label>End date <span className="optional-label">Optional</span><input name="end_date" type="date" defaultValue={project?.end_date} /></label>
-    </div>
-    <label>Status<select name="status" defaultValue={project?.status ?? "TO_DO"}>
-      {["TO_DO", "IN_PROGRESS", "COMPLETED", "ARCHIVED", "CANCELLED"].map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}
-    </select></label>
-  </>;
-}
+import PageHeader from "@/components/page-header";
+import { projectStatusLabels } from "@/lib/projects/labels";
 
 function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, className = "workspace-form" }: {
   children: ReactNode; operation: string; projectId?: number;
@@ -84,25 +74,23 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const editingTask = project?.tasks.find((task) => task.id === editingTaskId);
   const close = () => { setModal(null); setEditingTaskId(null); };
-  return <div className="projects-workspace">
-    {selected && <nav className="project-breadcrumbs" aria-label="Breadcrumb">
-      <ol>
-        <li><Link href="/">Projects</Link></li>
-        <li><span className="breadcrumb-separator" aria-hidden="true">/</span><span aria-current="page">{project?.name ?? "Unavailable project"}</span></li>
-      </ol>
-    </nav>}
+  // On a project page the breadcrumb takes the label line above the title.
+  const breadcrumbs = <nav className="project-breadcrumbs" aria-label="Breadcrumb">
+    <ol>
+      <li><Link href="/?view=projects">Projects</Link></li>
+      <li><span className="breadcrumb-separator" aria-hidden="true">/</span><span aria-current="page">{project?.name ?? "Unavailable project"}</span></li>
+    </ol>
+  </nav>;
 
+  return <div className="projects-workspace">
     {!selected ? <>
-      <header className="page-header projects-page-heading">
-        <div><p className="eyebrow">MANAGE</p><h1>Projects</h1></div>
-        <button className="primary-button" onClick={() => setModal("create")}><span aria-hidden="true">+</span> New project</button>
-      </header>
+      <PageHeader title="Projects"
+        actions={<button className="primary-button" onClick={() => setModal("create")}><span aria-hidden="true">+</span> New project</button>} />
       {projects.length === 0 ? <section className="project-empty-state"><span aria-hidden="true">↗</span><h2>Make room for your next idea</h2><p>Create a project and bring your team together.</p><button className="primary-button" onClick={() => setModal("create")}>Create your first project</button></section> :
         <ProjectBrowser projects={projects} today={today} />}
-    </> : !project ? <section className="project-empty-state"><h1>Project unavailable</h1><p>This project was deleted or you no longer have access.</p><Link href="/" className="secondary-button">Back to projects</Link></section> : <>
-      <header className="page-header projects-page-heading"><div><h1>{project.name}</h1><p>{project.description || "Add a description to tell your team what this project is about."}</p></div>
-        {project.canEdit && <button className="secondary-button" onClick={() => setModal("edit")}>Edit project</button>}
-      </header>
+    </> : !project ? <>{breadcrumbs}<section className="project-empty-state"><h1>Project unavailable</h1><p>This project was deleted or you no longer have access.</p><Link href="/?view=projects" className="secondary-button">Back to projects</Link></section></> : <>
+      <PageHeader breadcrumbs={breadcrumbs} title={project.name}
+        actions={project.canEdit && <button className="secondary-button" onClick={() => setModal("edit")}>Edit project</button>} />
       <ProjectStages key={"stages-" + project.id} project={project} />
       <ProjectTaskList key={project.id} project={project}
         onCreate={() => { setEditingTaskId(null); setModal("task"); }}
@@ -127,24 +115,20 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
         </section>
         <aside className="project-overview-sidebar">
           <ProjectSpecializations project={project} />
-          <section className="workspace-card project-facts"><h2>At a glance</h2><dl><div><dt>Status</dt><dd>{project.status.replaceAll("_", " ")}</dd></div><div><dt>Start date</dt><dd>{project.start_date}</dd></div><div><dt>End date</dt><dd>{project.end_date || "No deadline"}</dd></div><div><dt>Your role</dt><dd>{project.role?.replaceAll("_", " ")}</dd></div></dl></section>
-          {project.canDelete && <details className="project-danger-zone"><summary>Project settings</summary><p>Deleting this project also deletes its tasks and memberships.</p><ChangeForm operation="delete" projectId={project.id} onSuccess={() => router.push("/")} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}><button className="danger-button">Delete project</button></ChangeForm></details>}
+          <section className="workspace-card project-facts"><h2>At a glance</h2><dl><div><dt>Status</dt><dd>{projectStatusLabels[project.status]}</dd></div><div><dt>Start date</dt><dd>{project.start_date}</dd></div><div><dt>End date</dt><dd>{project.end_date || "No deadline"}</dd></div><div><dt>Your role</dt><dd>{project.role?.replaceAll("_", " ")}</dd></div></dl></section>
+          {project.canDelete && <details className="project-danger-zone"><summary>Project settings</summary><p>Deleting this project also deletes its tasks and memberships.</p><ChangeForm operation="delete" projectId={project.id} onSuccess={() => router.push("/?view=projects")} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}><button className="danger-button">Delete project</button></ChangeForm></details>}
         </aside>
       </div>
     </>}
 
-    {editingTask && project?.canManageTasks && <ProjectDialog title="Edit task" description="Update the task details and track its progress." onClose={close}>
-      <CreateTaskForm key={editingTask.id} project={project} task={editingTask} onCancel={close} onSuccess={close} />
-    </ProjectDialog>}
-    {modal === "task" && project?.canManageTasks && <ProjectDialog title="Create a task" description="Plan the next piece of work for your project." onClose={close}>
-      <CreateTaskForm project={project} onCancel={close} onSuccess={close} />
-    </ProjectDialog>}
-    {modal === "create" && <ProjectDialog title="Create a project" description="Start with the basics. You can invite your team next." onClose={close}>
-      <ChangeForm operation="create" onSuccess={(id) => { close(); router.push(`/?project=${id}`); }}><ProjectFields /><div className="dialog-actions"><button type="button" className="secondary-button" onClick={close}>Cancel</button><button className="primary-button">Create project</button></div></ChangeForm>
-    </ProjectDialog>}
-    {modal === "edit" && project && <ProjectDialog title="Edit project" description="Keep your team aligned with the latest details." onClose={close}>
-      <ChangeForm operation="update" projectId={project.id} onSuccess={close}><ProjectFields project={project} /><div className="dialog-actions"><button type="button" className="secondary-button" onClick={close}>Cancel</button><button className="primary-button">Save changes</button></div></ChangeForm>
-    </ProjectDialog>}
+    {/* The same in-place editor as a card on the Tasks board. */}
+    {editingTask && project?.canManageTasks && <TaskDetailsForm key={editingTask.id} project={project} task={editingTask}
+      overdue={isTaskOverdue(editingTask, today)} showOpenProject={false} onClose={close} onSaved={() => { close(); router.refresh(); }} />}
+    {modal === "task" && project?.canManageTasks && <TaskDetailsForm project={project} showOpenProject={false}
+      onClose={close} onSaved={() => { close(); router.refresh(); }} />}
+    {/* The same in-place style as the task dialog. */}
+    {modal === "create" && <ProjectDetailsForm onClose={close} onSaved={(id) => { close(); router.push(`/?project=${id}`); }} />}
+    {modal === "edit" && project && <ProjectDetailsForm key={project.id} project={project} onClose={close} onSaved={() => { close(); router.refresh(); }} />}
     {modal === "add" && project && <ProjectDialog title="Bring someone on board" description={`Add a registered user to ${project.name}.`} onClose={close}>
       {project.eligible.length === 0 ? <p>There are no other available users to add.</p> : <ChangeForm operation="add" projectId={project.id} onSuccess={close}>
         <label>Available users<select name="user_id" required defaultValue=""><option value="" disabled>Select a user</option>{project.eligible.map((user) => <option key={user.id} value={user.id}>{user.first_name} {user.last_name} ({user.email})</option>)}</select></label>

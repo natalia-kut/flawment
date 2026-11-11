@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { profileAction } from "@/lib/profiles/actions";
 import UserAvatar from "./user-avatar";
+import PageHeader from "@/components/page-header";
 
 export default function ProfileView({ user }: { user: {
   id: number; first_name: string; last_name: string; email: string; username: string;
@@ -11,7 +12,7 @@ export default function ProfileView({ user }: { user: {
   const [state, action, pending] = useActionState(profileAction, {});
   const [photoError, setPhotoError] = useState("");
   return <section className="profile-page">
-    <header className="page-header"><p className="eyebrow">YOUR ACCOUNT</p><h1>My profile</h1><p>Your description and photo are shared across your projects.</p></header>
+    <PageHeader title="My profile" description="Your description and photo are shared across your projects." />
     <div className="workspace-card profile-editor">
       <div className="profile-heading"><UserAvatar id={user.id} firstName={user.first_name} lastName={user.last_name} photoVersion={user.photoVersion} size={88} /><div><h2>{user.first_name} {user.last_name}</h2><p>@{user.username} · {user.email}</p></div></div>
       <form action={action} className="workspace-form">

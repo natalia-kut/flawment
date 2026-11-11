@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { emptyTaskFilters, filterTasks, taskAssigneeKey, type TaskFilters } from "@/lib/tasks/filters";
+import { formatTaskDeadline, taskPriorityLabels, taskStatusLabels } from "@/lib/tasks/labels";
+import controls from "@/components/ui/filter-bar.module.css";
 import DeleteTaskForm from "./delete-task-form";
 import styles from "./project-task-list.module.css";
 
@@ -33,63 +35,66 @@ export default function ProjectTaskList({ project, onCreate, onEdit }: {
     </div>
 
     {project.tasks.length === 0 ? <p>No tasks yet.</p> : <>
-      <div className={styles.filters} role="group" aria-label="Task filters">
-        <label className={styles.search}>Search tasks
-          <input type="search" placeholder="Search title or description" value={filters.query}
-            onChange={(event) => update("query", event.target.value)} />
-        </label>
-        <label>Stage<select value={filters.stage} onChange={(event) => update("stage", event.target.value)}>
-          <option value="">All stages</option><option value="none">No stage</option>
-          {project.stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
-        </select></label>
-        <label>Status
-          <select value={filters.status} onChange={(event) => update("status", event.target.value)}>
-            <option value="">All statuses</option>
-            {["TO_DO", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "CANCELLED"].map((status) =>
-              <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}
+      <div className={controls.toolbar} role="group" aria-label="Task filters">
+        <div className={controls.toolbarRow}>
+          <input className={controls.search} type="search" aria-label="Search tasks" placeholder="Search tasks by title or description"
+            value={filters.query} onChange={(event) => update("query", event.target.value)} />
+        </div>
+        <div className={controls.toolbarRow}>
+          {/* The first option names each filter, so the pills need no labels above them. */}
+          <select className={controls.filter} aria-label="Stage" data-active={filters.stage !== ""} value={filters.stage}
+            onChange={(event) => update("stage", event.target.value)}>
+            <option value="">All stages</option><option value="none">No stage</option>
+            {project.stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
           </select>
-        </label>
-        <label>Priority
-          <select value={filters.priority} onChange={(event) => update("priority", event.target.value)}>
-            <option value="">All priorities</option>
-            {["LOW", "MEDIUM", "HIGH", "URGENT"].map((priority) =>
-              <option key={priority} value={priority}>{priority}</option>)}
+          <select className={controls.filter} aria-label="Status" data-active={filters.status !== ""} value={filters.status}
+            onChange={(event) => update("status", event.target.value)}>
+            <option value="">Any status</option>
+            {Object.entries(taskStatusLabels).map(([status, label]) => <option key={status} value={status}>{label}</option>)}
           </select>
-        </label>
-        <label>Assigned to
-          <select value={filters.assignee} onChange={(event) => update("assignee", event.target.value)}>
+          <select className={controls.filter} aria-label="Priority" data-active={filters.priority !== ""} value={filters.priority}
+            onChange={(event) => update("priority", event.target.value)}>
+            <option value="">Any priority</option>
+            {Object.entries(taskPriorityLabels).map(([priority, label]) => <option key={priority} value={priority}>{label}</option>)}
+          </select>
+          <select className={controls.filter} aria-label="Assigned to" data-active={filters.assignee !== ""} value={filters.assignee}
+            onChange={(event) => update("assignee", event.target.value)}>
             <option value="">Anyone</option>
             <option value="unassigned">Unassigned</option>
             {assignees.map(([key, name]) => <option key={key} value={key}>{name}</option>)}
           </select>
-        </label>
-        <button className="secondary-button" disabled={!hasFilters}
-          onClick={() => setFilters({ ...emptyTaskFilters })}>Clear filters</button>
+        </div>
       </div>
 
-      <p className={styles.results} role="status" aria-live="polite">
-        Showing {tasks.length} of {project.tasks.length} tasks
-      </p>
+      <div className={controls.statusRow}>
+        <div className={controls.statusText}>
+          <p className={controls.status} role="status" aria-live="polite">Showing {tasks.length} of {project.tasks.length} tasks</p>
+          {hasFilters && <button type="button" className={controls.clear} onClick={() => setFilters({ ...emptyTaskFilters })}>Clear filters</button>}
+        </div>
+      </div>
+
       {tasks.length === 0 ? <div className={styles.empty}>
         <h3>No tasks match your filters</h3>
         <p>Try another search or clear the filters.</p>
       </div> : <ul className={styles.list}>
         {tasks.map((task) => <li key={task.id} className={styles.task}>
           <div className={styles.heading}>
-            <h3>{task.title}</h3>
+            <div className={styles.titleBlock}>
+              <h3>{task.title}</h3>
+              <p className={styles.stage}>{task.stageName}</p>
+            </div>
             {project.canManageTasks && <div className={styles.actions}>
               <button className="secondary-button" aria-label={"Edit task: " + task.title}
                 onClick={() => onEdit(task.id)}>Edit task</button>
               <DeleteTaskForm projectId={project.id} taskId={task.id} title={task.title} />
             </div>}
           </div>
-          <p>Stage: {task.stageName}</p>
           {task.description && <p className={styles.description}>{task.description}</p>}
           <dl className={styles.facts}>
-            <div><dt>Status</dt><dd>{task.status.replaceAll("_", " ")}</dd></div>
-            <div><dt>Priority</dt><dd>{task.priority}</dd></div>
+            <div><dt>Status</dt><dd><span className={styles.status} data-status={task.status}>{taskStatusLabels[task.status]}</span></dd></div>
+            <div><dt>Priority</dt><dd><span className={styles.priority} data-priority={task.priority}>{taskPriorityLabels[task.priority]}</span></dd></div>
             <div><dt>Assigned to</dt><dd>{task.assigneeName}</dd></div>
-            <div><dt>Deadline</dt><dd>{task.deadline || "No deadline"}</dd></div>
+            <div><dt>Deadline</dt><dd>{formatTaskDeadline(task.deadline)}</dd></div>
           </dl>
         </li>)}
       </ul>}

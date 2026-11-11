@@ -27,6 +27,12 @@ export function addDays(day: string, days: number) {
   return new Date(toUtc(day) + days * dayMs).toISOString().slice(0, 10);
 }
 
+// The date (YYYY-MM-DD) in this machine's time zone.
+export function localDay(date = new Date()) {
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+}
+
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
   month: "short",

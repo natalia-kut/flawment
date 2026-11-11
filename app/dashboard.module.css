@@ -1,0 +1,77 @@
+/* The dashboard: Flawiusz on top, numbers at a glance, deadlines beside what's next, then the team. */
+
+/* ---- Summary under the greeting ---- */
+.summary { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.summaryPill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px 4px 9px; font-size: 13px; font-weight: 600; color: var(--warning-strong); background: var(--warning-soft); border-radius: 20px; }
+.summaryPill[data-free] { color: var(--success-strong); background: var(--success-soft); }
+.sun { color: #e0a21a; }
+.rays { transform-origin: 12px 12px; animation: spin 9s linear infinite; }
+/* A calendar with a soft pulse: something is waiting this week. */
+.dueIcon { position: relative; display: inline-grid; place-items: center; }
+.dueIcon::after { content: ""; position: absolute; top: -2px; right: -3px; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 1.8s ease-out infinite; }
+
+/* ---- Flawiusz: warm light drifting behind the card ---- */
+section.assistant { position: relative; isolation: isolate; max-width: none; margin: 0 0 22px; overflow: hidden;
+  background:
+    radial-gradient(circle at 1px 1px, rgb(63 42 24 / 5%) 1px, transparent 0) 0 0 / 18px 18px,
+    linear-gradient(135deg, #fffaf5 0%, var(--card) 50%, #fef8f0 100%); }
+.glow { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.glow span { position: absolute; width: 340px; height: 340px; border-radius: 50%; filter: blur(70px); opacity: .26; animation: drift 18s ease-in-out infinite alternate; }
+.glow span:nth-child(1) { top: -170px; left: 8%; background: #f4a26f; }
+.glow span:nth-child(2) { top: -120px; right: 6%; background: #f6cf74; animation-duration: 22s; animation-delay: -6s; }
+.glow span:nth-child(3) { bottom: -230px; left: 42%; background: #e98a62; opacity: .18; animation-duration: 26s; animation-delay: -12s; }
+
+/* ---- Stat tiles ---- */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.stat { display: grid; gap: 6px; padding: 18px 20px; color: var(--foreground); text-decoration: none; background: var(--card); border: 1px solid var(--border); border-radius: 14px; transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease; }
+.stat:hover { border-color: var(--border-hover); box-shadow: 0 8px 22px -14px #39220f40; transform: translateY(-2px); }
+.statValue { font-size: 34px; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -1px; }
+.statLabel { font-family: var(--font-geist-mono), monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.stat[data-tone=critical] { border-left: 4px solid var(--critical); }
+.stat[data-tone=critical] .statValue { color: var(--critical); }
+
+/* ---- Panels ---- */
+.columns { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
+.panel { padding: 22px 24px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; }
+.wide { margin-top: 18px; }
+.panelHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.panelHeading h2 { margin: 0; font-size: 19px; }
+.panelHeading a { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--accent-strong); text-decoration: none; }
+.panelHeading a:hover { text-decoration: underline; }
+.empty { margin: 8px 0 4px; color: var(--muted); }
+
+/* ---- Up next ---- */
+.upNext { display: grid; margin: 0; padding: 0; list-style: none; }
+.upNext li + li { border-top: 1px solid var(--border); }
+.task { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; width: calc(100% + 20px); margin: 0 -10px; padding: 11px 10px; font: inherit; text-align: left; background: transparent; border: 0; cursor: pointer; color: var(--foreground); text-decoration: none; border-radius: 10px; transition: background-color 140ms ease; }
+.task:hover { background: var(--background); }
+.taskText { display: grid; gap: 2px; min-width: 0; }
+.taskText strong { overflow: hidden; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
+.taskText span { overflow: hidden; font-size: 12px; white-space: nowrap; text-overflow: ellipsis; color: var(--muted); }
+.priority { width: 9px; height: 9px; border-radius: 50%; background: var(--warning); }
+.priority[data-priority=HIGH], .priority[data-priority=URGENT] { background: var(--critical); }
+.priority[data-priority=LOW] { background: var(--border-hover); }
+.you { font-style: normal; font-weight: 600; color: var(--accent-strong); }
+.due { font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--muted); }
+.due[data-state=soon] { color: var(--warning-strong); }
+.due[data-state=late] { color: var(--critical); }
+
+.stat:focus-visible, .task:focus-visible, .panelHeading a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgb(194 74 31 / 55%); } 100% { box-shadow: 0 0 0 7px rgb(194 74 31 / 0%); } }
+@keyframes drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(60px, 40px) scale(1.15); } }
+
+@media (max-width: 1200px) {
+  .columns { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rays, .dueIcon::after, .glow span { animation: none; }
+  .stat, .task { transition: none; }
+  .stat:hover { transform: none; }
+}

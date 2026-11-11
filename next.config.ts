@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   experimental: { serverActions: { bodySizeLimit: "3mb" } },
+  // Keep the dev indicator clear of the Flawiusz launcher in the bottom-right corner.
+  devIndicators: { position: "top-right" },
   turbopack: {
     rules: {
       // Tailwind processes the global entry only; CSS Modules use Next.js handling.

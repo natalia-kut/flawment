@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useContext, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { copyTemplate, deleteTemplate, saveTemplate } from "@/lib/documents/actions";
 import { builtIn } from "@/lib/documents/built-in-templates";
 import { createBlock, templateLimits, type DocumentTemplate } from "@/lib/documents/template-schema";
 import type { DocumentProject } from "@/lib/documents/types";
 import DocumentSheet from "./document-sheet";
 import TemplateBuilder from "./template-builder";
+import { RequestedTemplateContext } from "./requested-template-context";
 import "./documents.css";
+import PageHeader from "@/components/page-header";
 
 type DocumentsViewProps = {
   projects: DocumentProject[];
@@ -89,9 +91,16 @@ function ConfirmDialog({ tone, title, children, confirmLabel, busyLabel, busy, o
 }
 
 export default function DocumentsView({ projects, initialTemplates, today }: DocumentsViewProps) {
+  const requestedTemplateId = useContext(RequestedTemplateContext);
   const [templates, setTemplates] = useState(initialTemplates);
-  const [selectedTemplateId, setSelectedTemplateId] = useState(initialTemplates[0]?.id ?? "");
-  const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id ?? 0);
+  const [selectedTemplateId, setSelectedTemplateId] = useState(
+    initialTemplates.some((template) => template.id === requestedTemplateId)
+      ? requestedTemplateId!
+      : (initialTemplates[0]?.id ?? ""),
+  );
+  const [selectedProjectId, setSelectedProjectId] = useState(
+    initialTemplates.find((template) => template.id === requestedTemplateId)?.projectId ?? projects[0]?.id ?? 0,
+  );
   // Template the builder starts from; null while the builder is closed.
   const [builderSource, setBuilderSource] = useState<DocumentTemplate | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -222,12 +231,8 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
 
   return (
     <div className="documents-page">
-      <header className="documents-heading">
-        <div>
-          <h1>Documents</h1>
-          <p className="section-description">Create reports from your project&apos;s tasks, deadlines and team.</p>
-        </div>
-      </header>
+      <PageHeader title="Documents"
+        description="Create reports from your project's tasks, deadlines and team." />
 
       {error && <p className="storage-notice" role="alert">{error}</p>}
       {notice && <p className="storage-notice success" role="status">{notice}</p>}
