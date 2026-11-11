@@ -14,13 +14,14 @@ async function Workspace() {
   const projects = await getWorkspaceProjects();
   // Read on the server, so a collapsed sidebar is already narrow on first paint.
   const sidebarCollapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "collapsed";
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   return (
     <AppShell
       user={user}
-      projectCount={projects.length}
+      workspace={{ projects, userId: user.id, today }}
       sidebarCollapsed={sidebarCollapsed}
-      tasks={<TasksOverview projects={projects} currentUserId={user.id} today={new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())} />}
-      projects={<ProjectsView projects={projects} today={new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())} />}
+      tasks={<TasksOverview projects={projects} currentUserId={user.id} today={today} />}
+      projects={<ProjectsView projects={projects} today={today} />}
       documents={
         <Suspense fallback={<DocumentsSkeleton />}>
           <DocumentsSection />
