@@ -111,7 +111,7 @@ function signersFor(project: DocumentProject, signers: Extract<TemplateBlock, { 
   const others = project.members.filter((member) => member.person.id !== project.owner.id);
 
   if (signers === "owner") return [owner];
-  const extra = signers === "allMembers" ? others : others.filter((member) => member.role === "MANAGER");
+  const extra = signers === "allMembers" ? others : others.filter((member) => member.role === "COORDINATOR");
   return [owner, ...extra.map((member) => ({ name: member.person.name, role: roleLabel(project, member) }))];
 }
 

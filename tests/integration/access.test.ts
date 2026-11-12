@@ -46,6 +46,10 @@ test("registration, login and project authorization against PostgreSQL", async (
     assert.equal((await authenticate(form({ email: emails[3], password: "TestPassword123!" }))).error, "Invalid email address or password.");
     await prisma.user.update({ where: { id: outsider.id }, data: { is_active: true } });
 
+    // Projects are started by managers: someone whose job title can lead.
+    await assert.rejects(mutateProject(owner, form({ operation: "create", name: prefix, status: "TO_DO", start_date: "2026-10-25" })), /Only managers/);
+    const managerTitle = await prisma.jobTitle.create({ data: { name: `${prefix} Manager`, name_key: `${prefix} manager`.toLowerCase(), can_lead: true } });
+    await prisma.user.update({ where: { id: owner.id }, data: { job_title_id: managerTitle.id } });
     const created = await mutateProject(owner, form({ operation: "create", name: prefix, status: "TO_DO", start_date: "2026-10-25" }));
     assert.ok("owner_id" in created);
     const projectId = created.id;
@@ -54,28 +58,29 @@ test("registration, login and project authorization against PostgreSQL", async (
     const available = await findAvailableMembers(projectId);
     assert.ok(available.some((user) => user.id === member.id));
     assert.ok(!available.some((user) => user.id === root.id), "super admins never appear in member selection");
-    await assert.rejects(mutateProject(owner, change("add", { user_id: root.id, role: "PARTICIPANT" })), /standard user/);
-    await assert.rejects(mutateProject(root, change("add", { user_id: root.id, role: "ADMIN" })), /standard user/);
-    assert.equal((await prisma.projectMembership.findUniqueOrThrow({ where: { project_id_user_id: { project_id: projectId, user_id: owner.id } } })).role, "ADMIN");
+    await assert.rejects(mutateProject(owner, change("add", { user_id: root.id, role: "CONTRIBUTOR" })), /standard user/);
+    await assert.rejects(mutateProject(root, change("add", { user_id: root.id, role: "COORDINATOR" })), /standard user/);
+    assert.equal((await prisma.projectMembership.findUniqueOrThrow({ where: { project_id_user_id: { project_id: projectId, user_id: owner.id } } })).role, "OWNER");
     assert.equal(await prisma.project.count({ where: { id: projectId, ...visibleProjects(outsider) } }), 0);
     await assert.rejects(mutateProject(outsider, change("delete")), /permission/);
-    await mutateProject(owner, change("add", { user_id: member.id, role: "PARTICIPANT" }));
+    await mutateProject(owner, change("add", { user_id: member.id, role: "CONTRIBUTOR" }));
     assert.ok(!(await findAvailableMembers(projectId)).some((user) => user.id === member.id));
-    await assert.rejects(mutateProject(owner, change("add", { user_id: member.id, role: "PARTICIPANT" })), /already/);
+    await assert.rejects(mutateProject(owner, change("add", { user_id: member.id, role: "CONTRIBUTOR" })), /already/);
     assert.equal(await prisma.user.count({ where: { id: member.id, memberships: { none: { project_id: projectId } } } }), 0);
     assert.equal(await prisma.project.count({ where: { id: projectId, ...visibleProjects(member) } }), 1);
-    await assert.rejects(mutateProject(member, change("add", { user_id: outsider.id, role: "ADMIN" })), /permission/);
+    await assert.rejects(mutateProject(member, change("add", { user_id: outsider.id, role: "CONTRIBUTOR" })), /permission/);
     await assert.rejects(mutateProject(member, change("delete")), /permission/);
-    await mutateProject(owner, change("add", { user_id: manager.id, role: "MANAGER" }));
-    await assert.rejects(mutateProject(manager, change("add", { user_id: outsider.id, role: "ADMIN" })), /elevated/);
-    await assert.rejects(mutateProject(manager, change("role", { user_id: member.id, role: "ADMIN" })), /permission/);
+    await mutateProject(owner, change("add", { user_id: manager.id, role: "COORDINATOR" }));
+    await assert.rejects(mutateProject(manager, change("add", { user_id: outsider.id, role: "COORDINATOR" })), /owner can name coordinators/);
+    await assert.rejects(mutateProject(manager, change("add", { user_id: outsider.id, role: "OWNER" })), /Invalid project role/, "there is only one owner");
+    await assert.rejects(mutateProject(manager, change("role", { user_id: member.id, role: "COORDINATOR" })), /permission/);
     await assert.rejects(mutateProject(manager, change("delete")), /permission/);
     await mutateProject(manager, change("update", { name: "Updated", status: "IN_PROGRESS", start_date: "2026-10-25" }));
-    await mutateProject(owner, change("role", { user_id: member.id, role: "ADMIN" }));
+    await mutateProject(owner, change("role", { user_id: member.id, role: "COORDINATOR" }));
     await assert.rejects(mutateProject(manager, change("remove", { user_id: member.id })), /only remove/);
     await assert.rejects(mutateProject(owner, change("remove", { user_id: owner.id })), /owner/);
-    await assert.rejects(mutateProject(root, change("role", { user_id: owner.id, role: "PARTICIPANT" })), /owner/);
-    await mutateProject(owner, change("role", { user_id: member.id, role: "PARTICIPANT" }));
+    await assert.rejects(mutateProject(root, change("role", { user_id: owner.id, role: "CONTRIBUTOR" })), /owner/);
+    await mutateProject(owner, change("role", { user_id: member.id, role: "CONTRIBUTOR" }));
     await prisma.task.create({ data: { title: prefix, project_id: projectId, created_by: owner.id, assigned_to: member.id } });
     await mutateProject(manager, change("remove", { user_id: member.id }));
     assert.equal((await prisma.task.findFirstOrThrow({ where: { project_id: projectId } })).assigned_to, null);
@@ -93,6 +98,7 @@ test("registration, login and project authorization against PostgreSQL", async (
     for (let i = 0; i < 11; i++) await authenticate(form({ email: emails[0], password: "wrong" }));
     assert.match((await authenticate(form({ email: emails[0], password: "TestPassword123!" }))).error ?? "", /Too many/);
   } finally {
+    await prisma.jobTitle.deleteMany({ where: { name_key: { startsWith: prefix.toLowerCase() } } });
     await prisma.project.deleteMany({ where: { id: { in: projectIds } } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
     await prisma.loginAttempt.deleteMany({ where: { key: { in: emails.map((email) => createHash("sha256").update(email).digest("hex")) } } });

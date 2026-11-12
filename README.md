@@ -114,8 +114,8 @@ running migrations. The sample-data seed skips when standard users already exist
 
 Open `/register` to create a standard account (username, name, email and a password
 of 10–128 characters). Registration signs you in automatically. Returning users
-sign in at `/login` with their email and password; use **Sign out** in the sidebar
-to end the session. Email and username uniqueness is case-insensitive.
+sign in at `/login` with their email and password; use **Sign out** in the account
+menu (your name at the foot of the sidebar) to end the session. Email and username uniqueness is case-insensitive.
 
 Bootstrap creates the local super admin with:
 
@@ -130,48 +130,56 @@ promote a colliding standard account. Production seeding requires explicit
 credentials. Sample users/projects remain optional via `npm run db:seed`; sample
 users use `flawment123` as their local-only password.
 
-Any signed-in user can create a project in **Projects**, becoming its owner and
-project `ADMIN` while retaining the standard account role. Select a project to
-edit details, add existing active users, change member roles, remove members,
-or delete the project, according to these permissions:
+Permissions come in three independent layers: the **account** (company-wide),
+the **team** (people) and the **project** (work).
 
-Projects opens as a table. Clicking a project name shows its dedicated view;
-use the **Projects → project name** breadcrumb to return to the list. The selected
-project is stored in the URL, so refresh and browser back/forward preserve
-navigation. **New project**, **Edit project**, and **Add member** open dialogs
-with Cancel, Escape, and backdrop dismissal. Creating a project opens its overview.
+**Account.** A **super admin** acts as the company's IT department: they see every
+project and may do everything in it without being a member, and they alone manage
+accounts, job titles and teams (the **People** and **Teams** pages). Super admins
+never join teams or projects and are never assigned tasks; their accounts and
+photos stay hidden from standard users. Everyone else has a **standard** account.
 
-| Capability | PARTICIPANT | MANAGER | ADMIN | SUPER_ADMIN account |
+**Team.** A super admin places people in teams and may make someone with a
+managerial job title the team's **lead**. A lead sees *why* their own people are
+away (vacation, sick leave, business trip, other) and their team's time off in the
+dashboard calendar. Everyone else sees only that a colleague is out of office, and
+the reason for their own time off. Team membership is visible to everyone.
+
+**Project.** Only **managers** (people whose job title can lead a team) and super
+admins can start a project; the creator becomes its **Owner**.
+
+| Capability | Contributor | Coordinator | Owner | Super admin |
 | --- | --- | --- | --- | --- |
-| View project, members and its document data | Yes | Yes | Yes | Every project |
-| Edit project details | — | Yes | Yes | Yes |
-| Add/remove participants | — | Yes | Yes | Yes |
-| Assign ADMIN/MANAGER roles or remove elevated members | — | — | Yes | Yes |
-| Delete project and its tasks | — | — | Yes | Yes |
-| View project tasks and stages | Yes | Yes | Yes | Every project |
-| Create, fully edit or delete tasks | — | Yes | Yes | Yes |
-| Change task status | Own assigned tasks | Yes | Yes | Yes |
-| Create, edit or delete stages | — | Yes | Yes | Yes |
+| View the project, its people, stages and tasks | Yes | Yes | Yes | Every project |
+| Add tasks | Yes, for themselves or unassigned | Yes | Yes | Yes |
+| Edit or delete tasks | Those they added | All | All | All |
+| Change task status | Tasks they added or are assigned | All | All | All |
+| Assign tasks | Only to themselves | Any member | Any member | Any member |
+| Edit project details and stages | — | Yes | Yes | Yes |
+| Add or remove members | — | Contributors only | Yes | Yes |
+| Make someone a Coordinator | — | — | Yes | Yes |
+| Delete the project | — | — | Yes | Yes |
 
-The owner always remains a project admin and cannot be removed or demoted.
-The available-user selector excludes existing members. Removing a member clears
-their task assignments in that project. Deleting a project also deletes its tasks,
-stages, memberships and project-specific document templates. Standard users only
-see projects they belong to; super admins see
-all projects. Project permissions live in `lib/rbac.ts`, with
-`tasks:manage` used for task creation, editing, deletion and status changes.
-The `tasks:update-assigned` permission allows participants to change the status
-of their own assigned tasks while they remain project members.
+There is exactly one Owner, who cannot be removed or demoted. Coordinators run the
+work: the project, its stages, every task and its contributors. Contributors often
+spot work themselves, so they add tasks too, but hand them only to themselves.
+Removing a member clears their task assignments in that project. Deleting a
+project also deletes its tasks, stages, memberships and project-specific document
+templates. Standard users only see projects they belong to. Project permissions
+live in `lib/rbac.ts`; every server action rechecks them.
 
-Super admins have access without project membership. They never appear in the
-available-user selector, and server-side checks reject adding or changing them
-through membership actions. Existing super-admin memberships are hidden from
-standard users. Documents also hide their account details from standard users,
-showing a generic administrator label where a project owner or task author is required.
+Projects opens as a table. Clicking a project name shows its dedicated view; use
+the **Projects → project name** breadcrumb to return to the list. The selected
+project is stored in the URL, so refresh and browser back/forward preserve
+navigation. **New project**, **Edit project** and **Add member** open dialogs with
+Cancel, Escape and backdrop dismissal. **Manage** on a member opens a small menu
+(role and **Remove from project**) that closes when you click elsewhere.
 
 Document templates belong to their creator. Standard users can only read or change
 their own custom templates; super admins can manage all, including legacy
 templates without an owner. Built-in templates remain available to signed-in users.
+In documents, the "Coordinators" fact and "Owner and coordinators" signatures list
+a project's coordinators.
 
 Sessions use random opaque cookies (`HttpOnly`, `SameSite=Lax`, `Secure` in
 production) and hashed tokens in PostgreSQL, expire after seven days, and are
@@ -189,14 +197,15 @@ npm run lint
 ```
 
 Unit tests cover password hashing, permissions, project and task filters, overdue
-dates, progress and workspace task aggregation. Integration tests check account
-and project access, task creation/editing/deletion, status changes, stage
-management and task-stage assignment. They require the migrated PostgreSQL
+dates, progress, workspace task aggregation, time off, birthdays, anniversaries and
+statuses. Integration tests check account and project access (who may start a
+project and name coordinators), task creation/editing/deletion by each role, status
+changes, stages, profiles, teams, job titles, time off and who may see what. They require the migrated PostgreSQL
 database, create temporary records and remove them afterward. They run
 sequentially to avoid interfering transactions on the shared database. Run them
-against a local development database. To check the UI manually, register two
-users, create a
-project as one, add the other, and sign in as each to check role-specific actions.
+against a local development database. To check the UI manually, sign in as a sample
+manager (for example `aleksandra.lewandowska@flawment.dev`) and a contributor
+(`michal.zielinski@flawment.dev`, password `flawment123`) and compare what each can do.
 
 ## Set up Flawiusz
 
@@ -235,15 +244,15 @@ bootstrap. This deletion cannot be undone.
 
 ### Project task management
 
-Open a project in **Projects** to view its tasks. Project admins, managers and
-super admins can use **New task** and **Edit task**. The edit dialog supports
+Open a project in **Projects** to view its tasks. Every member can use **New task**;
+**Edit task** appears on the tasks you may edit (see the table above). The edit dialog supports
 title, description, priority, deadline, assignment and these statuses:
 TO DO, IN PROGRESS, IN REVIEW, COMPLETED and CANCELLED.
 
 Tasks can only be assigned to active standard users who belong to the project.
-Participants can view project tasks and change the status of their own assigned
-tasks on the workspace board, by dragging a card or using **Move to** in task
-details. They cannot create, fully edit, delete or reassign tasks.
+Contributors assign tasks only to themselves (or leave them unassigned), edit and
+delete the tasks they added, and change the status of tasks they added or are
+assigned, by dragging a card or using **Move to** in task details.
 Failed validation in the task form keeps its values for correction.
 Apply the committed migrations before using task and stage features.
 
@@ -253,9 +262,9 @@ Run the database integration coverage with `npm run test:integration`.
 
 ### Deleting project tasks
 
-Project admins, managers and super admins can use **Delete task** in a project's
-task list. Confirming the browser prompt permanently removes that task; Cancel
-keeps it. Participants cannot delete tasks. Permissions and project ownership of
+Owners, coordinators and super admins can use **Delete task** on any task in a
+project's task list; contributors on the tasks they added. Confirming the browser
+prompt permanently removes that task; Cancel keeps it. Permissions and project ownership of
 the task are checked again on the server. Deleting a task does not delete its
 project or other tasks.
 
@@ -281,7 +290,9 @@ Run `npm test` for search and filter coverage.
 The sidebar **Tasks** page displays an interactive board across projects returned
 by the authorized workspace loader. Standard users see their projects; super
 admins see all projects. Search titles and descriptions, or filter by project,
-participant, stage, priority, **Overdue** and **Only my tasks**.
+assignee, stage, priority, **Overdue** and **Only my tasks**. Grouped by project,
+**+ Add task** at the foot of a project's To do column adds a task straight into it;
+grouped by person, **New task** in the header lets you pick the project.
 Click a card to open task details, then use **Open project** to navigate to its
 project. Existing project permissions apply. No tasks are fetched from a separate
 unrestricted endpoint.
@@ -296,18 +307,18 @@ to fewer projects to confirm that only their project tasks are visible.
 
 ### Interactive task board
 
-The workspace Tasks page groups cards by project or participant. Drag a card
+The workspace Tasks page groups cards by project or person. Drag a card
 between status columns within the same group to save a status change. Click a
 card to open its details. The **Move to** selector in task details provides
 keyboard and touch access. Only the status changes: drag does not reassign a task
 or move it to a different project.
 
-Admins, managers and super admins can move project tasks. Participants can move
-their own assigned tasks while they remain members. The server rechecks access,
+Owners, coordinators and super admins can move any project task. Contributors can
+move the tasks they added or are assigned while they remain members. The server rechecks access,
 project boundaries and the previous status; stale changes are rejected with an
 error. Cards remain in their saved column if the request fails.
 
-Search and filter by project, participant, stage, priority, **Overdue** or
+Search and filter by project, assignee, stage, priority, **Overdue** or
 **Only my tasks**.
 Overdue means a deadline before today's Warsaw date, excluding completed and
 cancelled tasks. Progress counts completed tasks out of non-cancelled tasks and
@@ -315,14 +326,14 @@ is calculated for the complete group, independently of filters.
 The Cancelled column appears for groups that contain cancelled tasks.
 
 Manual check: move a disposable task from TO DO to IN PROGRESS, refresh and
-confirm the saved status. Check By participant, Only my tasks and Overdue.
-Use the Move to select as a keyboard alternative and check a participant account.
+confirm the saved status. Check By person, Only my tasks and Overdue.
+Use the Move to select as a keyboard alternative and check a contributor account.
 
 ### Project stages
 
-Project details now include **Stages**. Project admins, managers and super admins
+Project details now include **Stages**. Owners, coordinators and super admins
 can create, edit and delete a stage with a name, description and optional deadline.
-Participants can read stages. Names are checked for duplicates within the project.
+Contributors can read stages. Names are checked for duplicates within the project.
 Stage cards show the number of completed tasks and total tasks assigned.
 
 The task create/edit dialog includes **Stage**. A task can belong to one stage
@@ -362,43 +373,75 @@ The table displays named statuses, long dates, overdue task counts and segmented
 task progress. Search and status controls are available under **Filters**.
 The displayed **Planned** status corresponds to `TO_DO` in the database.
 
-### User profiles and project specializations
+### Profiles, statuses and celebrations
 
-Open **Profile** in the sidebar (or click your name/photo in the footer) to edit
-an account-wide description and upload or remove a profile photo. Descriptions
-are limited to 2000 characters. Photos accept non-animated JPEG, PNG or WebP,
-up to 2 MB and 16 megapixels. The server decodes the image, removes metadata,
-crops/resizes it to a square of at most 512 pixels, and encodes WebP. The result
-is stored in `User.photo`, a PostgreSQL `BYTEA` column (Prisma `Bytes`). Photo
-bytes are never included in workspace JSON or session data.
+Click your name/photo at the foot of the sidebar to open the account menu
+(**Set a status**, **Edit profile**, **Time off**, **Sign out**). **My profile**
+saves everything where you edit it, with no Save button: click a contact detail
+(phone, location, working hours, birthday, pronouns) to change it, add or remove
+skills as chips, and upload or remove your photo. Colleagues see the birthday as
+day and month only; the year never leaves the server. Your job title and team
+are read-only, because a super admin sets them; **Reports to** lists your team's
+leads. Skills replace the earlier free-text description, which has been removed.
 
-Photos appear in the sidebar, profile editor and project People list. Expand
-**About** on a member to read their description. The authenticated photo endpoint
-allows only the owner, a teammate sharing a project, or a super admin. It uses
-private, non-cached responses and does not expose super-admin photos to standard
-users. Removing a member also removes their photo access unless they still share
-another project with that person.
+A **status** ("🍽️ Lunch", "🚗 Commuting") is a short note with one emoji that
+clears itself after 30 minutes, 1 or 4 hours, at the end of the day or week, or
+never. Expiry times are worked out on the server in Europe/Warsaw time. Statuses
+show on the profile, in the account menu, on team pages and in project People
+lists. Work anniversaries count from the day the account was created. On your
+birthday or anniversary the Dashboard greets you with a banner; on the day,
+colleagues see a "🎂 Birthday today" or "🎉 3 years today" badge on team pages.
 
-Each project has its own **Specializations** panel. Project admins and super
-admins can create, rename and delete specializations, and use **Assign
-specialization** on any standard member (including the project owner). Each
-membership has one optional specialization; choose **No specialization** to
-clear it. A person can be Backend in one project and Frontend in another.
-Names must be 1–80 characters and unique within a project, ignoring letter case
-and repeated whitespace. Managers and participants can view specializations but
-cannot manage them. Specializations do not grant permissions or change RBAC roles.
+Profile photos accept non-animated JPEG, PNG or WebP, up to 2 MB and 16
+megapixels. The server decodes the image, removes metadata, crops/resizes it to a
+square of at most 512 pixels, and encodes WebP. The result is stored in
+`User.photo`, a PostgreSQL `BYTEA` column (Prisma `Bytes`). Photo bytes are never
+included in workspace JSON or session data. The authenticated photo endpoint
+serves any standard user's photo to signed-in users (the company directory is
+open) with private, non-cached responses; super admins' photos stay hidden.
 
-Deleting a specialization clears its assignments and preserves memberships.
-Deleting a project removes its specializations. A composite database foreign key
-also prevents assigning a specialization from another project.
+### Teams, people and job titles
+
+**Teams** shows every team as a tile, your own first and marked **Your team**.
+Open a tile to see its people: availability, lead, job title and up to two
+skills; click a person for their contact details, birthday, start date, status
+and all skills. The Dashboard shows your own team as rings with each person's
+open and late tasks (counted from projects you share) and who is away or
+celebrating today.
+
+A super admin also creates, renames and deletes teams, adds people to a team
+(moving someone from another team asks for confirmation first), picks its lead
+and sees warnings when a team has no lead. **New hires** on the Teams page lists
+accounts still missing a job title or a team, with **Set up** to finish them.
+**People** (super admins only) lists every account to edit name, email, job title,
+team and lead. Job titles come from a shared list: pick one, or add a new one and
+mark whether it is managerial. Only people with a managerial job title can lead a
+team or start a project; losing that title, moving team or deleting the team ends
+a lead role. Deleting a team leaves its people without a team.
+
+### Time off
+
+**Time off** (account menu) lets you add or remove your own time off: vacation,
+sick leave, business trip or other, with an optional note. Ranges cannot overlap
+and can reach back at most 30 days. Colleagues only ever see that you are away
+("Out of office until 20 Nov", or "Away 24 – 28 Nov" within the next 14 days).
+The type (sick leave is health data) is added only for your team's leads and
+super admins; the server leaves it out for everyone else. The note is visible to
+you alone. Away badges appear on team pages, in project People lists, when adding
+a project member and when assigning a task; back-to-back ranges read as one
+absence. The dashboard calendar stripes your own days off, and shows a team lead
+how many of their team are away each day.
 
 For existing installations, stop the dev server, run `npm install`,
 `npm run db:deploy` and `npm run db:generate`, then restart `npm run dev`.
-`npm run bootstrap` includes the migration and generation for fresh installations.
-The migration adds nullable profile/assignment fields and preserves existing data.
+`npm run bootstrap` includes the migrations and generation for fresh installations.
+The migrations preserve existing data: free-text job titles become list entries
+(titles containing "manager" or "lead" are marked managerial), project
+specializations and the profile description are removed, and project roles become Owner (the project's
+creator), Coordinator (former admins and managers) and Contributor (former
+participants). `npm run db:seed` adds sample teams, job titles, birthdays, time
+off and a sample super admin profile and photo, filling in only what is empty.
 
 Verification: run `npm test`, `npm run test:integration` and `npm run lint`.
-For the UI, upload/remove a photo, edit your description, create Backend in a
-project, assign it to a member and inspect their profile as a teammate. Sign in
-as a manager to check that specialization management is unavailable. Assign a
-different specialization to the same user in another project to check isolation.
+For the UI, compare a manager and a contributor (see above): starting a project,
+adding and editing tasks, naming a coordinator, and what each sees about time off.

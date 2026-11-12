@@ -71,8 +71,5 @@ export const projectStatusLabels: Record<ProjectStatus, string> = {
   CANCELLED: "Cancelled",
 };
 
-export const projectRoleLabels: Record<ProjectRole, string> = {
-  ADMIN: "Admin",
-  MANAGER: "Manager",
-  PARTICIPANT: "Participant",
-};
+// Shared with the rest of the app, so roles read the same in documents.
+export { projectRoleLabels } from "@/lib/projects/labels";

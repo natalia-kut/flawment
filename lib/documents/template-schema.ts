@@ -14,7 +14,7 @@ export const variableOptions = [
   { key: "status", label: "Project status" },
   { key: "owner", label: "Project owner" },
   { key: "ownerEmail", label: "Owner email" },
-  { key: "managers", label: "Managers" },
+  { key: "managers", label: "Coordinators" },
   { key: "memberCount", label: "Team size" },
   { key: "startDate", label: "Start date" },
   { key: "endDate", label: "End date" },
@@ -101,7 +101,7 @@ export const chartKindOptions = [
 
 export const signerOptions = [
   { key: "owner", label: "Project owner" },
-  { key: "ownerAndManagers", label: "Owner and managers" },
+  { key: "ownerAndManagers", label: "Owner and coordinators" },
   { key: "allMembers", label: "All members" },
 ] as const;
 

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Flawment | Project workspace",
-  description: "A shared workspace for projects, participants and tasks.",
+  description: "A shared workspace for projects, people and tasks.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

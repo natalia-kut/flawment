@@ -11,12 +11,15 @@ import TaskCalendar from "@/components/dashboard/task-calendar";
 import ProjectTimeline from "@/components/dashboard/project-timeline";
 import TeamRings from "@/components/dashboard/team-rings";
 import TaskPreview from "@/components/dashboard/task-preview";
-import MyProgress from "@/components/dashboard/my-progress";
+import type { TeamPerson } from "@/lib/teams/data";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { isTaskOverdue } from "@/lib/tasks/board";
 import { taskAssigneeKey } from "@/lib/tasks/filters";
 import { taskPriorityLabels } from "@/lib/tasks/labels";
 import styles from "./dashboard.module.css";
+import CelebrationBanner from "./celebration-banner";
+import type { Celebration } from "@/lib/time-off/dates";
+import type { CalendarTimeOff } from "@/lib/time-off/calendar";
 
 const UP_NEXT = 5;
 const DAY = 86_400_000;
@@ -76,13 +79,15 @@ function SummaryIcon({ free }: { free: boolean }) {
 }
 
 // The dashboard: Flawiusz first, the numbers that matter, deadlines, what's next, the projects over time, and the team or your progress.
-export default function Dashboard({ chat, firstName, workspace, onOpenTemplate }: {
+export default function Dashboard({ chat, firstName, celebrations = [], workspace, onOpenTemplate }: {
   chat: FlawiuszChat;
   firstName: string;
-  workspace: { projects: WorkspaceProject[]; userId: number; today: string };
+  /** Your birthday or work anniversary, when it is today. */
+  celebrations?: Celebration[];
+  workspace: { projects: WorkspaceProject[]; userId: number; today: string; timeOff?: CalendarTimeOff[]; myTeam?: { name: string; members: TeamPerson[] } | null };
   onOpenTemplate: (templateId: string) => void;
 }) {
-  const { projects, userId, today } = workspace;
+  const { projects, userId, today, timeOff = [], myTeam = null } = workspace;
   const started = chat.messages.length > 0;
   // Clicking a task previews it here, so a quick look never leaves the dashboard.
   const [previewId, setPreviewId] = useState<number | null>(null);
@@ -107,6 +112,12 @@ export default function Dashboard({ chat, firstName, workspace, onOpenTemplate }
 
   const previewTask = tasks.find((task) => task.id === previewId);
 
+  // Who in your team is away or celebrating today, keyed like the task assignees.
+  const teamDetails = new Map(myTeam?.members.map((m) => [String(m.id), {
+    availability: m.availability,
+    celebratesToday: m.birthday?.inDays === 0 ? "birthday" as const : m.anniversary?.inDays === 0 ? "anniversary" as const : null,
+  }]));
+
   const free = dueThisWeek.length === 0;
   const summary = free ? "Nothing due this week"
     : `${dueThisWeek.length} ${dueThisWeek.length === 1 ? "task" : "tasks"} due this week`;
@@ -118,6 +129,8 @@ export default function Dashboard({ chat, firstName, workspace, onOpenTemplate }
           {longDay.format(new Date(today + "T00:00:00Z"))}
           <span className={styles.summaryPill} data-free={free || undefined}><SummaryIcon free={free} />{summary}</span>
         </span>} />
+
+      {celebrations.map((celebration) => <CelebrationBanner key={celebration.kind} celebration={celebration} />)}
 
       {/* Flawiusz first: the dashboard starts with a question. */}
       <section className={`flawiusz-hero ${styles.assistant}${started ? " started" : ""}`} aria-labelledby="flawiusz-hero-title">
@@ -151,7 +164,7 @@ export default function Dashboard({ chat, firstName, workspace, onOpenTemplate }
 
       <div className={styles.columns}>
         <section className={styles.panel} aria-label="Deadlines">
-          <TaskCalendar today={today} tasks={tasks.filter((task) => task.status !== "CANCELLED")} onOpenTask={setPreviewId} />
+          <TaskCalendar today={today} tasks={tasks.filter((task) => task.status !== "CANCELLED")} timeOff={timeOff} onOpenTask={setPreviewId} />
         </section>
 
         <section className={styles.panel} aria-labelledby="up-next-title">
@@ -184,17 +197,13 @@ export default function Dashboard({ chat, firstName, workspace, onOpenTemplate }
         <ProjectTimeline projects={projects} today={today} />
       </section>
 
-      {/* People who plan the work see the team; everyone else sees their own progress. */}
-      {managesTasks
-        ? <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="team-title">
-          <div className={styles.panelHeading}><h2 id="team-title">Team</h2></div>
-          <TeamRings currentUserKey={String(userId)}
-            tasks={tasks.map((task) => ({ status: task.status, overdue: task.overdue, assigneeKey: taskAssigneeKey(task), assigneeName: task.assigneeName }))} />
-        </section>
-        : <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="progress-title">
-          <div className={styles.panelHeading}><h2 id="progress-title">Your progress</h2></div>
-          <MyProgress tasks={tasks.filter((task) => task.assignedTo === userId)} />
-        </section>}
+      {/* Everyone sees their own team: who is in, who is away, how their work is going. */}
+      {myTeam && <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="team-title">
+        <div className={styles.panelHeading}><h2 id="team-title">Your team <small className={styles.teamName}>{myTeam.name}</small></h2><Link href="/?view=team">Open team page</Link></div>
+        <TeamRings currentUserKey={String(userId)} people={teamDetails}
+          members={myTeam.members.map((m) => ({ key: String(m.id), name: `${m.first_name} ${m.last_name}` }))}
+          tasks={tasks.map((task) => ({ status: task.status, overdue: task.overdue, assigneeKey: taskAssigneeKey(task), assigneeName: task.assigneeName }))} />
+      </section>}
 
       {previewTask && <TaskPreview task={previewTask} onClose={() => setPreviewId(null)} />}
     </>

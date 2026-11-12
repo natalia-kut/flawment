@@ -38,6 +38,20 @@
 .dot { flex-shrink: 0; width: 7px; height: 7px; background: var(--fill, var(--muted)); border-radius: 50%; animation: pop 320ms cubic-bezier(.2, .9, .3, 1.4) both; }
 .more { font-size: 9px; font-weight: 700; line-height: 1; color: var(--muted); }
 
+/* ---- Time off in the calendar ---- */
+/* Same type colours as the Time off page. */
+.calendar [data-off=VACATION] { --off: var(--accent); }
+.calendar [data-off=SICK_LEAVE] { --off: #7b5ea7; }
+.calendar [data-off=BUSINESS_TRIP] { --off: #2f7d8c; }
+.calendar [data-off=OTHER] { --off: var(--muted); }
+/* Your own day off: soft stripes, so the dots and number stay readable. */
+.day[data-off] { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--off) 14%, var(--background)) 0 5px, var(--background) 5px 10px); border-color: color-mix(in srgb, var(--off) 30%, transparent); }
+.teamOff { position: absolute; top: 4px; left: 5px; display: inline-flex; align-items: center; gap: 1px; color: var(--warning-strong); font-size: 9px; font-weight: 700; line-height: 1; }
+.dayPanel .offList { display: grid; gap: 6px; margin: 0 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.offList li { display: grid; gap: 1px; padding: 6px 10px; border-left: 3px solid var(--off); border-radius: 6px; background: var(--background); }
+.offList strong { font-size: 13px; }
+.offList span { font-size: 11px; color: var(--muted); }
+
 .dayPanel { min-width: 0; padding-left: 22px; border-left: 1px solid var(--border); }
 .dayPanel h3 { margin: 4px 0 12px; font-size: 15px; }
 .dayPanel ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
@@ -49,14 +63,22 @@
 .dayStatus { font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--muted); }
 .dayStatus[data-late] { color: var(--critical); }
 
-/* ---- Ring labels (used by Your progress) ---- */
-.donutValue { font-size: 30px; font-weight: 750; fill: var(--foreground); }
-.donutLabel { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; fill: var(--muted); }
 
 /* ---- Team rings ---- */
-.team { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: 16px 10px; margin: 0; padding: 0; list-style: none; }
-.member { display: grid; justify-items: center; gap: 4px; text-align: center; }
-.ring { width: 64px; height: 64px; }
+/* Centred and wrapping, so a short team leaves no empty space on one side. */
+.team { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px 14px; margin: 0; padding: 0; list-style: none; }
+.member { display: grid; justify-items: center; align-content: start; gap: 4px; width: 6rem; text-align: center; }
+.ringWrap { position: relative; display: inline-flex; }
+.ring { width: 72px; height: 72px; }
+/* Away today: the ring steps back, a moon says why. */
+.member[data-away] .ring { opacity: .45; filter: grayscale(.6); }
+.awayNote { padding: 2px 8px; border-radius: 999px; background: var(--warning-soft); color: var(--warning-strong); font-size: 10.5px; font-weight: 650; white-space: nowrap; }
+/* Birthday or work anniversary today: a festive outline around the ring. */
+.festiveRing { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 5 4; animation: spin 14s linear infinite; transform-origin: 36px 36px; }
+.festiveRing[data-kind=birthday] { stroke: var(--accent); }
+.festiveRing[data-kind=anniversary] { stroke: var(--warning); stroke-dasharray: none; stroke-width: 2; }
+.ringBadge { position: absolute; top: -2px; right: -4px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--card); box-shadow: 0 1px 4px #24170d26; font-size: 13px; }
+.awayBadge { color: var(--warning-strong); background: var(--warning-soft); }
 .ringTrack { fill: var(--background); stroke: var(--surface-sunken); stroke-width: 5; }
 .ringFill[data-empty] { opacity: 0; }
 .ringFill { fill: none; stroke: var(--success); stroke-width: 5; stroke-linecap: round; transition: stroke-dasharray 900ms cubic-bezier(.2, .8, .2, 1); }
@@ -66,7 +88,10 @@
 .memberMeta { font-size: 11px; color: var(--muted); }
 .memberMeta b { color: var(--critical); }
 
+.teamName { margin-left: 6px; color: var(--muted); font-size: 13px; font-weight: 500; }
+
 @keyframes pop { from { transform: scale(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 760px) {
   .calendar { grid-template-columns: 1fr; }
@@ -76,15 +101,5 @@
 @media (prefers-reduced-motion: reduce) {
   .dot { animation: none; }
   .ringFill { transition: none; }
+  .festiveRing { animation: none; }
 }
-
-/* ---- Your progress (for people without task management) ---- */
-.myProgress { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
-.bigRing { flex-shrink: 0; width: 160px; height: 160px; }
-.bigRingTrack { fill: none; stroke: var(--surface-sunken); stroke-width: 14; }
-.bigRingFill { fill: none; stroke: var(--success); stroke-width: 14; stroke-linecap: round; transition: stroke-dasharray 900ms cubic-bezier(.2, .8, .2, 1); }
-.bigRingFill[data-empty] { opacity: 0; }
-.myProjects { display: grid; flex: 1; gap: 14px; min-width: 12rem; margin: 0; padding: 0; list-style: none; }
-.myProjects li { display: grid; gap: 6px; }
-.myProjects li > span { overflow: hidden; font-size: 13px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
-@media (prefers-reduced-motion: reduce) { .bigRingFill { transition: none; } }

@@ -31,7 +31,7 @@ export default function ProjectTaskList({ project, onCreate, onEdit }: {
         <h2 id="project-tasks-heading">Tasks <span className="role-badge">{project.tasks.length}</span></h2>
         <p>Work planned for this project.</p>
       </div>
-      {project.canManageTasks && <button className="primary-button" onClick={onCreate}>+ New task</button>}
+      {project.canCreateTasks && <button className="primary-button" onClick={onCreate}>+ New task</button>}
     </div>
 
     {project.tasks.length === 0 ? <p>No tasks yet.</p> : <>
@@ -83,7 +83,7 @@ export default function ProjectTaskList({ project, onCreate, onEdit }: {
               <h3>{task.title}</h3>
               <p className={styles.stage}>{task.stageName}</p>
             </div>
-            {project.canManageTasks && <div className={styles.actions}>
+            {task.canEdit && <div className={styles.actions}>
               <button className="secondary-button" aria-label={"Edit task: " + task.title}
                 onClick={() => onEdit(task.id)}>Edit task</button>
               <DeleteTaskForm projectId={project.id} taskId={task.id} title={task.title} />

@@ -55,6 +55,10 @@
 .column > h3 { margin: .2rem .15rem .8rem; font-family: var(--font-geist-mono), monospace; font-size: .75rem; font-weight: 400; letter-spacing: .1em; color: var(--muted); }
 .dropTarget { background: var(--accent-soft); border-color: var(--accent); }
 .dropHint { padding: .5rem; font-size: .8rem; color: var(--text-subtle); }
+/* At the foot of To do: adds a task to this project without choosing it. */
+.addTask { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; border: 1px dashed var(--border-strong); border-radius: 10px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease; }
+.addTask:hover, .addTask:focus-visible { border-color: var(--accent-border); background: var(--card); color: var(--accent-strong); }
+.addTask span { font-size: 16px; line-height: 1; }
 
 /* ---- Cards ---- */
 .card { margin-bottom: .65rem; padding: .8rem; overflow-wrap: anywhere; background: var(--card); border: 1px solid var(--border-strong); border-radius: .65rem; box-shadow: 0 3px 8px #261b1210; cursor: pointer; transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease; }

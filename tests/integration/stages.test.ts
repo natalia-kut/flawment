@@ -28,8 +28,8 @@ test("stages support authorized CRUD, task assignment and safe deletion", async 
       const project = await prisma.project.create({ data: {
         name: prefix + suffix, start_date: new Date("2026-10-26"), owner_id: users[0],
         memberships: { create: [
-          { user_id: users[0], role: "ADMIN" }, { user_id: users[1], role: "MANAGER" },
-          { user_id: users[2], role: "PARTICIPANT" },
+          { user_id: users[0], role: "OWNER" }, { user_id: users[1], role: "COORDINATOR" },
+          { user_id: users[2], role: "CONTRIBUTOR" },
         ] },
       } });
       projects.push(project.id);

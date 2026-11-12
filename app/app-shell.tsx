@@ -1,10 +1,14 @@
 "use client";
 
-import { useActionState, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { logout } from "@/lib/auth/actions";
-import UserAvatar from "./user-avatar";
+import AccountMenu from "./account-menu";
+import type { Availability } from "@/lib/time-off/availability";
+import type { Status } from "@/lib/status/status";
+import type { Celebration } from "@/lib/time-off/dates";
+import type { CalendarTimeOff } from "@/lib/time-off/calendar";
+import type { TeamPerson } from "@/lib/teams/data";
 import Dashboard from "./dashboard";
 import { FlawiuszPanel } from "@/components/flawiusz/panel";
 import { useFlawiuszChat } from "@/components/flawiusz/use-flawiusz-chat";
@@ -19,10 +23,13 @@ const navigation = [
   "Team",
   "Tasks",
   "Documents",
-  "Profile",
+  "People",
 ] as const;
 
 type NavigationItem = (typeof navigation)[number];
+/** Pages opened from the account menu rather than the main navigation. */
+const accountViews = ["profile", "time-off"] as const;
+type AccountView = (typeof accountViews)[number];
 
 // Simple line icons, so the collapsed sidebar can still show where each link goes.
 const navIcons: Record<NavigationItem, ReactNode> = {
@@ -31,31 +38,27 @@ const navIcons: Record<NavigationItem, ReactNode> = {
   Team: <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.2a3 3 0 0 1 0 5.6M17.5 14a5 5 0 0 1 3 5" /></>,
   Tasks: <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m8.5 12.2 2.3 2.3 4.7-5" /></>,
   Documents: <><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5M10 13h6M10 17h6" /></>,
-  Profile: <><circle cx="12" cy="8.5" r="3.6" /><path d="M5 20a7 7 0 0 1 14 0" /></>,
+  People: <><rect x="4" y="3" width="16" height="18" rx="2.5" /><circle cx="12" cy="10" r="2.8" /><path d="M7.5 17.5a4.5 4.5 0 0 1 9 0" /></>,
 };
 
-function SignOut({ compact }: { compact: boolean }) {
-  const [, action, pending] = useActionState(logout, undefined);
-  return <form action={action} className="logout-form">
-    <button type="submit" disabled={pending} title={compact ? "Sign out" : undefined} aria-label={compact ? "Sign out" : undefined}>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M10 4H5v16h5M14 8l4 4-4 4M9 12h10" /></svg>
-      <span className="sidebar-label">{pending ? "Signing out…" : "Sign out"}</span>
-    </button>
-  </form>;
-}
+/** Pages only a super admin sees. */
+const adminOnly: readonly NavigationItem[] = ["People"];
 
-export default function AppShell({ documents, projects, tasks, profile, user, workspace, sidebarCollapsed = false }: {
-  documents: ReactNode; projects: ReactNode; tasks: ReactNode; profile: ReactNode; sidebarCollapsed?: boolean;
+export default function AppShell({ documents, projects, tasks, profile, team, timeOff, people, user, workspace, sidebarCollapsed = false }: {
+  documents: ReactNode; projects: ReactNode; tasks: ReactNode; profile: ReactNode; team: ReactNode; timeOff: ReactNode; people: ReactNode; sidebarCollapsed?: boolean;
   /** What the dashboard summarises: the projects (with tasks) this user can see. */
-  workspace: { projects: WorkspaceProject[]; userId: number; today: string };
-  user: { id: number; first_name: string; last_name: string; role: string; photoVersion: string | null };
+  workspace: { projects: WorkspaceProject[]; userId: number; today: string; timeOff: CalendarTimeOff[]; myTeam: { name: string; members: TeamPerson[] } | null };
+  user: { id: number; first_name: string; last_name: string; role: string; photoVersion: string | null; availability: Availability; status: Status | null; celebrations: Celebration[] };
 }) {
   const router = useRouter();
   const search = useSearchParams();
   // A project link has no view of its own: project details live under Projects.
-  const activePage = search.has("project")
+  const visibleNavigation = navigation.filter((item) => user.role === "SUPER_ADMIN" || !adminOnly.includes(item));
+  const view = search.get("view") ?? "";
+  const accountView = (accountViews as readonly string[]).includes(view) && !search.has("project") ? view as AccountView : null;
+  const activePage: NavigationItem | null = accountView ? null : search.has("project")
     ? "Projects"
-    : navigation.find((item) => item.toLowerCase() === search.get("view")) ?? "Dashboard";
+    : visibleNavigation.find((item) => item.toLowerCase() === view) ?? "Dashboard";
   const [chatOpen, setChatOpen] = useState(false);
   const [requestedTemplateId, setRequestedTemplateId] = useState<string | null>(null);
   const chat = useFlawiuszChat();
@@ -68,10 +71,10 @@ export default function AppShell({ documents, projects, tasks, profile, user, wo
     document.cookie = `${SIDEBAR_COOKIE}=${next ? "collapsed" : "expanded"}; path=/; max-age=31536000; samesite=lax`;
   }
 
-  function setActivePage(item: NavigationItem) {
+  function setActivePage(item: NavigationItem | AccountView) {
     const params = new URLSearchParams(search.toString());
     // Links into a view (a project page, a filtered Tasks board) do not carry over to other views.
-    for (const key of ["project", "in", "overdue", "mine"]) params.delete(key);
+    for (const key of ["project", "in", "overdue", "mine", "team"]) params.delete(key);
     if (item === "Dashboard") params.delete("view");
     else params.set("view", item.toLowerCase());
     router.push(params.size ? "/?" + params.toString() : "/");
@@ -101,7 +104,7 @@ export default function AppShell({ documents, projects, tasks, profile, user, wo
           </button>
         </div>
         <nav className="main-nav" aria-label="Main navigation">
-          {navigation.map((item) => (
+          {visibleNavigation.map((item) => (
             <button
               className={`nav-link${activePage === item ? " active" : ""}`}
               key={item}
@@ -117,16 +120,12 @@ export default function AppShell({ documents, projects, tasks, profile, user, wo
           ))}
         </nav>
         <div className="sidebar-footer">
-          <Link href="/?view=profile" className="sidebar-profile" aria-label="Edit your profile" title={collapsed ? "Your profile" : undefined}>
-          <UserAvatar id={user.id} firstName={user.first_name} lastName={user.last_name} photoVersion={user.photoVersion} size={36} />
-          <span className="profile-name sidebar-label">{user.first_name} {user.last_name}<small>{user.role === "SUPER_ADMIN" ? "Super admin" : "Standard user"}</small></span>
-          </Link>
-          <SignOut compact={collapsed} />
+          <AccountMenu user={user} compact={collapsed} onOpen={setActivePage} />
         </div>
       </aside>
 
       <main className="main-content">
-        {activePage === "Profile" ? profile : activePage === "Documents" ? (
+        {accountView === "profile" ? profile : accountView === "time-off" ? timeOff : activePage === "Team" ? team : activePage === "People" ? people : activePage === "Documents" ? (
           // Remount when Flawiusz asks to open a template, so the page selects it.
           <RequestedTemplateContext value={requestedTemplateId} key={requestedTemplateId ?? "documents"}>
             {documents}
@@ -135,22 +134,14 @@ export default function AppShell({ documents, projects, tasks, profile, user, wo
           <Dashboard
             chat={chat}
             firstName={user.first_name}
+            celebrations={user.celebrations}
             workspace={workspace}
             onOpenTemplate={openTemplate}
           />
         ) : (
           <>
-            <PageHeader title={activePage} />
-            <section className="placeholder-panel">
-              <div className="placeholder-mark" aria-hidden="true">
-                {activePage.slice(0, 1)}
-              </div>
-              <h2>{activePage} will live here</h2>
-              <p>
-                This section is ready for your {activePage.toLowerCase()} overview.
-                Its content can be connected as the app takes shape.
-              </p>
-            </section>
+            <PageHeader title="Page not found" />
+            <section className="placeholder-panel"><h2>This page does not exist</h2></section>
           </>
         )}
       </main>

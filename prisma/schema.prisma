@@ -30,10 +30,13 @@ enum TaskPriority {
   URGENT
 }
 
+// Owner: created the project (a manager); everything, incl. deleting it and naming coordinators.
+// Coordinator: runs the work: the project, its stages, every task, adding contributors.
+// Contributor: sees the project, adds tasks and works on their own.
 enum ProjectRole {
-  ADMIN
-  PARTICIPANT
-  MANAGER
+  OWNER
+  COORDINATOR
+  CONTRIBUTOR
 }
 
 enum UserRole {
@@ -41,25 +44,89 @@ enum UserRole {
   SUPER_ADMIN
 }
 
+enum AbsenceType {
+  VACATION
+  SICK_LEAVE
+  BUSINESS_TRIP
+  OTHER
+}
+
 model User {
-  id               Int                @id @default(autoincrement())
-  username         String             @unique
-  email            String             @unique
-  password         String
-  first_name       String
-  last_name        String
-  is_active        Boolean            @default(true)
-  role             UserRole           @default(USER)
-  description      String?
-  photo            Bytes?             @db.ByteA
-  photo_updated_at DateTime?
-  sessions         Session[]
-  templates        DocumentTemplate[]
+  id                Int                @id @default(autoincrement())
+  username          String             @unique
+  email             String             @unique
+  password          String
+  first_name        String
+  last_name         String
+  is_active         Boolean            @default(true)
+  role              UserRole           @default(USER)
+  photo             Bytes?             @db.ByteA
+  photo_updated_at  DateTime?
+  // Colleagues see only the day and month.
+  birth_date        DateTime?          @db.Date
+  // Teams are assigned by a super admin, not chosen by the user.
+  team_id           Int?
+  team              Team?              @relation(fields: [team_id], references: [id], onDelete: SetNull)
+  // Leads see why their team members are away. Cleared when the team changes.
+  team_lead         Boolean            @default(false)
+  // Picked from the JobTitle list by a super admin.
+  job_title_id      Int?
+  job_title         JobTitle?          @relation(fields: [job_title_id], references: [id], onDelete: SetNull)
+  pronouns          String?
+  phone             String?
+  location          String?
+  working_hours     String?
+  skills            String[]           @default([])
+  // A short custom status ("🍽️ Lunch"), hidden once status_expires_at passes.
+  status_emoji      String?
+  status_text       String?
+  status_expires_at DateTime?
+  // When the account was created: also the start date for work anniversaries.
+  created_at        DateTime           @default(now())
+  absences          Absence[]
+  sessions          Session[]
+  templates         DocumentTemplate[]
 
   owned_projects Project[]           @relation("ProjectOwner")
   memberships    ProjectMembership[]
   assigned_tasks Task[]              @relation("TaskAssignee")
   created_tasks  Task[]              @relation("TaskCreator")
+
+  @@index([team_id])
+  @@index([job_title_id])
+}
+
+// The job titles a super admin picks from; new ones are added as needed.
+// Only people whose title can_lead may be made a team lead.
+model JobTitle {
+  id         Int      @id @default(autoincrement())
+  name       String
+  name_key   String   @unique
+  can_lead   Boolean  @default(false)
+  users      User[]
+  created_at DateTime @default(now())
+}
+
+model Team {
+  id         Int      @id @default(autoincrement())
+  name       String
+  name_key   String   @unique
+  members    User[]
+  created_at DateTime @default(now())
+}
+
+// Time off. Other people only learn that someone is away, never the type or note.
+model Absence {
+  id         Int         @id @default(autoincrement())
+  user_id    Int
+  user       User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  type       AbsenceType
+  start_date DateTime    @db.Date
+  end_date   DateTime    @db.Date
+  note       String?
+  created_at DateTime    @default(now())
+
+  @@index([user_id, end_date])
 }
 
 model Session {
@@ -92,7 +159,6 @@ model Project {
   memberships        ProjectMembership[]
   tasks              Task[]
   stages             ProjectStage[]
-  specializations    ProjectSpecialization[]
   document_templates DocumentTemplate[]
 
   created_at DateTime @default(now())
@@ -135,24 +201,10 @@ model ProjectMembership {
   user_id Int
   user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  role              ProjectRole            @default(PARTICIPANT)
-  joined_at         DateTime               @default(now())
-  specialization_id Int?
-  specialization    ProjectSpecialization? @relation(fields: [specialization_id, project_id], references: [id, project_id], onDelete: NoAction, onUpdate: NoAction)
+  role      ProjectRole @default(CONTRIBUTOR)
+  joined_at DateTime    @default(now())
 
   @@unique([project_id, user_id])
-}
-
-model ProjectSpecialization {
-  id          Int                 @id @default(autoincrement())
-  project_id  Int
-  project     Project             @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  name        String
-  name_key    String
-  memberships ProjectMembership[]
-
-  @@unique([id, project_id])
-  @@unique([project_id, name_key])
 }
 
 // Custom document templates. `blocks` holds the ordered template layout,
