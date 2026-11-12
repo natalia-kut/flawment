@@ -16,7 +16,7 @@ function id(value: FormDataEntryValue | null) {
 export async function mutateTeam(actor: Actor, data: FormData) {
   if (actor.role !== "SUPER_ADMIN") throw new TeamError("Only administrators can manage teams.");
   const operation = String(data.get("operation"));
-  if (!["create", "rename", "delete", "assign", "lead", "job_title"].includes(operation)) throw new TeamError("Unknown team operation.");
+  if (!["create", "rename", "delete", "assign", "lead"].includes(operation)) throw new TeamError("Unknown team operation.");
 
   return prisma.$transaction(async (tx) => {
     if (operation === "assign") {
@@ -28,21 +28,15 @@ export async function mutateTeam(actor: Actor, data: FormData) {
       // Leading one team says nothing about the next.
       return tx.user.update({ where: { id: userId }, data: { team_id: teamId, team_lead: false }, select: { id: true } });
     }
-    if (operation === "job_title") {
-      // Like an IT or HR department would: people do not set their own title.
-      const userId = id(data.get("user_id"));
-      const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true, is_active: true } });
-      if (!user?.is_active || user.role === "SUPER_ADMIN") throw new TeamError("Choose an active standard user.");
-      const title = String(data.get("job_title") ?? "").trim().replace(/\s+/g, " ");
-      if (title.length > 80) throw new TeamError("A job title can be up to 80 characters.");
-      return tx.user.update({ where: { id: userId }, data: { job_title: title || null }, select: { id: true } });
-    }
     if (operation === "lead") {
       const userId = id(data.get("user_id"));
-      const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true, is_active: true, team_id: true } });
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true, is_active: true, team_id: true, job_title: { select: { can_lead: true } } } });
       if (!user?.is_active || user.role === "SUPER_ADMIN") throw new TeamError("Choose an active standard user.");
       if (user.team_id === null) throw new TeamError("Put this person in a team before making them its lead.");
-      return tx.user.update({ where: { id: userId }, data: { team_lead: data.get("team_lead") === "on" }, select: { id: true } });
+      const lead = data.get("team_lead") === "on";
+      // Leading a team is for managers: the job title decides, not a checkbox alone.
+      if (lead && !user.job_title?.can_lead) throw new TeamError("Only people with a managerial job title can lead a team.");
+      return tx.user.update({ where: { id: userId }, data: { team_lead: lead }, select: { id: true } });
     }
     const teamId = operation === "create" ? null : id(data.get("team_id"));
     if (teamId !== null && !await tx.team.findUnique({ where: { id: teamId }, select: { id: true } })) throw new TeamError("This team no longer exists.");

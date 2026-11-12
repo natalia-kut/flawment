@@ -14,7 +14,7 @@ export default async function ProfileSection() {
   const today = workspaceToday();
   const user = await prisma.user.findUniqueOrThrow({ where: { id: actor.id }, select: {
     id: true, first_name: true, last_name: true, username: true, email: true, role: true,
-    birth_date: true, team_lead: true, job_title: true, pronouns: true, phone: true, location: true, working_hours: true, skills: true,
+    birth_date: true, team_lead: true, job_title: { select: { name: true } }, pronouns: true, phone: true, location: true, working_hours: true, skills: true,
     team: { select: { id: true, name: true, members: { where: { is_active: true }, select: { ...person, team_lead: true }, orderBy: { first_name: "asc" } } } },
     absences: absenceSelect(today), ...statusSelect,
   } });
@@ -26,7 +26,7 @@ export default async function ProfileSection() {
   return <ProfileView today={today} user={{
     ...rest, photoVersion: actor.photoVersion, teamLead: team_lead,
     status: activeStatus({ status_emoji, status_text, status_expires_at }),
-    jobTitle: job_title ?? "", workingHours: working_hours ?? "",
+    jobTitle: job_title?.name ?? "", workingHours: working_hours ?? "",
     pronouns: rest.pronouns ?? "", phone: rest.phone ?? "", location: rest.location ?? "",
     birthDate: birth_date?.toISOString().slice(0, 10) ?? "",
     availability: availability(toRanges(absences, true), today),

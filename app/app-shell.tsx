@@ -8,6 +8,7 @@ import type { Availability } from "@/lib/time-off/availability";
 import type { Status } from "@/lib/status/status";
 import type { Celebration } from "@/lib/time-off/dates";
 import type { CalendarTimeOff } from "@/lib/time-off/calendar";
+import type { TeamPerson } from "@/lib/teams/data";
 import Dashboard from "./dashboard";
 import { FlawiuszPanel } from "@/components/flawiusz/panel";
 import { useFlawiuszChat } from "@/components/flawiusz/use-flawiusz-chat";
@@ -22,6 +23,7 @@ const navigation = [
   "Team",
   "Tasks",
   "Documents",
+  "People",
 ] as const;
 
 type NavigationItem = (typeof navigation)[number];
@@ -36,22 +38,27 @@ const navIcons: Record<NavigationItem, ReactNode> = {
   Team: <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.2a3 3 0 0 1 0 5.6M17.5 14a5 5 0 0 1 3 5" /></>,
   Tasks: <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m8.5 12.2 2.3 2.3 4.7-5" /></>,
   Documents: <><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5M10 13h6M10 17h6" /></>,
+  People: <><rect x="4" y="3" width="16" height="18" rx="2.5" /><circle cx="12" cy="10" r="2.8" /><path d="M7.5 17.5a4.5 4.5 0 0 1 9 0" /></>,
 };
 
-export default function AppShell({ documents, projects, tasks, profile, team, timeOff, user, workspace, sidebarCollapsed = false }: {
-  documents: ReactNode; projects: ReactNode; tasks: ReactNode; profile: ReactNode; team: ReactNode; timeOff: ReactNode; sidebarCollapsed?: boolean;
+/** Pages only a super admin sees. */
+const adminOnly: readonly NavigationItem[] = ["People"];
+
+export default function AppShell({ documents, projects, tasks, profile, team, timeOff, people, user, workspace, sidebarCollapsed = false }: {
+  documents: ReactNode; projects: ReactNode; tasks: ReactNode; profile: ReactNode; team: ReactNode; timeOff: ReactNode; people: ReactNode; sidebarCollapsed?: boolean;
   /** What the dashboard summarises: the projects (with tasks) this user can see. */
-  workspace: { projects: WorkspaceProject[]; userId: number; today: string; timeOff: CalendarTimeOff[] };
+  workspace: { projects: WorkspaceProject[]; userId: number; today: string; timeOff: CalendarTimeOff[]; myTeam: { name: string; members: TeamPerson[] } | null };
   user: { id: number; first_name: string; last_name: string; role: string; photoVersion: string | null; availability: Availability; status: Status | null; celebrations: Celebration[] };
 }) {
   const router = useRouter();
   const search = useSearchParams();
   // A project link has no view of its own: project details live under Projects.
+  const visibleNavigation = navigation.filter((item) => user.role === "SUPER_ADMIN" || !adminOnly.includes(item));
   const view = search.get("view") ?? "";
   const accountView = (accountViews as readonly string[]).includes(view) && !search.has("project") ? view as AccountView : null;
   const activePage: NavigationItem | null = accountView ? null : search.has("project")
     ? "Projects"
-    : navigation.find((item) => item.toLowerCase() === view) ?? "Dashboard";
+    : visibleNavigation.find((item) => item.toLowerCase() === view) ?? "Dashboard";
   const [chatOpen, setChatOpen] = useState(false);
   const [requestedTemplateId, setRequestedTemplateId] = useState<string | null>(null);
   const chat = useFlawiuszChat();
@@ -67,7 +74,7 @@ export default function AppShell({ documents, projects, tasks, profile, team, ti
   function setActivePage(item: NavigationItem | AccountView) {
     const params = new URLSearchParams(search.toString());
     // Links into a view (a project page, a filtered Tasks board) do not carry over to other views.
-    for (const key of ["project", "in", "overdue", "mine"]) params.delete(key);
+    for (const key of ["project", "in", "overdue", "mine", "team"]) params.delete(key);
     if (item === "Dashboard") params.delete("view");
     else params.set("view", item.toLowerCase());
     router.push(params.size ? "/?" + params.toString() : "/");
@@ -97,7 +104,7 @@ export default function AppShell({ documents, projects, tasks, profile, team, ti
           </button>
         </div>
         <nav className="main-nav" aria-label="Main navigation">
-          {navigation.map((item) => (
+          {visibleNavigation.map((item) => (
             <button
               className={`nav-link${activePage === item ? " active" : ""}`}
               key={item}
@@ -118,7 +125,7 @@ export default function AppShell({ documents, projects, tasks, profile, team, ti
       </aside>
 
       <main className="main-content">
-        {accountView === "profile" ? profile : accountView === "time-off" ? timeOff : activePage === "Team" ? team : activePage === "Documents" ? (
+        {accountView === "profile" ? profile : accountView === "time-off" ? timeOff : activePage === "Team" ? team : activePage === "People" ? people : activePage === "Documents" ? (
           // Remount when Flawiusz asks to open a template, so the page selects it.
           <RequestedTemplateContext value={requestedTemplateId} key={requestedTemplateId ?? "documents"}>
             {documents}

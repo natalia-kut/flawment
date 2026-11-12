@@ -10,13 +10,12 @@ import ProjectBrowser from "./project-browser";
 import UserAvatar from "./user-avatar";
 import AvailabilityBadge from "./availability-badge";
 import { StatusText } from "./status-dialog";
-import ProjectSpecializations, { MemberSpecialization } from "./project-specializations";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, type ReactNode, type FormEventHandler } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { projectAction } from "@/lib/projects/actions";
+import { projectRoleLabels } from "@/lib/projects/labels";
 import PageHeader from "@/components/page-header";
-import { projectStatusLabels } from "@/lib/projects/labels";
 
 function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, className = "workspace-form" }: {
   children: ReactNode; operation: string; projectId?: number;
@@ -37,10 +36,22 @@ function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, class
   </form>;
 }
 
-function RoleSelect({ elevated, value = "PARTICIPANT" }: { elevated: boolean; value?: string }) {
-  return <label>Project role<select name="role" defaultValue={value}>
-    {(elevated ? ["PARTICIPANT", "MANAGER", "ADMIN"] : ["PARTICIPANT"]).map((role) => <option key={role} value={role}>{role}</option>)}
+/** `saveOnChange` saves as soon as a role is picked (changing a member's role); otherwise it is part of a form. */
+function RoleSelect({ elevated, value = "PARTICIPANT", saveOnChange = false }: { elevated: boolean; value?: string; saveOnChange?: boolean }) {
+  return <label>{saveOnChange ? "Role" : "Project role"}<select name="role" defaultValue={value}
+    onChange={saveOnChange ? (event) => event.currentTarget.form?.requestSubmit() : undefined}>
+    {(elevated ? ["PARTICIPANT", "MANAGER", "ADMIN"] : ["PARTICIPANT"]).map((role) => <option key={role} value={role}>{projectRoleLabels[role]}</option>)}
   </select></label>;
+}
+
+/** Only roles above the default get a badge (Owner, Admin or Manager), next to whether they are away. */
+function MemberBadges({ member, owner }: { member: WorkspaceProject["members"][number]; owner: boolean }) {
+  const role = owner ? "Owner" : member.role === "PARTICIPANT" ? null : projectRoleLabels[member.role];
+  if (!role && !member.availability) return null;
+  return <span className="member-badges">
+    {role && <span className="role-badge">{role}</span>}
+    {member.availability && <AvailabilityBadge availability={member.availability} />}
+  </span>;
 }
 
 function ProjectDialog({ title, description, onClose, children }: {
@@ -97,52 +108,33 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
       <ProjectTaskList key={project.id} project={project}
         onCreate={() => { setEditingTaskId(null); setModal("task"); }}
         onEdit={(id) => { setModal(null); setEditingTaskId(id); }} />
-      <div className="project-detail-layout">
-        <section className="workspace-card project-team" key={project.id}>
+      <section className="workspace-card project-team" key={"people-" + project.id}>
           <div className="section-heading"><div><h2>People <span className="role-badge">{project.members.length}</span></h2><p>The team making it happen.</p></div>{project.canManage && <button className="primary-button" onClick={() => setModal("add")}>Add member</button>}</div>
           {project.members.length === 0 && <p>No team members yet.</p>}
           <ul className="member-list">{project.members.map((member) => <li key={member.id}>
-            <div className="member-identity"><UserAvatar id={member.id} firstName={member.first_name} lastName={member.last_name} photoVersion={member.photoVersion} /><div><strong>{member.first_name} {member.last_name}</strong><small>{[member.jobTitle, member.email].filter(Boolean).join(" · ")}</small><span className="role-badge">{member.role}{member.id === project.owner_id ? " · Owner" : ""}</span>
-              {member.specializationName && <span className="specialization-badge">{member.specializationName}</span>}
-              {member.availability && <AvailabilityBadge availability={member.availability} />}
+            <div className="member-identity"><UserAvatar id={member.id} firstName={member.first_name} lastName={member.last_name} photoVersion={member.photoVersion} /><div><strong>{member.first_name} {member.last_name}</strong><small>{[member.jobTitle, member.email].filter(Boolean).join(" · ")}</small>
+              <MemberBadges member={member} owner={member.id === project.owner_id} />
               {member.status && <div className="member-status"><StatusText status={member.status} /></div>}
-              <details className="member-bio"><summary>About</summary>
-                {(member.teamName || member.birthday || member.phone || member.location || member.workingHours) && <ul className="member-facts">
-                  {member.teamName && <li><span>Team</span>{member.teamName}</li>}
-                  {member.birthday && <li><span>Birthday</span>{member.birthday}</li>}
-                  {member.phone && <li><span>Phone</span>{member.phone}</li>}
-                  {member.location && <li><span>Location</span>{member.location}</li>}
-                  {member.workingHours && <li><span>Hours</span>{member.workingHours}</li>}
-                </ul>}
-                {member.skills.length > 0 ? <ul className="skill-list" aria-label="Skills">{member.skills.map((s) => <li key={s} className="skill-chip">{s}</li>)}</ul>
-                  : !(member.teamName || member.birthday || member.phone || member.location || member.workingHours) && <p>Nothing shared yet.</p>}
-              </details>
-              {project.canManageSpecializations && <details className="member-bio"><summary>Assign specialization</summary><MemberSpecialization project={project} member={member} /></details>}
             </div></div>
             {project.canManage && member.id !== project.owner_id && (project.canAssignRoles || member.role === "PARTICIPANT") && <details className="member-settings"><summary>Manage</summary><div className="member-controls">
-              {project.canAssignRoles && <ChangeForm operation="role" projectId={project.id} className="compact-form"><input type="hidden" name="user_id" value={member.id} /><RoleSelect elevated value={member.role} /><button className="secondary-button">Save role</button></ChangeForm>}
+              {project.canAssignRoles && <ChangeForm operation="role" projectId={project.id} className="compact-form"><input type="hidden" name="user_id" value={member.id} /><RoleSelect elevated value={member.role} saveOnChange /></ChangeForm>}
               <ChangeForm operation="remove" projectId={project.id} className="compact-form" onSubmit={(event) => { if (!window.confirm(`Remove ${member.first_name} from this project?`)) event.preventDefault(); }}>
-                <input type="hidden" name="user_id" value={member.id} /><button className="danger-button">Remove member</button>
+                <input type="hidden" name="user_id" value={member.id} /><button className="text-button danger">Remove from project</button>
               </ChangeForm>
             </div></details>}
           </li>)}</ul>
-        </section>
-        <aside className="project-overview-sidebar">
-          <ProjectSpecializations project={project} />
-          <section className="workspace-card project-facts"><h2>At a glance</h2><dl><div><dt>Status</dt><dd>{projectStatusLabels[project.status]}</dd></div><div><dt>Start date</dt><dd>{project.start_date}</dd></div><div><dt>End date</dt><dd>{project.end_date || "No deadline"}</dd></div><div><dt>Your role</dt><dd>{project.role?.replaceAll("_", " ")}</dd></div></dl></section>
-          {project.canDelete && <details className="project-danger-zone"><summary>Project settings</summary><p>Deleting this project also deletes its tasks and memberships.</p><ChangeForm operation="delete" projectId={project.id} onSuccess={() => router.push("/?view=projects")} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}><button className="danger-button">Delete project</button></ChangeForm></details>}
-        </aside>
-      </div>
+      </section>
+      {project.canDelete && <details className="project-danger-zone"><summary>Project settings</summary><p>Deleting this project also deletes its tasks and memberships.</p><ChangeForm operation="delete" projectId={project.id} onSuccess={() => router.push("/?view=projects")} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}><button className="danger-button">Delete project</button></ChangeForm></details>}
     </>}
 
     {/* The same in-place editor as a card on the Tasks board. */}
-    {editingTask && project?.canManageTasks && <TaskDetailsForm key={editingTask.id} project={project} task={editingTask}
+    {editingTask && project?.canManageTasks && <TaskDetailsForm key={"task-" + editingTask.id} project={project} task={editingTask}
       overdue={isTaskOverdue(editingTask, today)} showOpenProject={false} onClose={close} onSaved={() => { close(); router.refresh(); }} />}
     {modal === "task" && project?.canManageTasks && <TaskDetailsForm project={project} showOpenProject={false}
       onClose={close} onSaved={() => { close(); router.refresh(); }} />}
     {/* The same in-place style as the task dialog. */}
     {modal === "create" && <ProjectDetailsForm onClose={close} onSaved={(id) => { close(); router.push(`/?project=${id}`); }} />}
-    {modal === "edit" && project && <ProjectDetailsForm key={project.id} project={project} onClose={close} onSaved={() => { close(); router.refresh(); }} />}
+    {modal === "edit" && project && <ProjectDetailsForm key={"edit-" + project.id} project={project} onClose={close} onSaved={() => { close(); router.refresh(); }} />}
     {modal === "add" && project && <ProjectDialog title="Bring someone on board" description={`Add a registered user to ${project.name}.`} onClose={close}>
       {project.eligible.length === 0 ? <p>There are no other available users to add.</p> : <ChangeForm operation="add" projectId={project.id} onSuccess={close}>
         <label>Available users<select name="user_id" required defaultValue=""><option value="" disabled>Select a user</option>{project.eligible.map((user) => <option key={user.id} value={user.id}>{user.first_name} {user.last_name} ({user.email}){user.availability ? ` · ${user.availability.label}` : ""}</option>)}</select></label>

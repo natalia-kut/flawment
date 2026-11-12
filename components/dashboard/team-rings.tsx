@@ -22,15 +22,21 @@ type Person = { key: string; name: string; open: number; done: number; total: nu
  * Someone away today is dimmed with a moon; a birthday or work anniversary
  * today gets a festive outline. Busiest first; the rings draw in on first show.
  */
-export default function TeamRings({ tasks, currentUserKey, people: details = new Map() }: {
+export default function TeamRings({ tasks, currentUserKey, people: details = new Map(), members }: {
   tasks: TeamTask[]; currentUserKey: string; people?: Map<string, RingPerson>;
+  /**
+   * Show exactly these people (your team), even with no tasks. Their counts
+   * come only from projects you can see, so a zero reads "No shared tasks".
+   */
+  members?: { key: string; name: string }[];
 }) {
   const [drawn, setDrawn] = useState(false);
   useEffect(() => { const frame = requestAnimationFrame(() => setDrawn(true)); return () => cancelAnimationFrame(frame); }, []);
 
-  const people = new Map<string, Person>();
+  const people = new Map<string, Person>(members?.map((m) => [m.key, { key: m.key, name: m.name, open: 0, done: 0, total: 0, overdue: 0 }]));
   for (const task of tasks) {
     if (task.assigneeKey === "unassigned" || task.status === "CANCELLED") continue;
+    if (members && !people.has(task.assigneeKey)) continue;
     const person = people.get(task.assigneeKey) ?? { key: task.assigneeKey, name: task.assigneeName, open: 0, done: 0, total: 0, overdue: 0 };
     person.total += 1;
     if (task.status === "COMPLETED") person.done += 1; else person.open += 1;
@@ -71,7 +77,7 @@ export default function TeamRings({ tasks, currentUserKey, people: details = new
             {person.key === currentUserKey ? "You" : person.name.split(" ")[0]}
           </span>
           <span className={styles.memberMeta}>
-            {person.open} open{person.overdue > 0 && <b> · {person.overdue} late</b>}
+            {members && person.total === 0 ? "No shared tasks" : <>{person.open} open{person.overdue > 0 && <b> · {person.overdue} late</b>}</>}
           </span>
           {away && <span className={styles.awayNote}>Out until {formatShortDay(away.until)}</span>}
         </li>;

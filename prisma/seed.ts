@@ -148,7 +148,7 @@ const projects: ProjectSeed[] = [
   },
 ];
 
-// Teams, profiles and time off. Kept apart from the projects so a workspace
+// Teams, birthdays and time off. Kept apart from the projects so a workspace
 // seeded before these features existed can still receive them.
 const teams: [string, Username[]][] = [
   ["Product & Design", ["natalia.kwiatek", "zofia.wisniewska"]],
@@ -156,16 +156,16 @@ const teams: [string, Username[]][] = [
   ["Operations", ["aleksandra.lewandowska", "julia.dabrowska"]],
 ];
 
-// [username, birth year, days until the next birthday, description]
-const profiles: [Username, number, number, string][] = [
-  ["natalia.kwiatek", 1993, 40, "Product lead. I turn customer interviews into roadmaps and keep projects on track."],
-  ["jakub.nowak", 1990, 3, "Engineering manager with a backend background. Ask me about Postgres and release planning."],
-  ["zofia.wisniewska", 1996, 0, "UX designer focused on accessible forms and design systems."],
-  ["michal.zielinski", 1994, 12, "Full-stack developer. Mostly TypeScript, React and the occasional Terraform."],
-  ["aleksandra.lewandowska", 1988, 150, "Operations and vendor management. I handle contracts, budgets and audits."],
-  ["piotr.kaminski", 1997, 25, "Frontend developer who loves performance work and good test coverage."],
-  ["julia.dabrowska", 1991, 210, "Infrastructure lead planning the cloud migration."],
-  ["tomasz.wojcik", 1995, 300, "QA engineer. If it can break, I will find out how."],
+// [username, birth year, days until the next birthday]
+const birthdays: [Username, number, number][] = [
+  ["natalia.kwiatek", 1993, 40],
+  ["jakub.nowak", 1990, 3],
+  ["zofia.wisniewska", 1996, 0],
+  ["michal.zielinski", 1994, 12],
+  ["aleksandra.lewandowska", 1988, 150],
+  ["piotr.kaminski", 1997, 25],
+  ["julia.dabrowska", 1991, 210],
+  ["tomasz.wojcik", 1995, 300],
 ];
 
 // Directory details. Leads see why their team members are away.
@@ -198,10 +198,10 @@ const absences: [Username, AbsenceType, number, number, string | null][] = [
 
 async function seedPeople() {
   if ((await prisma.team.count()) > 0) {
-    console.log("Teams already exist — skipping teams, profiles and time off.");
+    console.log("Teams already exist — skipping teams, birthdays and time off.");
     return;
   }
-  const found = await prisma.user.findMany({ where: { username: { in: users.map(([username]) => username) } }, select: { id: true, username: true, description: true } });
+  const found = await prisma.user.findMany({ where: { username: { in: users.map(([username]) => username) } }, select: { id: true, username: true } });
   const byName = new Map(found.map((user) => [user.username as Username, user]));
   if (byName.size === 0) return;
 
@@ -209,28 +209,44 @@ async function seedPeople() {
     const team = await prisma.team.create({ data: { name, name_key: name.toLowerCase() } });
     await prisma.user.updateMany({ where: { id: { in: members.flatMap((m) => byName.get(m)?.id ?? []) } }, data: { team_id: team.id } });
   }
-  for (const [username, year, inDays, description] of profiles) {
+  for (const [username, year, inDays] of birthdays) {
     const user = byName.get(username);
     if (!user) continue;
     const birth = day(inDays);
     birth.setUTCFullYear(year);
-    // Keep a description someone already wrote.
-    await prisma.user.update({ where: { id: user.id }, data: { birth_date: birth, ...(user.description ? {} : { description }) } });
+    await prisma.user.update({ where: { id: user.id }, data: { birth_date: birth } });
   }
   for (const [username, type, from, to, note] of absences) {
     const user = byName.get(username);
     if (user) await prisma.absence.create({ data: { user_id: user.id, type, start_date: day(from), end_date: day(to), note } });
   }
-  console.log(`Seeded ${teams.length} teams, ${profiles.length} profiles and ${absences.length} time off entries.`);
+  console.log(`Seeded ${teams.length} teams, ${birthdays.length} birthdays and ${absences.length} time off entries.`);
+}
+
+/** Managers and leads may lead a team. */
+const canLead = (title: string) => /manager|lead/i.test(title);
+
+/** Links a job title from the list, adding it first when it is missing. */
+const jobTitle = (name: string) => ({
+  connectOrCreate: { where: { name_key: name.toLowerCase() }, create: { name, name_key: name.toLowerCase(), can_lead: canLead(name) } },
+});
+
+/** The starting list a super admin picks titles from; they can add more later. */
+const baseJobTitles = ["Manager", "Project manager", "Team lead", "Developer", "Designer", "Tester", "Business analyst"];
+
+async function seedJobTitles() {
+  for (const name of baseJobTitles) {
+    await prisma.jobTitle.upsert({ where: { name_key: name.toLowerCase() }, update: {}, create: { name, name_key: name.toLowerCase(), can_lead: canLead(name) } });
+  }
 }
 
 /** Fills in only what is still empty, so it is safe to run again. */
 async function seedDetails() {
   let filled = 0;
-  for (const { username, lead, ...fields } of details) {
-    const user = await prisma.user.findUnique({ where: { username }, select: { id: true, job_title: true, team_id: true } });
-    if (!user || user.job_title) continue;
-    await prisma.user.update({ where: { id: user.id }, data: { ...fields, ...(lead && user.team_id !== null ? { team_lead: true } : {}) } });
+  for (const { username, lead, job_title, ...fields } of details) {
+    const user = await prisma.user.findUnique({ where: { username }, select: { id: true, job_title_id: true, team_id: true } });
+    if (!user || user.job_title_id) continue;
+    await prisma.user.update({ where: { id: user.id }, data: { ...fields, job_title: jobTitle(job_title), ...(lead && user.team_id !== null ? { team_lead: true } : {}) } });
     filled++;
   }
   if (filled) console.log(`Added job titles, contact details and skills for ${filled} people.`);
@@ -242,12 +258,12 @@ async function seedDetails() {
  * seed-admin.ts creates, so a real installation's admin is never overwritten.
  */
 async function seedAdminProfile() {
-  const admin = await prisma.user.findUnique({ where: { username: "superadmin" }, select: { id: true, photo: true, job_title: true, phone: true, location: true, skills: true } });
+  const admin = await prisma.user.findUnique({ where: { username: "superadmin" }, select: { id: true, photo: true, job_title_id: true, phone: true, location: true, skills: true } });
   if (!admin) return;
   await prisma.user.update({ where: { id: admin.id }, data: {
     // Already a 512px WebP without metadata, as the profile upload stores it.
     ...(admin.photo ? {} : { photo: new Uint8Array(readFileSync(new URL("./seed-photos/superadmin.webp", import.meta.url))), photo_updated_at: new Date() }),
-    ...(admin.job_title ? {} : { job_title: "IT super manager" }),
+    ...(admin.job_title_id ? {} : { job_title: jobTitle("IT super manager") }),
     ...(admin.phone ? {} : { phone: "123456789" }),
     ...(admin.location ? {} : { location: "Kraków" }),
     ...(admin.skills.length ? {} : { skills: ["React", "UI/UX"] }),
@@ -271,6 +287,7 @@ async function seedJoinDates() {
 async function main() {
   if ((await prisma.user.count({ where: { role: "USER" } })) > 0) {
     console.log("Users already exist — skipping sample users and projects.");
+    await seedJobTitles();
     await seedPeople();
     await seedDetails();
     await seedJoinDates();
@@ -326,6 +343,7 @@ async function main() {
   }
 
   console.log(`Seeded ${users.length} users and ${projects.length} projects.`);
+  await seedJobTitles();
   await seedPeople();
   await seedDetails();
   await seedJoinDates();

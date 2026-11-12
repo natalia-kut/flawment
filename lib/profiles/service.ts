@@ -54,15 +54,9 @@ const profileFields = {
 };
 export type ProfileField = keyof typeof profileFields;
 
-/** A super admin has no administrator above them, so they set their own job title. */
-const adminOnlyFields = { job_title: text("Job title", 80) };
-
 export async function updateProfileField(actor: Actor, field: string, value: string) {
-  const rule = Object.hasOwn(profileFields, field) ? profileFields[field as ProfileField]
-    : actor.role === "SUPER_ADMIN" && Object.hasOwn(adminOnlyFields, field) ? adminOnlyFields[field as keyof typeof adminOnlyFields]
-    : null;
-  if (!rule) throw new ProfileError("This detail cannot be changed here.");
-  const parsed = rule(value);
+  if (!Object.hasOwn(profileFields, field)) throw new ProfileError("This detail cannot be changed here.");
+  const parsed = profileFields[field as ProfileField](value);
   return prisma.user.update({ where: { id: actor.id }, data: { [field]: parsed }, select: { id: true } });
 }
 
@@ -79,37 +73,28 @@ function parseSkills(raw: string) {
   return skills;
 }
 
-/**
- * Photo uploads and removals (plus description and skills, when sent). Fields
- * left out of the form keep their saved value; contact fields save on their own.
- */
+/** Uploads or removes the profile photo. Everything else on the profile saves field by field. */
 export async function updateProfile(actor: Actor, data: FormData) {
-  const description = data.has("description") ? String(data.get("description")).trim() : undefined;
-  if (description && description.length > 2000) throw new ProfileError("Your description must be no longer than 2000 characters.");
   const upload = data.get("photo");
   const file = upload instanceof File && upload.size > 0 ? upload : null;
   const remove = data.get("remove_photo") === "on";
   if (remove && file) throw new ProfileError("Choose either a new photo or Remove photo.");
-  // Left out of the form entirely (an older client): keep the saved skills.
-  const skills = data.has("skills") ? parseSkills(String(data.get("skills"))) : undefined;
-  const photo = file ? new Uint8Array(await normalizePhoto(file)) : remove ? null : undefined;
+  if (!file && !remove) throw new ProfileError("Choose a photo to upload.");
+  const photo = file ? new Uint8Array(await normalizePhoto(file)) : null;
   return prisma.user.update({
     where: { id: actor.id },
-    data: { ...(description !== undefined ? { description: description || null } : {}), ...(skills ? { skills } : {}), ...(photo !== undefined ? { photo, photo_updated_at: photo === null ? null : new Date() } : {}) },
+    data: { photo, photo_updated_at: photo ? new Date() : null },
     select: { id: true },
   });
 }
 
-/** Whom a user may see: people they share a project or a team with. */
+/**
+ * Whose profile photo a user may see: anyone's in the company directory (every
+ * active standard user). Super admins' photos stay hidden from standard users.
+ */
 export function profileVisibility(actor: Actor, userId: number) {
   return {
     id: userId, is_active: true,
-    ...(actor.id === userId || actor.role === "SUPER_ADMIN" ? {} : {
-      role: "USER" as const,
-      OR: [
-        { memberships: { some: { project: { memberships: { some: { user_id: actor.id } } } } } },
-        { team: { members: { some: { id: actor.id } } } },
-      ],
-    }),
+    ...(actor.id === userId || actor.role === "SUPER_ADMIN" ? {} : { role: "USER" as const }),
   };
 }

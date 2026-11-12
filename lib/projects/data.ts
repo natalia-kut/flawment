@@ -5,25 +5,18 @@ import { findAvailableMembers } from "./service";
 import { absenceSelect, availability, canSeeAbsenceReason, toRanges } from "@/lib/time-off/availability";
 import { getViewer } from "@/lib/teams/data";
 import { activeStatus, statusSelect } from "@/lib/status/status";
-import { daysUntilBirthday, formatBirthday, nextAnniversary, workspaceDay, workspaceToday } from "@/lib/time-off/dates";
+import { daysUntilBirthday, nextAnniversary, workspaceDay, workspaceToday } from "@/lib/time-off/dates";
 
 const person = (today: string) => ({
   id: true,
   first_name: true,
   last_name: true,
   email: true,
-  description: true,
   photo_updated_at: true,
   birth_date: true,
   team_id: true,
-  job_title: true,
-  pronouns: true,
-  phone: true,
-  location: true,
-  working_hours: true,
-  skills: true,
+  job_title: { select: { name: true } },
   created_at: true,
-  team: { select: { name: true } },
   absences: absenceSelect(today),
   ...statusSelect,
 }) as const;
@@ -37,7 +30,6 @@ export async function getWorkspaceProjects() {
     where: visibleProjects(user),
     orderBy: { created_at: "desc" },
     include: {
-      specializations: { orderBy: { name: "asc" } },
       stages: { orderBy: [{ created_at: "asc" }, { id: "asc" }] },
       memberships: {
         where:
@@ -95,27 +87,15 @@ export async function getWorkspaceProjects() {
         canManage: manage,
         canManageTasks: can(role, "tasks:manage", user.role),
         canAssignRoles: can(role, "members:roles", user.role),
-        canManageSpecializations: can(role, "specializations:manage", user.role),
-        specializations: project.specializations.map((item) => ({ id: item.id, name: item.name })),
         members: project.memberships.map((m) => ({
           id: m.user.id, first_name: m.user.first_name, last_name: m.user.last_name, email: m.user.email,
-          description: m.user.description,
-          teamName: m.user.team?.name ?? null,
-          jobTitle: m.user.job_title,
-          pronouns: m.user.pronouns,
-          phone: m.user.phone,
-          location: m.user.location,
-          workingHours: m.user.working_hours,
-          skills: m.user.skills,
+          jobTitle: m.user.job_title?.name ?? null,
           status: activeStatus(m.user),
           // Birthday (day and month only) or work anniversary today, for a festive touch.
           celebratesToday: m.user.birth_date && daysUntilBirthday(m.user.birth_date.toISOString().slice(0, 10), today) === 0 ? "birthday" as const
             : nextAnniversary(workspaceDay(m.user.created_at), today)?.inDays === 0 ? "anniversary" as const : null,
-          birthday: m.user.birth_date ? formatBirthday(m.user.birth_date.toISOString().slice(0, 10)) : null,
           availability: availability(toRanges(m.user.absences, canSeeAbsenceReason(viewer, m.user)), today),
           photoVersion: m.user.photo_updated_at?.toISOString() ?? null,
-          specializationId: m.specialization_id,
-          specializationName: project.specializations.find((item) => item.id === m.specialization_id)?.name ?? null,
           role: m.role,
         })),
         eligible,

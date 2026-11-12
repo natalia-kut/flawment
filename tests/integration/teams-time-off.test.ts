@@ -2,12 +2,14 @@ import "dotenv/config";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import sharp from "sharp";
 import { prisma } from "../../lib/prisma";
 import { mutateTeam } from "../../lib/teams/service";
 import { getTeamsOverview } from "../../lib/teams/data";
 import { mutateTimeOff } from "../../lib/time-off/service";
 import { updateProfile, updateProfileField, profileVisibility } from "../../lib/profiles/service";
 import { setStatus } from "../../lib/status/service";
+import { updatePerson } from "../../lib/people/service";
 import { getCalendarTimeOff } from "../../lib/time-off/calendar";
 import { findAvailableMembers } from "../../lib/projects/service";
 import { addDays } from "../../lib/time-off/dates";
@@ -27,6 +29,11 @@ test("teams, birthdays and time off respect who may see and change them", async 
       const user = await prisma.user.create({ data: { username: prefix + suffix, email: `${prefix}${suffix}@example.test`, password: "test-unused", first_name: suffix, last_name: "Test", role: suffix === "root" ? "SUPER_ADMIN" : "USER" } });
       users.push(user.id);
     }
+    const person = (id: number, changes: Record<string, string | number>) => {
+      const index = users.indexOf(id);
+      const suffix = ["anna", "ben", "outsider", "root", "lead"][index];
+      return form({ user_id: id, first_name: suffix, last_name: "Test", email: `${prefix}${suffix}@example.test`, ...changes });
+    };
     const actor = (index: number) => ({ id: users[index], role: index === 3 ? "SUPER_ADMIN" as const : "USER" as const });
     const [anna, ben, outsider, root, lead] = [0, 1, 2, 3, 4].map(actor);
 
@@ -41,11 +48,15 @@ test("teams, birthdays and time off respect who may see and change them", async 
     for (const user of [anna, ben, lead]) await mutateTeam(root, form({ operation: "assign", user_id: user.id, team_id: team.id }));
     await assert.rejects(mutateTeam(root, form({ operation: "lead", user_id: outsider.id, team_lead: "on" })), /in a team/);
     await assert.rejects(mutateTeam(lead, form({ operation: "lead", user_id: lead.id, team_lead: "on" })), /Only administrators/);
+    // Only a managerial job title can lead; a super admin picks titles from the list (or adds one).
+    await assert.rejects(mutateTeam(root, form({ operation: "lead", user_id: lead.id, team_lead: "on" })), /managerial/);
+    await updatePerson(root, person(lead.id, { job_title_id: "new", new_job_title: `${prefix} Manager`, new_job_title_can_lead: "on", team_id: team.id }));
     await mutateTeam(root, form({ operation: "lead", user_id: lead.id, team_lead: "on" }));
 
     // Teammates see each other (photos included); outsiders do not.
     assert.equal(await prisma.user.count({ where: profileVisibility(anna, ben.id) }), 1);
-    assert.equal(await prisma.user.count({ where: profileVisibility(outsider, ben.id) }), 0);
+    assert.equal(await prisma.user.count({ where: profileVisibility(outsider, ben.id) }), 1, "anyone may see who is in which team");
+    assert.equal(await prisma.user.count({ where: profileVisibility(outsider, root.id) }), 0, "super admins stay out of the directory");
 
     // Birthdays: the year stays on the server.
     await updateProfileField(ben, "birth_date", "1994-11-13");
@@ -85,7 +96,12 @@ test("teams, birthdays and time off respect who may see and change them", async 
     assert.equal(pickedByLead.find((c) => c.id === ben.id)?.availability?.reasons?.[0], "SICK_LEAVE");
     const pickedByOutsider = await findAvailableMembers(leadsProject.id, today, { id: outsider.id, role: "USER", team_id: null, team_lead: false });
     assert.equal(pickedByOutsider.find((c) => c.id === ben.id)?.availability?.reasons, undefined);
-    assert.deepEqual((await getTeamsOverview(outsider, today)).teams, [], "someone without a team sees no team");
+    const outsiders = await getTeamsOverview(outsider, today);
+    assert.equal(outsiders.myTeamId, null, "someone without a team has no team of their own");
+    assert.equal(outsiders.canManage, false);
+    const benAsOutsider = outsiders.teams.find((t) => t.id === team.id)?.members.find((p) => p.id === ben.id);
+    assert.equal(benAsOutsider?.availability?.state, "away", "other teams are visible");
+    assert.equal(benAsOutsider?.availability?.reasons, undefined, "but not why someone outside your team is away");
     assert.ok((await getTeamsOverview(root, today)).people.some((p) => p.id === outsider.id && p.teamId === null));
 
     // Picking people for a project shows who is away.
@@ -99,11 +115,10 @@ test("teams, birthdays and time off respect who may see and change them", async 
     assert.equal((await findAvailableMembers(project.id, today)).find((c) => c.id === ben.id)?.availability?.state, "soon");
 
     // Profile details: validated, with skills de-duplicated.
-    await updateProfile(ben, form({ description: "", job_title: "CEO", skills: "Testing, testing ,Playwright,," }));
+    await updateProfileField(ben, "skills", "Testing, testing ,Playwright,,");
     await updateProfileField(ben, "phone", "+48 600 100 200");
     await assert.rejects(updateProfileField(ben, "job_title", "CEO"), /cannot be changed/);
-    await updateProfileField(root, "job_title", "Head of IT");
-    assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: root.id } })).job_title, "Head of IT", "a super admin sets their own title");
+    await assert.rejects(updateProfileField(root, "job_title", "CEO"), /cannot be changed/, "titles come from the People page, even for a super admin");
     // Statuses: your own, one emoji, cleared on request.
     await setStatus(ben, form({ operation: "set", emoji: "🍽️", text: " Lunch ", clear_after: "1h" }));
     assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: ben.id } })).status_text, "Lunch");
@@ -112,16 +127,24 @@ test("teams, birthdays and time off respect who may see and change them", async 
     await setStatus(ben, form({ operation: "clear" }));
     assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: ben.id } })).status_text, null);
     await assert.rejects(updateProfileField(ben, "role", "SUPER_ADMIN"), /cannot be changed/);
-    await updateProfile(ben, form({ description: "Saving the form keeps contact details" }));
-    assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: ben.id } })).phone, "+48 600 100 200");
-    assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: ben.id } })).job_title, null, "people cannot set their own job title");
-    await assert.rejects(mutateTeam(ben, form({ operation: "job_title", user_id: ben.id, job_title: "CEO" })), /Only administrators/);
-    await mutateTeam(root, form({ operation: "job_title", user_id: ben.id, job_title: " QA  engineer " }));
-    const details = await prisma.user.findUniqueOrThrow({ where: { id: ben.id } });
-    assert.equal(details.job_title, "QA engineer");
+    const png = await sharp({ create: { width: 8, height: 8, channels: 3, background: "red" } }).png().toBuffer();
+    const photoForm = form({ job_title: "CEO" });
+    photoForm.set("photo", new File([new Uint8Array(png)], "me.png", { type: "image/png" }));
+    await updateProfile(ben, photoForm);
+    assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: ben.id } })).phone, "+48 600 100 200", "a photo upload keeps contact details");
+    assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: ben.id } })).job_title_id, null, "people cannot set their own job title");
+    await assert.rejects(updatePerson(ben, person(ben.id, { job_title_id: "new", new_job_title: "CEO" })), /Only administrators/);
+    await updatePerson(root, person(ben.id, { job_title_id: "new", new_job_title: ` ${prefix}  QA  engineer `, team_id: team.id }));
+    const details = await prisma.user.findUniqueOrThrow({ where: { id: ben.id }, include: { job_title: true } });
+    assert.equal(details.job_title?.name, `${prefix} QA engineer`);
+    assert.equal(details.job_title?.can_lead, false);
+    await assert.rejects(updatePerson(root, person(ben.id, { job_title_id: details.job_title_id!, team_id: team.id, team_lead: "on" })), /managerial/);
+    await assert.rejects(updatePerson(root, person(ben.id, { email: `${prefix}anna@example.test` })), /already uses this email/);
+    await updatePerson(root, person(root.id, { team_id: team.id }));
+    assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: root.id } })).team_id, null, "super admins stay out of teams");
     assert.deepEqual(details.skills, ["Testing", "Playwright"]);
     await assert.rejects(updateProfileField(ben, "phone", "call me"), /phone/);
-    await assert.rejects(updateProfile(ben, form({ description: "", skills: Array.from({ length: 16 }, (_, i) => "s" + i).join(",") })), /15 skills/);
+    await assert.rejects(updateProfileField(ben, "skills", Array.from({ length: 16 }, (_, i) => "s" + i).join(",")), /15 skills/);
 
     // Moving to another team ends leading the old one.
     const other = await mutateTeam(root, form({ operation: "create", name: prefix + " Other" })) as { id: number };
@@ -137,6 +160,7 @@ test("teams, birthdays and time off respect who may see and change them", async 
     await prisma.project.deleteMany({ where: { id: { in: projects } } });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
     await prisma.team.deleteMany({ where: { id: { in: teams } } });
+    await prisma.jobTitle.deleteMany({ where: { name_key: { startsWith: prefix.toLowerCase() } } });
     await prisma.$disconnect();
   }
 });

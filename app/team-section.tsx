@@ -1,9 +1,12 @@
 import { requireUser } from "@/lib/auth/session";
-import { getTeamsOverview } from "@/lib/teams/data";
-import { workspaceToday } from "@/lib/time-off/dates";
+import type { TeamsOverview } from "@/lib/teams/data";
+import { getPeopleDirectory } from "@/lib/people/data";
 import TeamView from "./team-view";
 
-export default async function TeamSection() {
+/** `overview` comes from the page, which also uses it for the dashboard. */
+export default async function TeamSection({ overview }: { overview: TeamsOverview }) {
   const user = await requireUser();
-  return <TeamView overview={await getTeamsOverview(user, workspaceToday())} currentUserId={user.id} />;
+  // A super admin also gets account details, to set up new hires from the Teams page.
+  const directory = await getPeopleDirectory(user);
+  return <TeamView overview={overview} directory={directory} currentUserId={user.id} />;
 }

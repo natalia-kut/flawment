@@ -11,7 +11,7 @@ import TaskCalendar from "@/components/dashboard/task-calendar";
 import ProjectTimeline from "@/components/dashboard/project-timeline";
 import TeamRings from "@/components/dashboard/team-rings";
 import TaskPreview from "@/components/dashboard/task-preview";
-import MyProgress from "@/components/dashboard/my-progress";
+import type { TeamPerson } from "@/lib/teams/data";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { isTaskOverdue } from "@/lib/tasks/board";
 import { taskAssigneeKey } from "@/lib/tasks/filters";
@@ -84,10 +84,10 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
   firstName: string;
   /** Your birthday or work anniversary, when it is today. */
   celebrations?: Celebration[];
-  workspace: { projects: WorkspaceProject[]; userId: number; today: string; timeOff?: CalendarTimeOff[] };
+  workspace: { projects: WorkspaceProject[]; userId: number; today: string; timeOff?: CalendarTimeOff[]; myTeam?: { name: string; members: TeamPerson[] } | null };
   onOpenTemplate: (templateId: string) => void;
 }) {
-  const { projects, userId, today, timeOff = [] } = workspace;
+  const { projects, userId, today, timeOff = [], myTeam = null } = workspace;
   const started = chat.messages.length > 0;
   // Clicking a task previews it here, so a quick look never leaves the dashboard.
   const [previewId, setPreviewId] = useState<number | null>(null);
@@ -112,6 +112,11 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
 
   const previewTask = tasks.find((task) => task.id === previewId);
 
+  // Your team's away and celebration details come from the team itself, not only shared projects.
+  const teamDetails = new Map(myTeam?.members.map((m) => [String(m.id), {
+    availability: m.availability,
+    celebratesToday: m.birthday?.inDays === 0 ? "birthday" as const : m.anniversary?.inDays === 0 ? "anniversary" as const : null,
+  }]));
   // Who is away or celebrating today, keyed like the task assignees.
   const peopleByKey = new Map(projects.flatMap((project) => project.members)
     .map((member) => [String(member.id), { availability: member.availability, celebratesToday: member.celebratesToday }]));
@@ -195,16 +200,18 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
         <ProjectTimeline projects={projects} today={today} />
       </section>
 
-      {/* People who plan the work see the team; everyone else sees their own progress. */}
+      {/* People who plan the work see everyone on their projects; everyone else sees their own team. */}
       {managesTasks
         ? <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="team-title">
           <div className={styles.panelHeading}><h2 id="team-title">Team</h2></div>
           <TeamRings currentUserKey={String(userId)} people={peopleByKey}
             tasks={tasks.map((task) => ({ status: task.status, overdue: task.overdue, assigneeKey: taskAssigneeKey(task), assigneeName: task.assigneeName }))} />
         </section>
-        : <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="progress-title">
-          <div className={styles.panelHeading}><h2 id="progress-title">Your progress</h2></div>
-          <MyProgress tasks={tasks.filter((task) => task.assignedTo === userId)} />
+        : myTeam && <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="team-title">
+          <div className={styles.panelHeading}><h2 id="team-title">Your team <small className={styles.teamName}>{myTeam.name}</small></h2><Link href="/?view=team">Open team page</Link></div>
+          <TeamRings currentUserKey={String(userId)} people={teamDetails}
+            members={myTeam.members.map((m) => ({ key: String(m.id), name: `${m.first_name} ${m.last_name}` }))}
+            tasks={tasks.map((task) => ({ status: task.status, overdue: task.overdue, assigneeKey: taskAssigneeKey(task), assigneeName: task.assigneeName }))} />
         </section>}
 
       {previewTask && <TaskPreview task={previewTask} onClose={() => setPreviewId(null)} />}

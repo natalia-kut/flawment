@@ -14,6 +14,7 @@ import UserAvatar from "./user-avatar";
 import AvailabilityBadge from "./availability-badge";
 import StatusDialog, { StatusText } from "./status-dialog";
 import PageHeader from "@/components/page-header";
+import EmailText from "./email-text";
 
 type Person = { id: number; first_name: string; last_name: string; photoVersion: string | null };
 
@@ -83,10 +84,8 @@ export default function ProfileView({ user, today }: { today: string; user: {
 
       <div className="profile-hero-main">
         <h2>{user.first_name} {user.last_name}{user.pronouns && <span className="profile-pronouns">{user.pronouns}</span>}</h2>
-        {/* The job title is set by an administrator; a super admin, having none above them, sets their own. */}
-        {user.role === "SUPER_ADMIN"
-          ? <InlineField as="div" field="job_title" label="Job title" value={user.jobTitle} placeholder="e.g. Head of operations" />
-          : <p className="profile-job-title" title="Set by your administrator">{user.jobTitle || <span className="muted-value">No job title yet · set by your administrator</span>}</p>}
+        {/* Job titles come from the list a super admin manages on the People page. */}
+        <p className="profile-job-title">{user.jobTitle || <span className="muted-value">{user.role === "SUPER_ADMIN" ? "No job title yet · set it on the People page" : "No job title yet · set by your administrator"}</span>}</p>
         <p className="profile-hero-subtitle">{handle}</p>
         {/* Right now: your status and whether you are away, side by side. */}
         <div className="profile-hero-meta">
@@ -103,7 +102,7 @@ export default function ProfileView({ user, today }: { today: string; user: {
       <ul className="profile-contact">
         <li className="profile-contact-static">
           <ContactIcon><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></ContactIcon>
-          <span className="visually-hidden">Email: </span>{user.email}
+          <span className="visually-hidden">Email: </span><span className="contact-value"><EmailText email={user.email} /></span>
         </li>
         <InlineField field="phone" label="Phone" type="tel" value={user.phone} placeholder="+48 600 000 000"
           icon={<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" />} />
@@ -168,8 +167,8 @@ function ContactIcon({ children }: { children: ReactNode }) {
  * A contact detail you edit where you read it: click (or double-click) the row,
  * then Enter or clicking away saves it on its own, and Escape cancels.
  */
-function InlineField({ field, label, value, icon, type = "text", placeholder, max, display = (v) => v, hint, as: Item = "li" }: {
-  field: ProfileField | "job_title"; label: string; value: string; icon?: ReactNode; as?: "li" | "div";
+function InlineField({ field, label, value, icon, type = "text", placeholder, max, display = (v) => v, hint }: {
+  field: ProfileField; label: string; value: string; icon: ReactNode;
   type?: "text" | "tel" | "date"; placeholder?: string; max?: string; display?: (value: string) => string; hint?: string;
 }) {
   const [editing, setEditing] = useState(false);
@@ -188,20 +187,20 @@ function InlineField({ field, label, value, icon, type = "text", placeholder, ma
     else setEditing(false);
   }
 
-  if (!editing) return <Item className="inline-field-item">
+  if (!editing) return <li>
     <button type="button" className="inline-field" onClick={() => setEditing(true)} title={hint ?? `Edit ${label.toLowerCase()}`}>
-      {icon && <ContactIcon>{icon}</ContactIcon>}
+      <ContactIcon>{icon}</ContactIcon>
       <span className="visually-hidden">{label}: </span>
-      {value ? <span>{display(value)}</span> : <span className="muted-value">Add {label.toLowerCase()}</span>}
+      {value ? <span className="contact-value">{display(value)}</span> : <span className="muted-value">Add {label.toLowerCase()}</span>}
       <svg className="inline-field-pencil" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" /></svg>
     </button>
     {state.error && <p className="form-error" role="alert">{state.error}</p>}
-  </Item>;
+  </li>;
 
-  return <Item className="inline-field-item">
+  return <li>
     <form action={action} className="inline-field-form">
       <input type="hidden" name="field" value={field} />
-      {icon && <ContactIcon>{icon}</ContactIcon>}
+      <ContactIcon>{icon}</ContactIcon>
       <input ref={input} name="value" type={type} defaultValue={value} placeholder={placeholder} max={max} min={type === "date" ? "1900-01-01" : undefined}
         aria-label={label} autoFocus disabled={pending}
         onBlur={finish}
@@ -212,7 +211,7 @@ function InlineField({ field, label, value, icon, type = "text", placeholder, ma
     </form>
     {hint && <p className="field-help">{hint}</p>}
     {state.error && <p className="form-error" role="alert">{state.error}</p>}
-  </Item>;
+  </li>;
 }
 
 /** Skills as chips: add with Enter or a comma, remove with ×. Each change saves straight away. */

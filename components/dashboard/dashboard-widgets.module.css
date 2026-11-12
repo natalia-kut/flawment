@@ -63,9 +63,6 @@
 .dayStatus { font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--muted); }
 .dayStatus[data-late] { color: var(--critical); }
 
-/* ---- Ring labels (used by Your progress) ---- */
-.donutValue { font-size: 30px; font-weight: 750; fill: var(--foreground); }
-.donutLabel { font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; fill: var(--muted); }
 
 /* ---- Team rings ---- */
 /* Centred and wrapping, so a short team leaves no empty space on one side. */
@@ -91,6 +88,8 @@
 .memberMeta { font-size: 11px; color: var(--muted); }
 .memberMeta b { color: var(--critical); }
 
+.teamName { margin-left: 6px; color: var(--muted); font-size: 13px; font-weight: 500; }
+
 @keyframes pop { from { transform: scale(0); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -104,14 +103,3 @@
   .ringFill { transition: none; }
   .festiveRing { animation: none; }
 }
-
-/* ---- Your progress (for people without task management) ---- */
-.myProgress { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
-.bigRing { flex-shrink: 0; width: 160px; height: 160px; }
-.bigRingTrack { fill: none; stroke: var(--surface-sunken); stroke-width: 14; }
-.bigRingFill { fill: none; stroke: var(--success); stroke-width: 14; stroke-linecap: round; transition: stroke-dasharray 900ms cubic-bezier(.2, .8, .2, 1); }
-.bigRingFill[data-empty] { opacity: 0; }
-.myProjects { display: grid; flex: 1; gap: 14px; min-width: 12rem; margin: 0; padding: 0; list-style: none; }
-.myProjects li { display: grid; gap: 6px; }
-.myProjects li > span { overflow: hidden; font-size: 13px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
-@media (prefers-reduced-motion: reduce) { .bigRingFill { transition: none; } }
