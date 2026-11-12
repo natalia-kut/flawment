@@ -1,9 +1,11 @@
 import sharp from "sharp";
 import { prisma } from "@/lib/prisma";
 import type { Actor } from "@/lib/rbac";
+import { isValidDay, workspaceToday } from "@/lib/time-off/dates";
+import { MAX_PHOTO_BYTES, MAX_SKILLS } from "./limits";
 
+export { MAX_PHOTO_BYTES };
 export class ProfileError extends Error {}
-export const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 
 export async function normalizePhoto(file: File) {
   if (file.size > MAX_PHOTO_BYTES) throw new ProfileError("Choose a photo no larger than 2 MB.");
@@ -21,27 +23,93 @@ export async function normalizePhoto(file: File) {
   }
 }
 
+/** An empty value clears the birthday. */
+function parseBirthDate(value: string, today = workspaceToday()) {
+  if (!value) return null;
+  if (!isValidDay(value) || value < "1900-01-01" || value > today) throw new ProfileError("Enter a valid date of birth.");
+  return new Date(value);
+}
+
+const text = (label: string, max: number) => (raw: string) => {
+  const value = raw.trim().replace(/\s+/g, " ");
+  if (value.length > max) throw new ProfileError(`${label} can be up to ${max} characters.`);
+  return value || null;
+};
+
+/**
+ * Contact fields edited one at a time, in place on the profile. An empty value
+ * clears the field. The job title is not here: a super admin sets it.
+ */
+const profileFields = {
+  pronouns: text("Pronouns", 30),
+  phone: (raw: string) => {
+    const phone = text("Phone", 30)(raw);
+    if (phone && !/^\+?[\d\s()-]{6,30}$/.test(phone)) throw new ProfileError("Enter a phone number using digits, spaces, +, ( ) or -.");
+    return phone;
+  },
+  location: text("Location", 80),
+  working_hours: text("Working hours", 60),
+  birth_date: (raw: string) => parseBirthDate(raw.trim()),
+  skills: (raw: string) => parseSkills(raw),
+};
+export type ProfileField = keyof typeof profileFields;
+
+/** A super admin has no administrator above them, so they set their own job title. */
+const adminOnlyFields = { job_title: text("Job title", 80) };
+
+export async function updateProfileField(actor: Actor, field: string, value: string) {
+  const rule = Object.hasOwn(profileFields, field) ? profileFields[field as ProfileField]
+    : actor.role === "SUPER_ADMIN" && Object.hasOwn(adminOnlyFields, field) ? adminOnlyFields[field as keyof typeof adminOnlyFields]
+    : null;
+  if (!rule) throw new ProfileError("This detail cannot be changed here.");
+  const parsed = rule(value);
+  return prisma.user.update({ where: { id: actor.id }, data: { [field]: parsed }, select: { id: true } });
+}
+
+/** One tag per comma; duplicates differing only in letter case collapse. */
+function parseSkills(raw: string) {
+  const skills: string[] = [];
+  for (const part of raw.split(",")) {
+    const skill = part.trim().replace(/\s+/g, " ");
+    if (!skill) continue;
+    if (skill.length > 30) throw new ProfileError("Each skill can be up to 30 characters.");
+    if (!skills.some((s) => s.toLowerCase() === skill.toLowerCase())) skills.push(skill);
+  }
+  if (skills.length > MAX_SKILLS) throw new ProfileError(`Add up to ${MAX_SKILLS} skills.`);
+  return skills;
+}
+
+/**
+ * Photo uploads and removals (plus description and skills, when sent). Fields
+ * left out of the form keep their saved value; contact fields save on their own.
+ */
 export async function updateProfile(actor: Actor, data: FormData) {
-  const description = String(data.get("description") ?? "").trim();
-  if (description.length > 2000) throw new ProfileError("Your description must be no longer than 2000 characters.");
+  const description = data.has("description") ? String(data.get("description")).trim() : undefined;
+  if (description && description.length > 2000) throw new ProfileError("Your description must be no longer than 2000 characters.");
   const upload = data.get("photo");
   const file = upload instanceof File && upload.size > 0 ? upload : null;
   const remove = data.get("remove_photo") === "on";
   if (remove && file) throw new ProfileError("Choose either a new photo or Remove photo.");
+  // Left out of the form entirely (an older client): keep the saved skills.
+  const skills = data.has("skills") ? parseSkills(String(data.get("skills"))) : undefined;
   const photo = file ? new Uint8Array(await normalizePhoto(file)) : remove ? null : undefined;
   return prisma.user.update({
     where: { id: actor.id },
-    data: { description: description || null, ...(photo !== undefined ? { photo, photo_updated_at: photo === null ? null : new Date() } : {}) },
+    data: { ...(description !== undefined ? { description: description || null } : {}), ...(skills ? { skills } : {}), ...(photo !== undefined ? { photo, photo_updated_at: photo === null ? null : new Date() } : {}) },
     select: { id: true },
   });
 }
 
+/** Whom a user may see: people they share a project or a team with. */
 export function profileVisibility(actor: Actor, userId: number) {
   return {
     id: userId, is_active: true,
     ...(actor.id === userId || actor.role === "SUPER_ADMIN" ? {} : {
       role: "USER" as const,
-      memberships: { some: { project: { memberships: { some: { user_id: actor.id } } } } },
+      OR: [
+        { memberships: { some: { project: { memberships: { some: { user_id: actor.id } } } } } },
+        { team: { members: { some: { id: actor.id } } } },
+      ],
     }),
   };
 }

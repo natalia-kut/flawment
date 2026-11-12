@@ -8,6 +8,8 @@ import ProjectTaskList from "./project-task-list";
 import ProjectStages from "./project-stages";
 import ProjectBrowser from "./project-browser";
 import UserAvatar from "./user-avatar";
+import AvailabilityBadge from "./availability-badge";
+import { StatusText } from "./status-dialog";
 import ProjectSpecializations, { MemberSpecialization } from "./project-specializations";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, type ReactNode, type FormEventHandler } from "react";
@@ -100,9 +102,21 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
           <div className="section-heading"><div><h2>People <span className="role-badge">{project.members.length}</span></h2><p>The team making it happen.</p></div>{project.canManage && <button className="primary-button" onClick={() => setModal("add")}>Add member</button>}</div>
           {project.members.length === 0 && <p>No team members yet.</p>}
           <ul className="member-list">{project.members.map((member) => <li key={member.id}>
-            <div className="member-identity"><UserAvatar id={member.id} firstName={member.first_name} lastName={member.last_name} photoVersion={member.photoVersion} /><div><strong>{member.first_name} {member.last_name}</strong><small>{member.email}</small><span className="role-badge">{member.role}{member.id === project.owner_id ? " · Owner" : ""}</span>
+            <div className="member-identity"><UserAvatar id={member.id} firstName={member.first_name} lastName={member.last_name} photoVersion={member.photoVersion} /><div><strong>{member.first_name} {member.last_name}</strong><small>{[member.jobTitle, member.email].filter(Boolean).join(" · ")}</small><span className="role-badge">{member.role}{member.id === project.owner_id ? " · Owner" : ""}</span>
               {member.specializationName && <span className="specialization-badge">{member.specializationName}</span>}
-              <details className="member-bio"><summary>About</summary><p>{member.description || "No description yet."}</p></details>
+              {member.availability && <AvailabilityBadge availability={member.availability} />}
+              {member.status && <div className="member-status"><StatusText status={member.status} /></div>}
+              <details className="member-bio"><summary>About</summary>
+                {(member.teamName || member.birthday || member.phone || member.location || member.workingHours) && <ul className="member-facts">
+                  {member.teamName && <li><span>Team</span>{member.teamName}</li>}
+                  {member.birthday && <li><span>Birthday</span>{member.birthday}</li>}
+                  {member.phone && <li><span>Phone</span>{member.phone}</li>}
+                  {member.location && <li><span>Location</span>{member.location}</li>}
+                  {member.workingHours && <li><span>Hours</span>{member.workingHours}</li>}
+                </ul>}
+                {member.skills.length > 0 ? <ul className="skill-list" aria-label="Skills">{member.skills.map((s) => <li key={s} className="skill-chip">{s}</li>)}</ul>
+                  : !(member.teamName || member.birthday || member.phone || member.location || member.workingHours) && <p>Nothing shared yet.</p>}
+              </details>
               {project.canManageSpecializations && <details className="member-bio"><summary>Assign specialization</summary><MemberSpecialization project={project} member={member} /></details>}
             </div></div>
             {project.canManage && member.id !== project.owner_id && (project.canAssignRoles || member.role === "PARTICIPANT") && <details className="member-settings"><summary>Manage</summary><div className="member-controls">
@@ -131,7 +145,7 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
     {modal === "edit" && project && <ProjectDetailsForm key={project.id} project={project} onClose={close} onSaved={() => { close(); router.refresh(); }} />}
     {modal === "add" && project && <ProjectDialog title="Bring someone on board" description={`Add a registered user to ${project.name}.`} onClose={close}>
       {project.eligible.length === 0 ? <p>There are no other available users to add.</p> : <ChangeForm operation="add" projectId={project.id} onSuccess={close}>
-        <label>Available users<select name="user_id" required defaultValue=""><option value="" disabled>Select a user</option>{project.eligible.map((user) => <option key={user.id} value={user.id}>{user.first_name} {user.last_name} ({user.email})</option>)}</select></label>
+        <label>Available users<select name="user_id" required defaultValue=""><option value="" disabled>Select a user</option>{project.eligible.map((user) => <option key={user.id} value={user.id}>{user.first_name} {user.last_name} ({user.email}){user.availability ? ` · ${user.availability.label}` : ""}</option>)}</select></label>
         <RoleSelect elevated={project.canAssignRoles} /><div className="dialog-actions"><button type="button" className="secondary-button" onClick={close}>Cancel</button><button className="primary-button">Add member</button></div>
       </ChangeForm>}
     </ProjectDialog>}

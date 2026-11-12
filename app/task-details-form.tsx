@@ -47,6 +47,7 @@ export default function TaskDetailsForm({ project, task, overdue = false, showOp
     return result;
   }, {});
   const formId = "task-details-" + (task?.id ?? "new");
+  const assignee = project.members.find((member) => String(member.id) === fields.assigned_to);
   const canSave = creating ? fields.title.trim() !== "" : dirty;
 
   return <TaskDetailsDialog title={task?.title ?? "New task"} onClose={onClose} focusFirstField={creating} heading={
@@ -78,7 +79,7 @@ export default function TaskDetailsForm({ project, task, overdue = false, showOp
           <label><span>Assigned to</span>
             <select name="assigned_to" value={fields.assigned_to} onChange={(e) => update("assigned_to", e.target.value)}>
               <option value="">Unassigned</option>
-              {project.members.map((member) => <option key={member.id} value={member.id}>{member.first_name} {member.last_name}</option>)}
+              {project.members.map((member) => <option key={member.id} value={member.id}>{member.first_name} {member.last_name}{member.availability ? ` · ${member.availability.state === "away" ? "out of office" : "away soon"}` : ""}</option>)}
             </select>
           </label>
           <label><span>Deadline{overdue && !dirty && <em className={styles.lateText}> · overdue</em>}</span>
@@ -91,6 +92,9 @@ export default function TaskDetailsForm({ project, task, overdue = false, showOp
             </select>
           </label>
         </div>
+        {assignee?.availability && <p className="availability-note" role="status">
+          Heads up: {assignee.first_name} {assignee.availability.state === "away" ? "is" : "will be"} {assignee.availability.label.charAt(0).toLowerCase() + assignee.availability.label.slice(1)}.
+        </p>}
         {state.error && <p className="form-error" role="alert">{state.error}</p>}
         <div className="dialog-actions">
           {showOpenProject && <Link className="secondary-button" href={"/?project=" + project.id}>Open project</Link>}

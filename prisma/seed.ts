@@ -1,8 +1,9 @@
 import "dotenv/config";
+import { readFileSync } from "node:fs";
 import { hashPassword } from "../lib/auth/password";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
-import type { ProjectRole, ProjectStatus, TaskPriority, TaskStatus } from "../src/generated/prisma/enums";
+import type { AbsenceType, ProjectRole, ProjectStatus, TaskPriority, TaskStatus } from "../src/generated/prisma/enums";
 
 // Sample workspace data. Dates are relative to the day the seed runs, so overdue
 // and upcoming sections in generated documents always have something to show.
@@ -147,9 +148,133 @@ const projects: ProjectSeed[] = [
   },
 ];
 
+// Teams, profiles and time off. Kept apart from the projects so a workspace
+// seeded before these features existed can still receive them.
+const teams: [string, Username[]][] = [
+  ["Product & Design", ["natalia.kwiatek", "zofia.wisniewska"]],
+  ["Engineering", ["jakub.nowak", "michal.zielinski", "piotr.kaminski", "tomasz.wojcik"]],
+  ["Operations", ["aleksandra.lewandowska", "julia.dabrowska"]],
+];
+
+// [username, birth year, days until the next birthday, description]
+const profiles: [Username, number, number, string][] = [
+  ["natalia.kwiatek", 1993, 40, "Product lead. I turn customer interviews into roadmaps and keep projects on track."],
+  ["jakub.nowak", 1990, 3, "Engineering manager with a backend background. Ask me about Postgres and release planning."],
+  ["zofia.wisniewska", 1996, 0, "UX designer focused on accessible forms and design systems."],
+  ["michal.zielinski", 1994, 12, "Full-stack developer. Mostly TypeScript, React and the occasional Terraform."],
+  ["aleksandra.lewandowska", 1988, 150, "Operations and vendor management. I handle contracts, budgets and audits."],
+  ["piotr.kaminski", 1997, 25, "Frontend developer who loves performance work and good test coverage."],
+  ["julia.dabrowska", 1991, 210, "Infrastructure lead planning the cloud migration."],
+  ["tomasz.wojcik", 1995, 300, "QA engineer. If it can break, I will find out how."],
+];
+
+// Directory details. Leads see why their team members are away.
+// [username, years and days ago the account was created]: drives work anniversaries.
+const joined: [Username, number, number][] = [
+  ["natalia.kwiatek", 4, 0], ["jakub.nowak", 3, -6], ["zofia.wisniewska", 2, 40], ["michal.zielinski", 1, -2],
+  ["aleksandra.lewandowska", 5, 120], ["piotr.kaminski", 1, 200], ["julia.dabrowska", 3, 300], ["tomasz.wojcik", 0, 90],
+];
+
+const details: { username: Username; job_title: string; pronouns?: string; phone: string; location: string; working_hours: string; skills: string[]; lead?: true }[] = [
+  { username: "natalia.kwiatek", job_title: "Product lead", pronouns: "she/her", phone: "+48 601 234 567", location: "Warsaw office", working_hours: "Mon–Fri, 9:00–17:00", skills: ["Product discovery", "Roadmapping", "Stakeholder management"], lead: true },
+  { username: "jakub.nowak", job_title: "Engineering manager", pronouns: "he/him", phone: "+48 602 345 678", location: "Warsaw office", working_hours: "Mon–Fri, 8:30–16:30", skills: ["PostgreSQL", "Node.js", "Release planning"], lead: true },
+  { username: "zofia.wisniewska", job_title: "UX designer", pronouns: "she/her", phone: "+48 603 456 789", location: "Kraków · Hybrid", working_hours: "Mon–Fri, 10:00–18:00", skills: ["UX research", "Figma", "Accessibility", "Design systems"] },
+  { username: "michal.zielinski", job_title: "Full-stack developer", phone: "+48 604 567 890", location: "Remote", working_hours: "Mon–Fri, 9:00–17:00", skills: ["TypeScript", "React", "Terraform"] },
+  { username: "aleksandra.lewandowska", job_title: "Operations manager", pronouns: "she/her", phone: "+48 605 678 901", location: "Warsaw office", working_hours: "Mon–Fri, 8:00–16:00", skills: ["Vendor management", "Budgeting", "Compliance"], lead: true },
+  { username: "piotr.kaminski", job_title: "Frontend developer", pronouns: "he/him", phone: "+48 606 789 012", location: "Gdańsk · Remote", working_hours: "Mon–Thu, 9:00–18:00", skills: ["React", "Web performance", "Testing"] },
+  { username: "julia.dabrowska", job_title: "Infrastructure lead", phone: "+48 607 890 123", location: "Wrocław · Hybrid", working_hours: "Mon–Fri, 9:00–17:00", skills: ["AWS", "Kubernetes", "Networking"] },
+  { username: "tomasz.wojcik", job_title: "QA engineer", pronouns: "he/him", phone: "+48 608 901 234", location: "Warsaw office", working_hours: "Mon–Fri, 9:00–17:00", skills: ["Test automation", "Playwright", "Exploratory testing"] },
+];
+
+// [username, type, first day offset, last day offset, note]
+const absences: [Username, AbsenceType, number, number, string | null][] = [
+  ["zofia.wisniewska", "VACATION", -2, 4, "Mountains with family"],
+  ["julia.dabrowska", "OTHER", 0, 0, "Moving flat"],
+  ["michal.zielinski", "BUSINESS_TRIP", 5, 7, "Client workshop in Gdańsk"],
+  ["piotr.kaminski", "SICK_LEAVE", -10, -8, null],
+  ["tomasz.wojcik", "VACATION", 20, 30, null],
+  ["natalia.kwiatek", "VACATION", 40, 47, null],
+];
+
+async function seedPeople() {
+  if ((await prisma.team.count()) > 0) {
+    console.log("Teams already exist — skipping teams, profiles and time off.");
+    return;
+  }
+  const found = await prisma.user.findMany({ where: { username: { in: users.map(([username]) => username) } }, select: { id: true, username: true, description: true } });
+  const byName = new Map(found.map((user) => [user.username as Username, user]));
+  if (byName.size === 0) return;
+
+  for (const [name, members] of teams) {
+    const team = await prisma.team.create({ data: { name, name_key: name.toLowerCase() } });
+    await prisma.user.updateMany({ where: { id: { in: members.flatMap((m) => byName.get(m)?.id ?? []) } }, data: { team_id: team.id } });
+  }
+  for (const [username, year, inDays, description] of profiles) {
+    const user = byName.get(username);
+    if (!user) continue;
+    const birth = day(inDays);
+    birth.setUTCFullYear(year);
+    // Keep a description someone already wrote.
+    await prisma.user.update({ where: { id: user.id }, data: { birth_date: birth, ...(user.description ? {} : { description }) } });
+  }
+  for (const [username, type, from, to, note] of absences) {
+    const user = byName.get(username);
+    if (user) await prisma.absence.create({ data: { user_id: user.id, type, start_date: day(from), end_date: day(to), note } });
+  }
+  console.log(`Seeded ${teams.length} teams, ${profiles.length} profiles and ${absences.length} time off entries.`);
+}
+
+/** Fills in only what is still empty, so it is safe to run again. */
+async function seedDetails() {
+  let filled = 0;
+  for (const { username, lead, ...fields } of details) {
+    const user = await prisma.user.findUnique({ where: { username }, select: { id: true, job_title: true, team_id: true } });
+    if (!user || user.job_title) continue;
+    await prisma.user.update({ where: { id: user.id }, data: { ...fields, ...(lead && user.team_id !== null ? { team_lead: true } : {}) } });
+    filled++;
+  }
+  if (filled) console.log(`Added job titles, contact details and skills for ${filled} people.`);
+}
+
+/**
+ * The sample super admin profile: photo, job title, contact details and skills.
+ * Fills in only what is still empty, and only for the "superadmin" account that
+ * seed-admin.ts creates, so a real installation's admin is never overwritten.
+ */
+async function seedAdminProfile() {
+  const admin = await prisma.user.findUnique({ where: { username: "superadmin" }, select: { id: true, photo: true, job_title: true, phone: true, location: true, skills: true } });
+  if (!admin) return;
+  await prisma.user.update({ where: { id: admin.id }, data: {
+    // Already a 512px WebP without metadata, as the profile upload stores it.
+    ...(admin.photo ? {} : { photo: new Uint8Array(readFileSync(new URL("./seed-photos/superadmin.webp", import.meta.url))), photo_updated_at: new Date() }),
+    ...(admin.job_title ? {} : { job_title: "IT super manager" }),
+    ...(admin.phone ? {} : { phone: "123456789" }),
+    ...(admin.location ? {} : { location: "Kraków" }),
+    ...(admin.skills.length ? {} : { skills: ["React", "UI/UX"] }),
+  } });
+}
+
+/**
+ * Backdates sample accounts so anniversaries show up (a negative day count means
+ * the anniversary is that many days ahead). Only touches accounts made today or
+ * later than their sample date, so it is safe to run again.
+ */
+async function seedJoinDates() {
+  for (const [username, years, daysAgo] of joined) {
+    const date = day(-daysAgo);
+    date.setUTCFullYear(date.getUTCFullYear() - years);
+    date.setUTCHours(9);
+    await prisma.user.updateMany({ where: { username, created_at: { gt: date } }, data: { created_at: date } });
+  }
+}
+
 async function main() {
   if ((await prisma.user.count({ where: { role: "USER" } })) > 0) {
-    console.log("Users already exist — skipping the seed to avoid overwriting data.");
+    console.log("Users already exist — skipping sample users and projects.");
+    await seedPeople();
+    await seedDetails();
+    await seedJoinDates();
+    await seedAdminProfile();
     return;
   }
 
@@ -201,6 +326,10 @@ async function main() {
   }
 
   console.log(`Seeded ${users.length} users and ${projects.length} projects.`);
+  await seedPeople();
+  await seedDetails();
+  await seedJoinDates();
+  await seedAdminProfile();
 }
 
 main()

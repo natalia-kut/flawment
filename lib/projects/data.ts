@@ -2,18 +2,36 @@ import { requireUser } from "@/lib/auth/session";
 import { can, visibleProjects } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { findAvailableMembers } from "./service";
+import { absenceSelect, availability, canSeeAbsenceReason, toRanges } from "@/lib/time-off/availability";
+import { getViewer } from "@/lib/teams/data";
+import { activeStatus, statusSelect } from "@/lib/status/status";
+import { daysUntilBirthday, formatBirthday, nextAnniversary, workspaceDay, workspaceToday } from "@/lib/time-off/dates";
 
-const person = {
+const person = (today: string) => ({
   id: true,
   first_name: true,
   last_name: true,
   email: true,
   description: true,
   photo_updated_at: true,
-} as const;
+  birth_date: true,
+  team_id: true,
+  job_title: true,
+  pronouns: true,
+  phone: true,
+  location: true,
+  working_hours: true,
+  skills: true,
+  created_at: true,
+  team: { select: { name: true } },
+  absences: absenceSelect(today),
+  ...statusSelect,
+}) as const;
 
 export async function getWorkspaceProjects() {
   const user = await requireUser();
+  const today = workspaceToday();
+  const viewer = await getViewer(user);
 
   const projects = await prisma.project.findMany({
     where: visibleProjects(user),
@@ -26,7 +44,7 @@ export async function getWorkspaceProjects() {
           user.role === "SUPER_ADMIN"
             ? {}
             : { user: { role: "USER" } },
-        include: { user: { select: person } },
+        include: { user: { select: person(today) } },
         orderBy: { joined_at: "asc" },
       },
       tasks: {
@@ -60,7 +78,7 @@ export async function getWorkspaceProjects() {
         null;
       const manage = can(role, "members:manage", user.role);
       const eligible = manage
-        ? await findAvailableMembers(project.id)
+        ? await findAvailableMembers(project.id, today, viewer)
         : [];
 
       return {
@@ -82,6 +100,19 @@ export async function getWorkspaceProjects() {
         members: project.memberships.map((m) => ({
           id: m.user.id, first_name: m.user.first_name, last_name: m.user.last_name, email: m.user.email,
           description: m.user.description,
+          teamName: m.user.team?.name ?? null,
+          jobTitle: m.user.job_title,
+          pronouns: m.user.pronouns,
+          phone: m.user.phone,
+          location: m.user.location,
+          workingHours: m.user.working_hours,
+          skills: m.user.skills,
+          status: activeStatus(m.user),
+          // Birthday (day and month only) or work anniversary today, for a festive touch.
+          celebratesToday: m.user.birth_date && daysUntilBirthday(m.user.birth_date.toISOString().slice(0, 10), today) === 0 ? "birthday" as const
+            : nextAnniversary(workspaceDay(m.user.created_at), today)?.inDays === 0 ? "anniversary" as const : null,
+          birthday: m.user.birth_date ? formatBirthday(m.user.birth_date.toISOString().slice(0, 10)) : null,
+          availability: availability(toRanges(m.user.absences, canSeeAbsenceReason(viewer, m.user)), today),
           photoVersion: m.user.photo_updated_at?.toISOString() ?? null,
           specializationId: m.specialization_id,
           specializationName: project.specializations.find((item) => item.id === m.specialization_id)?.name ?? null,

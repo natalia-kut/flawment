@@ -41,25 +41,76 @@ enum UserRole {
   SUPER_ADMIN
 }
 
+enum AbsenceType {
+  VACATION
+  SICK_LEAVE
+  BUSINESS_TRIP
+  OTHER
+}
+
 model User {
-  id               Int                @id @default(autoincrement())
-  username         String             @unique
-  email            String             @unique
-  password         String
-  first_name       String
-  last_name        String
-  is_active        Boolean            @default(true)
-  role             UserRole           @default(USER)
-  description      String?
-  photo            Bytes?             @db.ByteA
-  photo_updated_at DateTime?
-  sessions         Session[]
-  templates        DocumentTemplate[]
+  id                Int                @id @default(autoincrement())
+  username          String             @unique
+  email             String             @unique
+  password          String
+  first_name        String
+  last_name         String
+  is_active         Boolean            @default(true)
+  role              UserRole           @default(USER)
+  description       String?
+  photo             Bytes?             @db.ByteA
+  photo_updated_at  DateTime?
+  // Colleagues see only the day and month.
+  birth_date        DateTime?          @db.Date
+  // Teams are assigned by a super admin, not chosen by the user.
+  team_id           Int?
+  team              Team?              @relation(fields: [team_id], references: [id], onDelete: SetNull)
+  // Leads see why their team members are away. Cleared when the team changes.
+  team_lead         Boolean            @default(false)
+  job_title         String?
+  pronouns          String?
+  phone             String?
+  location          String?
+  working_hours     String?
+  skills            String[]           @default([])
+  // A short custom status ("🍽️ Lunch"), hidden once status_expires_at passes.
+  status_emoji      String?
+  status_text       String?
+  status_expires_at DateTime?
+  // When the account was created: also the start date for work anniversaries.
+  created_at        DateTime           @default(now())
+  absences          Absence[]
+  sessions          Session[]
+  templates         DocumentTemplate[]
 
   owned_projects Project[]           @relation("ProjectOwner")
   memberships    ProjectMembership[]
   assigned_tasks Task[]              @relation("TaskAssignee")
   created_tasks  Task[]              @relation("TaskCreator")
+
+  @@index([team_id])
+}
+
+model Team {
+  id         Int      @id @default(autoincrement())
+  name       String
+  name_key   String   @unique
+  members    User[]
+  created_at DateTime @default(now())
+}
+
+// Time off. Other people only learn that someone is away, never the type or note.
+model Absence {
+  id         Int         @id @default(autoincrement())
+  user_id    Int
+  user       User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  type       AbsenceType
+  start_date DateTime    @db.Date
+  end_date   DateTime    @db.Date
+  note       String?
+  created_at DateTime    @default(now())
+
+  @@index([user_id, end_date])
 }
 
 model Session {

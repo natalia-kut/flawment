@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { can, type Actor, type Permission } from "@/lib/rbac";
+import { absenceSelect, availability, canSeeAbsenceReason, toRanges } from "@/lib/time-off/availability";
+import type { Viewer } from "@/lib/teams/data";
+import { workspaceToday } from "@/lib/time-off/dates";
 import type { Prisma, ProjectRole, ProjectStatus } from "@/src/generated/prisma/client";
 
 export class ProjectError extends Error {}
@@ -7,12 +10,16 @@ const roles: ProjectRole[] = ["ADMIN", "MANAGER", "PARTICIPANT"];
 const statuses: ProjectStatus[] = ["TO_DO", "IN_PROGRESS", "COMPLETED", "ARCHIVED", "CANCELLED"];
 const field = (data: FormData, key: string) => String(data.get(key) ?? "").trim();
 
-export async function findAvailableMembers(projectId: number) {
-  return prisma.user.findMany({
+export async function findAvailableMembers(projectId: number, today = workspaceToday(), viewer?: Viewer) {
+  const users = await prisma.user.findMany({
     where: { is_active: true, role: "USER", memberships: { none: { project_id: projectId } } },
-    select: { id: true, first_name: true, last_name: true, email: true },
+    select: { id: true, first_name: true, last_name: true, email: true, team_id: true, absences: absenceSelect(today) },
     orderBy: { first_name: "asc" },
   });
+  // Whoever picks people sees who is away; only their team lead (or a super admin) sees why.
+  return users.map(({ absences, team_id, ...user }) => ({
+    ...user, availability: availability(toRanges(absences, !!viewer && canSeeAbsenceReason(viewer, { id: user.id, team_id })), today),
+  }));
 }
 function id(value: string) {
   const result = Number(value);

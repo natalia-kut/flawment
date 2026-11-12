@@ -231,8 +231,7 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
 
   return (
     <div className="documents-page">
-      <PageHeader title="Documents"
-        description="Create reports from your project's tasks, deadlines and team." />
+      <PageHeader title="Documents" />
 
       {error && <p className="storage-notice" role="alert">{error}</p>}
       {notice && <p className="storage-notice success" role="status">{notice}</p>}

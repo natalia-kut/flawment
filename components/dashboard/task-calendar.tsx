@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { taskStatusLabels } from "@/lib/tasks/labels";
 import styles from "./dashboard-widgets.module.css";
+import type { CalendarTimeOff } from "@/lib/time-off/calendar";
+import { absenceTypeLabels } from "@/lib/time-off/labels";
+import { formatRange } from "@/lib/time-off/dates";
 
 export type CalendarTask = {
   id: number; title: string; deadline: string; status: string; overdue: boolean;
@@ -20,10 +23,13 @@ const iso = (year: number, month: number, day: number) => `${year}-${pad(month +
 /**
  * A month of deadlines: each day shows a dot per task due, coloured by status,
  * and picking a day lists its tasks. Weeks start on Monday.
+ * Time off shows too: your own days are striped in the colour of their type,
+ * and a team lead sees a moon with how many of their team are away.
  */
-export default function TaskCalendar({ tasks, today, onOpenTask }: {
-  tasks: CalendarTask[]; today: string; onOpenTask: (id: number) => void;
+export default function TaskCalendar({ tasks, today, timeOff = [], onOpenTask }: {
+  tasks: CalendarTask[]; today: string; timeOff?: CalendarTimeOff[]; onOpenTask: (id: number) => void;
 }) {
+  const offOn = (date: string) => timeOff.filter((entry) => entry.start <= date && entry.end >= date);
   const [year, month] = today.split("-").map(Number);
   const [shown, setShown] = useState({ year, month: month - 1 });
   const [selected, setSelected] = useState(today);
@@ -47,6 +53,7 @@ export default function TaskCalendar({ tasks, today, onOpenTask }: {
   }
 
   const selectedTasks = byDay.get(selected) ?? [];
+  const selectedOff = offOn(selected).sort((a, b) => Number(b.mine) - Number(a.mine));
 
   return <div className={styles.calendar}>
     <div>
@@ -64,10 +71,18 @@ export default function TaskCalendar({ tasks, today, onOpenTask }: {
           const date = iso(shown.year, shown.month, day);
           const due = byDay.get(date) ?? [];
           const late = due.some((task) => task.overdue);
+          const off = offOn(date);
+          const mine = off.find((entry) => entry.mine);
+          const others = off.filter((entry) => !entry.mine).length;
+          const offLabel = [mine && `you are off (${absenceTypeLabels[mine.type]})`, others && `${others} of your team away`].filter(Boolean).join(", ");
           return <button key={date} type="button" role="gridcell" className={styles.day}
             data-today={date === today || undefined} data-selected={date === selected || undefined} data-late={late || undefined}
-            aria-selected={date === selected} aria-label={`${dayName.format(new Date(date + "T00:00:00Z"))}: ${due.length} ${due.length === 1 ? "task" : "tasks"} due`}
+            data-off={mine ? mine.type : undefined}
+            aria-selected={date === selected} aria-label={`${dayName.format(new Date(date + "T00:00:00Z"))}: ${due.length} ${due.length === 1 ? "task" : "tasks"} due${offLabel ? `; ${offLabel}` : ""}`}
             onClick={() => setSelected(date)}>
+            {others > 0 && <span className={styles.teamOff} aria-hidden="true">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" /></svg>{others}
+            </span>}
             <span className={styles.dayNumber}>{day}</span>
             {due.length > 0 && <span className={styles.dots} aria-hidden="true">
               {due.slice(0, MAX_DOTS).map((task) => <span key={task.id} className={styles.dot} data-status={task.status} />)}
@@ -80,6 +95,12 @@ export default function TaskCalendar({ tasks, today, onOpenTask }: {
 
     <div className={styles.dayPanel} aria-live="polite">
       <h3>{selected === today ? "Today" : dayName.format(new Date(selected + "T00:00:00Z"))}</h3>
+      {selectedOff.length > 0 && <ul className={styles.offList} aria-label="Time off">
+        {selectedOff.map((entry) => <li key={entry.id} data-off={entry.type}>
+          <strong>{entry.mine ? "You" : entry.name}</strong>
+          <span>{absenceTypeLabels[entry.type]} · {formatRange(entry.start, entry.end)}</span>
+        </li>)}
+      </ul>}
       {selectedTasks.length === 0
         ? <p className={styles.quiet}>Nothing due{selected === today ? " today" : " this day"}.</p>
         : <ul>

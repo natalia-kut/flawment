@@ -8,7 +8,7 @@ import "./documents.css";
  */
 export default function DocumentsSkeleton() {
   return <div className="documents-page" aria-busy="true">
-    <PageHeader title="Documents" description="Create reports from your project's tasks, deadlines and team." />
+    <PageHeader title="Documents" />
     <p className="visually-hidden" role="status">Loading documents…</p>
     <div className="documents-layout" aria-hidden="true">
       <div className="template-sidebar skeleton-stack">
