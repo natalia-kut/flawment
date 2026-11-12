@@ -64,6 +64,8 @@ export default function TasksOverview({ projects, currentUserId, today }: {
   const sameAsAlphabetical = (ids: number[]) => ids.length === alphabetical.length && ids.every((id, index) => id === alphabetical[index]);
   // Only an order that really differs from A–Z counts as the user's own.
   const customOrder = !sameAsAlphabetical(sortedProjects.map((project) => project.id));
+  // Projects you can add a task to (A–Z); the selected tab's project is picked first.
+  const creatable = [...projects].filter((project) => project.canCreateTasks).sort((a, b) => a.name.localeCompare(b.name));
   const [draggingTab, setDraggingTab] = useState<number | null>(null);
   // While a tab is dragged, the others make room live; dropping saves this order, cancelling drops it.
   const [dragOrder, setDragOrder] = useState<number[] | null>(null);
@@ -83,6 +85,8 @@ export default function TasksOverview({ projects, currentUserId, today }: {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [detailsId, setDetailsId] = useState<number | null>(null);
+  // A new task: in one project (its "+ Add task"), or "choose" one in the form (the header button).
+  const [creatingIn, setCreatingIn] = useState<number | "choose" | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   // Statuses moved on the board but not yet confirmed by fresh server data.
   const [pending, setPending] = useState<Record<number, TaskStatus>>({});
@@ -196,7 +200,9 @@ export default function TasksOverview({ projects, currentUserId, today }: {
     }
   }
   return <div className={styles.page}>
-    <PageHeader title="Tasks" />
+    {/* Grouped by project, each project adds its own tasks; otherwise a project is picked in the form. */}
+    <PageHeader title="Tasks" actions={creatable.length > 0 && (grouping === "person" || tasks.length === 0) &&
+      <button className="primary-button" onClick={() => setCreatingIn("choose")}><span aria-hidden="true">+</span> New task</button>} />
     {projects.length > 1 && <div className={styles.projectTabs} role="group" aria-label="Show tasks from"
       onDragOver={(event) => { if (draggingTab !== null) event.preventDefault(); }}
       onDrop={(event) => {
@@ -265,14 +271,14 @@ export default function TasksOverview({ projects, currentUserId, today }: {
           value={filters.query} onChange={(e) => update("query", e.target.value)} />
         {!singleProject && <div className={styles.toggle} role="group" aria-label="Group tasks">
           <button aria-pressed={groupBy === "project"} onClick={() => setGroupBy("project")}>By project</button>
-          <button aria-pressed={groupBy === "person"} onClick={() => setGroupBy("person")}>By participant</button>
+          <button aria-pressed={groupBy === "person"} onClick={() => setGroupBy("person")}>By person</button>
         </div>}
       </div>
       <div className={controls.toolbarRow}>
         {/* The first option names each filter, so the pills need no labels above them. */}
-        <select className={controls.filter} aria-label="Participant" data-active={filters.assignee !== ""} value={filters.assignee}
+        <select className={controls.filter} aria-label="Assignee" data-active={filters.assignee !== ""} value={filters.assignee}
           onChange={(e) => update("assignee", e.target.value)}>
-          <option value="">All participants</option><option value="unassigned">Unassigned</option>
+          <option value="">Everyone</option><option value="unassigned">Unassigned</option>
           {assignees.map(([key, name]) => <option key={key} value={key}>{name}</option>)}
         </select>
         <select className={controls.filter} aria-label="Stage" data-active={filters.stage !== ""} value={filters.stage}
@@ -321,6 +327,8 @@ export default function TasksOverview({ projects, currentUserId, today }: {
         const collapsible = groups.length > 1;
         const collapsed = collapsible && (toggledGroups[key] ?? (progress.total > 0 && progress.percent === 100));
         const boardId = "board-" + grouping + "-" + key;
+        // Grouped by project: "+ Add task" at the foot of To do, straight into this project.
+        const addTo = grouping === "project" ? creatable.find((project) => String(project.id) === key) : undefined;
         return <section key={key} className={styles.group} aria-label={name}>
           {!singleProject && <div className={styles.groupHeading}>
             {collapsible ? <h2><button type="button" className={styles.groupToggle} aria-expanded={!collapsed} aria-controls={boardId}
@@ -376,14 +384,20 @@ export default function TasksOverview({ projects, currentUserId, today }: {
                   <h4>{task.title}</h4>
                   <p className={isTaskOverdue(task, today) ? styles.lateText : ""}>{isTaskOverdue(task, today) ? "Overdue · " : ""}{formatShortDeadline(task.deadline)}</p>
                 </article>)}
-                {cards.length === 0 && <p className={styles.dropHint}>No tasks</p>}
+                {cards.length === 0 && !(column.status === "TO_DO" && addTo) && <p className={styles.dropHint}>No tasks</p>}
+                {column.status === "TO_DO" && addTo && <button type="button" className={styles.addTask} onClick={() => setCreatingIn(addTo.id)}>
+                  <span aria-hidden="true">+</span> Add task</button>}
               </section>;
             })}
           </div>}
         </section>;
       })}
-    {detailsTask && (detailsProject?.canManageTasks && detailsSource
-      // People who manage tasks edit everything right here.
+    {creatingIn !== null && <TaskDetailsForm
+      project={creatable.find((p) => creatingIn === "choose" ? String(p.id) === chosenProjectId : p.id === creatingIn) ?? creatable[0]}
+      projectChoices={creatingIn === "choose" ? creatable : undefined} showOpenProject={false} onClose={() => setCreatingIn(null)}
+      onSaved={() => { setMessage("Task added."); setCreatingIn(null); router.refresh(); }} />}
+    {detailsTask && (detailsProject && detailsSource?.canEdit
+      // Whoever may edit the task (its coordinators, or the contributor who added it) edits it right here.
       ? <TaskDetailsForm key={detailsSource.id} project={detailsProject} task={detailsSource}
         overdue={isTaskOverdue(detailsTask, today)} onClose={closeDetails}
         onSaved={() => { setMessage('Saved "' + detailsSource.title + '".'); closeDetails(); router.refresh(); }} />

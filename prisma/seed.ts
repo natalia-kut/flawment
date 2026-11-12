@@ -55,11 +55,11 @@ const projects: ProjectSeed[] = [
     end: 38,
     owner: "natalia.kwiatek",
     members: [
-      ["natalia.kwiatek", "ADMIN", -62],
-      ["jakub.nowak", "MANAGER", -60],
-      ["zofia.wisniewska", "PARTICIPANT", -58],
-      ["michal.zielinski", "PARTICIPANT", -55],
-      ["aleksandra.lewandowska", "PARTICIPANT", -40],
+      ["natalia.kwiatek", "OWNER", -62],
+      ["jakub.nowak", "COORDINATOR", -60],
+      ["zofia.wisniewska", "CONTRIBUTOR", -58],
+      ["michal.zielinski", "CONTRIBUTOR", -55],
+      ["aleksandra.lewandowska", "CONTRIBUTOR", -40],
     ],
     tasks: [
       ["Run discovery workshops with key account managers", "natalia.kwiatek", -45, "COMPLETED", "MEDIUM", "Five workshops with sales and customer service."],
@@ -87,10 +87,10 @@ const projects: ProjectSeed[] = [
     end: 53,
     owner: "jakub.nowak",
     members: [
-      ["jakub.nowak", "ADMIN", -30],
-      ["julia.dabrowska", "MANAGER", -29],
-      ["piotr.kaminski", "PARTICIPANT", -27],
-      ["natalia.kwiatek", "PARTICIPANT", -20],
+      ["jakub.nowak", "OWNER", -30],
+      ["julia.dabrowska", "COORDINATOR", -29],
+      ["piotr.kaminski", "CONTRIBUTOR", -27],
+      ["natalia.kwiatek", "CONTRIBUTOR", -20],
     ],
     tasks: [
       ["Content audit with the marketing team", "julia.dabrowska", -22, "COMPLETED", "MEDIUM"],
@@ -112,10 +112,10 @@ const projects: ProjectSeed[] = [
     end: -21,
     owner: "aleksandra.lewandowska",
     members: [
-      ["aleksandra.lewandowska", "ADMIN", -210],
-      ["tomasz.wojcik", "MANAGER", -205],
-      ["zofia.wisniewska", "PARTICIPANT", -200],
-      ["piotr.kaminski", "PARTICIPANT", -200],
+      ["aleksandra.lewandowska", "OWNER", -210],
+      ["tomasz.wojcik", "COORDINATOR", -205],
+      ["zofia.wisniewska", "CONTRIBUTOR", -200],
+      ["piotr.kaminski", "CONTRIBUTOR", -200],
     ],
     tasks: [
       ["Job schedule with map view", "piotr.kaminski", -150, "COMPLETED", "HIGH"],
@@ -135,9 +135,9 @@ const projects: ProjectSeed[] = [
     end: 140,
     owner: "julia.dabrowska",
     members: [
-      ["julia.dabrowska", "ADMIN", -5],
-      ["tomasz.wojcik", "MANAGER", -4],
-      ["michal.zielinski", "PARTICIPANT", -2],
+      ["julia.dabrowska", "OWNER", -5],
+      ["tomasz.wojcik", "COORDINATOR", -4],
+      ["michal.zielinski", "CONTRIBUTOR", -2],
     ],
     tasks: [
       ["Sign the cloud provider contract", "tomasz.wojcik", 30, "TO_DO", "HIGH"],
@@ -311,7 +311,7 @@ async function main() {
   const id = (username: Username) => ids.get(username)!;
 
   for (const project of projects) {
-    const manager = project.members.find(([, role]) => role === "MANAGER")?.[0] ?? project.owner;
+    const manager = project.members.find(([, role]) => role === "COORDINATOR")?.[0] ?? project.owner;
     await prisma.project.create({
       data: {
         name: project.name,

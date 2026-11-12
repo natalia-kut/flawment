@@ -105,7 +105,7 @@ test("teams, birthdays and time off respect who may see and change them", async 
     assert.ok((await getTeamsOverview(root, today)).people.some((p) => p.id === outsider.id && p.teamId === null));
 
     // Picking people for a project shows who is away.
-    const project = await prisma.project.create({ data: { name: prefix, start_date: new Date(today), owner_id: anna.id, memberships: { create: { user_id: anna.id, role: "ADMIN" } } } });
+    const project = await prisma.project.create({ data: { name: prefix, start_date: new Date(today), owner_id: anna.id, memberships: { create: { user_id: anna.id, role: "OWNER" } } } });
     projects.push(project.id);
     const candidates = await findAvailableMembers(project.id, today);
     assert.equal(candidates.find((c) => c.id === ben.id)?.availability?.state, "away");

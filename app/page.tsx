@@ -26,7 +26,9 @@ async function Workspace() {
   const sidebarCollapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "collapsed";
   const today = workspaceToday();
   // The account button shows when you are marked as away.
-  const me = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { ...statusSelect, birth_date: true, created_at: true } });
+  const me = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { ...statusSelect, birth_date: true, created_at: true, job_title: { select: { can_lead: true } } } });
+  // Managers (a managerial job title) and super admins start projects.
+  const canCreateProjects = user.role === "SUPER_ADMIN" || !!me.job_title?.can_lead;
   const celebrations = todaysCelebrations(user.first_name, me.birth_date?.toISOString().slice(0, 10) ?? null, workspaceDay(me.created_at), today);
   const timeOff = await getCalendarTimeOff(user, today);
   // Loaded once for both the Team page and the dashboard's "Your team".
@@ -44,7 +46,7 @@ async function Workspace() {
       workspace={{ projects, userId: user.id, today, timeOff, myTeam }}
       sidebarCollapsed={sidebarCollapsed}
       tasks={<TasksOverview projects={projects} currentUserId={user.id} today={today} />}
-      projects={<ProjectsView projects={projects} today={today} />}
+      projects={<ProjectsView projects={projects} today={today} canCreateProjects={canCreateProjects} />}
       documents={
         <Suspense fallback={<DocumentsSkeleton />}>
           <DocumentsSection />

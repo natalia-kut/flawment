@@ -51,12 +51,17 @@ async function saveTask(actor: Actor, data: FormData, editing: boolean) {
       where: { id: projectId }, include: { memberships: true },
     });
     const role = project?.memberships.find((m) => m.user_id === actor.id)?.role ?? null;
-    if (!project || !can(role, "tasks:manage", actor.role)) {
-      throw new TaskError("You do not have permission to manage tasks in this project.");
+    if (!project || !can(role, "tasks:create", actor.role)) {
+      throw new TaskError("You do not have permission to add tasks to this project.");
     }
-    if (taskId !== null) {
-      const existing = await tx.task.findFirst({ where: { id: taskId, project_id: projectId }, select: { id: true } });
-      if (!existing) throw new TaskError("This task is no longer available in this project.");
+    const manages = can(role, "tasks:manage", actor.role);
+    const existing = taskId === null ? null
+      : await tx.task.findFirst({ where: { id: taskId, project_id: projectId }, select: { created_by: true, assigned_to: true } });
+    if (taskId !== null && !existing) throw new TaskError("This task is no longer available in this project.");
+    // Contributors edit the tasks they added, and hand work only to themselves.
+    if (!manages && existing && existing.created_by !== actor.id) throw new TaskError("You can only edit tasks you added.");
+    if (!manages && assignedTo !== null && assignedTo !== actor.id && assignedTo !== existing?.assigned_to) {
+      throw new TaskError("You can assign tasks only to yourself.");
     }
     if (assignedTo !== null) {
       const member = await tx.projectMembership.findUnique({
@@ -97,8 +102,13 @@ export async function deleteTask(actor: Actor, data: FormData) {
       where: { id: projectId }, include: { memberships: true },
     });
     const role = project?.memberships.find((member) => member.user_id === actor.id)?.role ?? null;
-    if (!project || !can(role, "tasks:manage", actor.role)) {
+    if (!project || !can(role, "tasks:create", actor.role)) {
       throw new TaskError("You do not have permission to delete tasks in this project.");
+    }
+    // Contributors may delete only the tasks they added.
+    if (!can(role, "tasks:manage", actor.role)) {
+      const task = await tx.task.findFirst({ where: { id: taskId, project_id: projectId }, select: { created_by: true } });
+      if (task && task.created_by !== actor.id) throw new TaskError("You can only delete tasks you added.");
     }
     const deleted = await tx.task.deleteMany({
       where: { id: taskId, project_id: projectId },
@@ -125,7 +135,7 @@ export async function changeTaskStatus(actor: Actor, data: FormData) {
     if (!task) throw new TaskError("This task is no longer available in this project.");
     const role = task.project.memberships.find((member) => member.user_id === actor.id)?.role ?? null;
     const allowed = can(role, "tasks:manage", actor.role) ||
-      (task.assigned_to === actor.id && can(role, "tasks:update-assigned", actor.role));
+      ((task.assigned_to === actor.id || task.created_by === actor.id) && can(role, "tasks:own", actor.role));
     if (!allowed) throw new TaskError("You do not have permission to change this task status.");
     const changed = await tx.task.updateMany({
       where: { id: taskId, project_id: projectId, status: expected },

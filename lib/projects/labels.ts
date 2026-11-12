@@ -1,3 +1,5 @@
+import type { ProjectRole } from "@/src/generated/prisma/enums";
+
 /** How each project status is named in the interface. */
 export const projectStatusLabels: Record<string, string> = {
   TO_DO: "Planned",
@@ -7,9 +9,9 @@ export const projectStatusLabels: Record<string, string> = {
   CANCELLED: "Cancelled",
 };
 
-/** Project roles in plain words; a participant is the default and needs no badge. */
-export const projectRoleLabels: Record<string, string> = {
-  ADMIN: "Admin",
-  MANAGER: "Manager",
-  PARTICIPANT: "Participant",
+/** Project roles in plain words; a contributor is the default and needs no badge. */
+export const projectRoleLabels: Record<ProjectRole, string> = {
+  OWNER: "Owner",
+  COORDINATOR: "Coordinator",
+  CONTRIBUTOR: "Contributor",
 };

@@ -122,7 +122,8 @@ export function buildVariables(project: DocumentProject, today: string): Record<
     remaining = left > 0 ? `${plural(left, "day")} left` : left === 0 ? "ends today" : `ended ${plural(-left, "day")} ago`;
   }
 
-  const managers = project.members.filter((member) => member.role === "MANAGER").map((member) => member.person.name);
+  // The "managers" fact keeps its key (saved templates use it) and now lists the coordinators.
+  const managers = project.members.filter((member) => member.role === "COORDINATOR").map((member) => member.person.name);
 
   return {
     project: project.name,
@@ -215,7 +216,7 @@ export type MemberRow = DocumentMember & {
   highPriority: number;
 };
 
-const roleOrder = ["ADMIN", "MANAGER", "PARTICIPANT"] as const;
+const roleOrder = ["OWNER", "COORDINATOR", "CONTRIBUTOR"] as const;
 
 export function selectMembers(project: DocumentProject, today: string, sort: MemberSort): MemberRow[] {
   const rows = project.members.map((member) => {

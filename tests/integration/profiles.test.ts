@@ -23,7 +23,7 @@ test("profiles respect account and project boundaries", async () => {
     const actor = (index: number) => ({ id: users[index], role: index === 4 ? "SUPER_ADMIN" as const : "USER" as const });
     for (const name of ["one", "two"]) {
       const project = await prisma.project.create({ data: { name: prefix + name, start_date: new Date(), owner_id: users[0], memberships: { create: [
-        { user_id: users[0], role: "ADMIN" }, { user_id: users[1], role: "MANAGER" }, { user_id: users[2], role: "PARTICIPANT" },
+        { user_id: users[0], role: "OWNER" }, { user_id: users[1], role: "COORDINATOR" }, { user_id: users[2], role: "CONTRIBUTOR" },
       ] } } });
       projects.push(project.id);
     }

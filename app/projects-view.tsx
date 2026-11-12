@@ -15,6 +15,7 @@ import { useActionState, useEffect, useRef, useState, type ReactNode, type FormE
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { projectAction } from "@/lib/projects/actions";
 import { projectRoleLabels } from "@/lib/projects/labels";
+import type { ProjectRole } from "@/src/generated/prisma/enums";
 import PageHeader from "@/components/page-header";
 
 function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, className = "workspace-form" }: {
@@ -36,22 +37,42 @@ function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, class
   </form>;
 }
 
-/** `saveOnChange` saves as soon as a role is picked (changing a member's role); otherwise it is part of a form. */
-function RoleSelect({ elevated, value = "PARTICIPANT", saveOnChange = false }: { elevated: boolean; value?: string; saveOnChange?: boolean }) {
+/**
+ * Contributor, or Coordinator for whoever may name coordinators (the owner).
+ * `saveOnChange` saves as soon as a role is picked; otherwise it is part of a form.
+ */
+function RoleSelect({ canNameCoordinators, value = "CONTRIBUTOR", saveOnChange = false }: { canNameCoordinators: boolean; value?: ProjectRole; saveOnChange?: boolean }) {
+  const roles: ProjectRole[] = canNameCoordinators ? ["CONTRIBUTOR", "COORDINATOR"] : ["CONTRIBUTOR"];
   return <label>{saveOnChange ? "Role" : "Project role"}<select name="role" defaultValue={value}
     onChange={saveOnChange ? (event) => event.currentTarget.form?.requestSubmit() : undefined}>
-    {(elevated ? ["PARTICIPANT", "MANAGER", "ADMIN"] : ["PARTICIPANT"]).map((role) => <option key={role} value={role}>{projectRoleLabels[role]}</option>)}
+    {roles.map((role) => <option key={role} value={role}>{projectRoleLabels[role]}</option>)}
   </select></label>;
 }
 
-/** Only roles above the default get a badge (Owner, Admin or Manager), next to whether they are away. */
-function MemberBadges({ member, owner }: { member: WorkspaceProject["members"][number]; owner: boolean }) {
-  const role = owner ? "Owner" : member.role === "PARTICIPANT" ? null : projectRoleLabels[member.role];
+/** Only roles above the default get a badge (Owner or Coordinator), next to whether they are away. */
+function MemberBadges({ member }: { member: WorkspaceProject["members"][number] }) {
+  const role = member.role === "CONTRIBUTOR" ? null : projectRoleLabels[member.role];
   if (!role && !member.availability) return null;
   return <span className="member-badges">
     {role && <span className="role-badge">{role}</span>}
     {member.availability && <AvailabilityBadge availability={member.availability} />}
   </span>;
+}
+
+/** "Manage" opens a small menu; clicking anywhere else or pressing Escape closes it. */
+function ManageMenu({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const menu = ref.current!;
+    const close = (event: Event) => {
+      if (!menu.open) return;
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !menu.contains(event.target as Node)) menu.open = false;
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", close); };
+  }, []);
+  return <details ref={ref} className="member-settings"><summary>Manage</summary>{children}</details>;
 }
 
 function ProjectDialog({ title, description, onClose, children }: {
@@ -78,7 +99,11 @@ function ProjectDialog({ title, description, onClose, children }: {
   </dialog>;
 }
 
-export default function ProjectsView({ projects, today }: { projects: WorkspaceProject[]; today: string }) {
+export default function ProjectsView({ projects, today, canCreateProjects }: {
+  projects: WorkspaceProject[]; today: string;
+  /** Managers (a managerial job title) and super admins start projects. */
+  canCreateProjects: boolean;
+}) {
   const router = useRouter();
   const search = useSearchParams();
   const selected = search.get("project");
@@ -98,8 +123,9 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
   return <div className="projects-workspace">
     {!selected ? <>
       <PageHeader title="Projects"
-        actions={<button className="primary-button" onClick={() => setModal("create")}><span aria-hidden="true">+</span> New project</button>} />
-      {projects.length === 0 ? <section className="project-empty-state"><span aria-hidden="true">↗</span><h2>Make room for your next idea</h2><p>Create a project and bring your team together.</p><button className="primary-button" onClick={() => setModal("create")}>Create your first project</button></section> :
+        actions={canCreateProjects && <button className="primary-button" onClick={() => setModal("create")}><span aria-hidden="true">+</span> New project</button>} />
+      {projects.length === 0 ? <section className="project-empty-state"><span aria-hidden="true">↗</span>{canCreateProjects ? <><h2>Make room for your next idea</h2><p>Create a project and bring your team together.</p><button className="primary-button" onClick={() => setModal("create")}>Create your first project</button></>
+        : <><h2>No projects yet</h2><p>When a manager adds you to a project, it will show up here.</p></>}</section> :
         <ProjectBrowser projects={projects} today={today} />}
     </> : !project ? <>{breadcrumbs}<section className="project-empty-state"><h1>Project unavailable</h1><p>This project was deleted or you no longer have access.</p><Link href="/?view=projects" className="secondary-button">Back to projects</Link></section></> : <>
       <PageHeader breadcrumbs={breadcrumbs} title={project.name}
@@ -113,15 +139,15 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
           {project.members.length === 0 && <p>No team members yet.</p>}
           <ul className="member-list">{project.members.map((member) => <li key={member.id}>
             <div className="member-identity"><UserAvatar id={member.id} firstName={member.first_name} lastName={member.last_name} photoVersion={member.photoVersion} /><div><strong>{member.first_name} {member.last_name}</strong><small>{[member.jobTitle, member.email].filter(Boolean).join(" · ")}</small>
-              <MemberBadges member={member} owner={member.id === project.owner_id} />
+              <MemberBadges member={member} />
               {member.status && <div className="member-status"><StatusText status={member.status} /></div>}
             </div></div>
-            {project.canManage && member.id !== project.owner_id && (project.canAssignRoles || member.role === "PARTICIPANT") && <details className="member-settings"><summary>Manage</summary><div className="member-controls">
-              {project.canAssignRoles && <ChangeForm operation="role" projectId={project.id} className="compact-form"><input type="hidden" name="user_id" value={member.id} /><RoleSelect elevated value={member.role} saveOnChange /></ChangeForm>}
+            {project.canManage && member.id !== project.owner_id && (project.canAssignRoles || member.role === "CONTRIBUTOR") && <ManageMenu><div className="member-controls">
+              {project.canAssignRoles && <ChangeForm operation="role" projectId={project.id} className="compact-form"><input type="hidden" name="user_id" value={member.id} /><RoleSelect canNameCoordinators value={member.role} saveOnChange /></ChangeForm>}
               <ChangeForm operation="remove" projectId={project.id} className="compact-form" onSubmit={(event) => { if (!window.confirm(`Remove ${member.first_name} from this project?`)) event.preventDefault(); }}>
                 <input type="hidden" name="user_id" value={member.id} /><button className="text-button danger">Remove from project</button>
               </ChangeForm>
-            </div></details>}
+            </div></ManageMenu>}
           </li>)}</ul>
       </section>
       {project.canDelete && <details className="project-danger-zone"><summary>Project settings</summary><p>Deleting this project also deletes its tasks and memberships.</p><ChangeForm operation="delete" projectId={project.id} onSuccess={() => router.push("/?view=projects")} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}><button className="danger-button">Delete project</button></ChangeForm></details>}
@@ -138,7 +164,7 @@ export default function ProjectsView({ projects, today }: { projects: WorkspaceP
     {modal === "add" && project && <ProjectDialog title="Bring someone on board" description={`Add a registered user to ${project.name}.`} onClose={close}>
       {project.eligible.length === 0 ? <p>There are no other available users to add.</p> : <ChangeForm operation="add" projectId={project.id} onSuccess={close}>
         <label>Available users<select name="user_id" required defaultValue=""><option value="" disabled>Select a user</option>{project.eligible.map((user) => <option key={user.id} value={user.id}>{user.first_name} {user.last_name} ({user.email}){user.availability ? ` · ${user.availability.label}` : ""}</option>)}</select></label>
-        <RoleSelect elevated={project.canAssignRoles} /><div className="dialog-actions"><button type="button" className="secondary-button" onClick={close}>Cancel</button><button className="primary-button">Add member</button></div>
+        <RoleSelect canNameCoordinators={project.canAssignRoles} /><div className="dialog-actions"><button type="button" className="secondary-button" onClick={close}>Cancel</button><button className="primary-button">Add member</button></div>
       </ChangeForm>}
     </ProjectDialog>}
   </div>;

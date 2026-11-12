@@ -5,7 +5,7 @@ import { findAvailableMembers } from "./service";
 import { absenceSelect, availability, canSeeAbsenceReason, toRanges } from "@/lib/time-off/availability";
 import { getViewer } from "@/lib/teams/data";
 import { activeStatus, statusSelect } from "@/lib/status/status";
-import { daysUntilBirthday, nextAnniversary, workspaceDay, workspaceToday } from "@/lib/time-off/dates";
+import { workspaceToday } from "@/lib/time-off/dates";
 
 const person = (today: string) => ({
   id: true,
@@ -13,10 +13,8 @@ const person = (today: string) => ({
   last_name: true,
   email: true,
   photo_updated_at: true,
-  birth_date: true,
   team_id: true,
   job_title: { select: { name: true } },
-  created_at: true,
   absences: absenceSelect(today),
   ...statusSelect,
 }) as const;
@@ -49,6 +47,7 @@ export async function getWorkspaceProjects() {
           priority: true,
           deadline: true,
           assigned_to: true,
+          created_by: true,
           stage_id: true,
           stage: { select: { name: true } },
           assignee: {
@@ -86,14 +85,14 @@ export async function getWorkspaceProjects() {
         canDelete: can(role, "project:delete", user.role),
         canManage: manage,
         canManageTasks: can(role, "tasks:manage", user.role),
+        canCreateTasks: can(role, "tasks:create", user.role),
+        /** The signed-in user, so a contributor's task form can offer "assign to me". */
+        viewerId: user.id,
         canAssignRoles: can(role, "members:roles", user.role),
         members: project.memberships.map((m) => ({
           id: m.user.id, first_name: m.user.first_name, last_name: m.user.last_name, email: m.user.email,
           jobTitle: m.user.job_title?.name ?? null,
           status: activeStatus(m.user),
-          // Birthday (day and month only) or work anniversary today, for a festive touch.
-          celebratesToday: m.user.birth_date && daysUntilBirthday(m.user.birth_date.toISOString().slice(0, 10), today) === 0 ? "birthday" as const
-            : nextAnniversary(workspaceDay(m.user.created_at), today)?.inDays === 0 ? "anniversary" as const : null,
           availability: availability(toRanges(m.user.absences, canSeeAbsenceReason(viewer, m.user)), today),
           photoVersion: m.user.photo_updated_at?.toISOString() ?? null,
           role: m.role,
@@ -108,7 +107,8 @@ export async function getWorkspaceProjects() {
         tasks: project.tasks.map((task) => ({
           id: task.id,
           title: task.title,
-          canChangeStatus: can(role, "tasks:manage", user.role) || (task.assigned_to === user.id && can(role, "tasks:update-assigned", user.role)),
+          canChangeStatus: can(role, "tasks:manage", user.role) || ((task.assigned_to === user.id || task.created_by === user.id) && can(role, "tasks:own", user.role)),
+          canEdit: can(role, "tasks:manage", user.role) || (task.created_by === user.id && can(role, "tasks:create", user.role)),
           description: task.description,
           status: task.status,
           priority: task.priority,

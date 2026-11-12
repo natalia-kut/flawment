@@ -4,7 +4,7 @@ import { getOverviewTasks, filterOverviewTasks } from "../lib/tasks/overview";
 import { emptyTaskFilters } from "../lib/tasks/filters";
 
 const task = (id: number, title: string, status: "TO_DO" | "COMPLETED") => ({
-  id, title, status, canChangeStatus: true, description: null, priority: "MEDIUM" as const,
+  id, title, status, canChangeStatus: true, canEdit: true, description: null, priority: "MEDIUM" as const,
   stageId: null, stageName: "No stage",
   assignedTo: null, assigneeName: "Unassigned", deadline: "",
 });

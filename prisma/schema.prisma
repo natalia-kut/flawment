@@ -30,10 +30,13 @@ enum TaskPriority {
   URGENT
 }
 
+// Owner: created the project (a manager); everything, incl. deleting it and naming coordinators.
+// Coordinator: runs the work: the project, its stages, every task, adding contributors.
+// Contributor: sees the project, adds tasks and works on their own.
 enum ProjectRole {
-  ADMIN
-  PARTICIPANT
-  MANAGER
+  OWNER
+  COORDINATOR
+  CONTRIBUTOR
 }
 
 enum UserRole {
@@ -57,7 +60,6 @@ model User {
   last_name         String
   is_active         Boolean            @default(true)
   role              UserRole           @default(USER)
-  description       String?
   photo             Bytes?             @db.ByteA
   photo_updated_at  DateTime?
   // Colleagues see only the day and month.
@@ -199,7 +201,7 @@ model ProjectMembership {
   user_id Int
   user    User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  role      ProjectRole @default(PARTICIPANT)
+  role      ProjectRole @default(CONTRIBUTOR)
   joined_at DateTime    @default(now())
 
   @@unique([project_id, user_id])

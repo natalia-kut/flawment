@@ -17,8 +17,10 @@ type Task = WorkspaceProject["tasks"][number];
  * description and every fact are fields, edited in place. Used by the Tasks
  * board and by the project page, so both look and behave the same.
  */
-export default function TaskDetailsForm({ project, task, overdue = false, showOpenProject = true, onClose, onSaved }: {
+export default function TaskDetailsForm({ project: initialProject, projectChoices, task, overdue = false, showOpenProject = true, onClose, onSaved }: {
   project: WorkspaceProject;
+  /** For a new task started outside a project (the Tasks board): the projects it may go into. */
+  projectChoices?: WorkspaceProject[];
   /** Leave out to create a new task. */
   task?: Task;
   overdue?: boolean;
@@ -27,6 +29,9 @@ export default function TaskDetailsForm({ project, task, overdue = false, showOp
   onSaved: () => void;
 }) {
   const creating = !task;
+  const [projectId, setProjectId] = useState(initialProject.id);
+  const project = projectChoices?.find((choice) => choice.id === projectId) ?? initialProject;
+  const choosingProject = creating && !!projectChoices && projectChoices.length > 1;
   const initial = {
     title: task?.title ?? "", description: task?.description ?? "", status: (task?.status ?? "TO_DO") as string,
     priority: (task?.priority ?? "MEDIUM") as string, assigned_to: task?.assignedTo?.toString() ?? "",
@@ -61,7 +66,17 @@ export default function TaskDetailsForm({ project, task, overdue = false, showOp
       <input type="hidden" name="project_id" value={project.id} />
       {task && <input type="hidden" name="task_id" value={task.id} />}
       <fieldset className={details.detailsFieldset} disabled={pending}>
-        <p className={details.detailsContext}>{project.name}</p>
+        {choosingProject
+          ? <label className={details.detailsWide}><span>Project</span>
+            {/* People and stages belong to a project, so switching clears them. */}
+            <select value={project.id} onChange={(e) => {
+              setProjectId(Number(e.target.value));
+              setFields((current) => ({ ...current, assigned_to: "", stage_id: "" }));
+            }}>
+              {projectChoices!.map((choice) => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
+            </select>
+          </label>
+          : <p className={details.detailsContext}>{project.name}</p>}
         <textarea name="description" className={details.descriptionInput} aria-label="Description" maxLength={5000}
           placeholder="Add a description…" value={fields.description} onChange={(e) => update("description", e.target.value)} />
         <div className={details.detailsFacts}>
@@ -79,7 +94,8 @@ export default function TaskDetailsForm({ project, task, overdue = false, showOp
           <label><span>Assigned to</span>
             <select name="assigned_to" value={fields.assigned_to} onChange={(e) => update("assigned_to", e.target.value)}>
               <option value="">Unassigned</option>
-              {project.members.map((member) => <option key={member.id} value={member.id}>{member.first_name} {member.last_name}{member.availability ? ` · ${member.availability.state === "away" ? "out of office" : "away soon"}` : ""}</option>)}
+              {project.members.filter((member) => project.canManageTasks || member.id === project.viewerId || String(member.id) === initial.assigned_to)
+                .map((member) => <option key={member.id} value={member.id}>{member.first_name} {member.last_name}{member.availability ? ` · ${member.availability.state === "away" ? "out of office" : "away soon"}` : ""}</option>)}
             </select>
           </label>
           <label><span>Deadline{overdue && !dirty && <em className={styles.lateText}> · overdue</em>}</span>

@@ -27,9 +27,9 @@ test("task creation, editing and deletion enforce permissions and project bounda
     const project = await prisma.project.create({ data: {
       name: prefix, start_date: new Date("2026-10-25"), owner_id: users[0],
       memberships: { create: [
-        { user_id: users[0], role: "ADMIN" },
-        { user_id: users[1], role: "MANAGER" },
-        { user_id: users[2], role: "PARTICIPANT" },
+        { user_id: users[0], role: "OWNER" },
+        { user_id: users[1], role: "COORDINATOR" },
+        { user_id: users[2], role: "CONTRIBUTOR" },
       ] },
     } });
     projectId = project.id;
@@ -68,7 +68,7 @@ test("task creation, editing and deletion enforce permissions and project bounda
     assert.equal(cleared.assigned_to, null);
     assert.equal(cleared.deadline, null);
     assert.equal(cleared.description, null);
-    await assert.rejects(updateTask(actor(2), editInput()), /permission/);
+    await assert.rejects(updateTask(actor(2), editInput()), /only edit tasks you added/);
     await assert.rejects(updateTask(actor(3), editInput()), /permission/);
     await assert.rejects(updateTask(actor(0), editInput({ status: "INVALID" })), /status/);
     await assert.rejects(updateTask(actor(0), editInput({ title: " " })), /title/);
@@ -77,13 +77,12 @@ test("task creation, editing and deletion enforce permissions and project bounda
     await assert.rejects(updateTask(actor(0), editInput({ assigned_to: users[3] })), /active project member/);
     const otherProject = await prisma.project.create({ data: {
       name: prefix + "-other", start_date: new Date("2026-10-25"), owner_id: users[0],
-      memberships: { create: { user_id: users[0], role: "ADMIN" } },
+      memberships: { create: { user_id: users[0], role: "OWNER" } },
     } });
     otherProjectId = otherProject.id;
     await assert.rejects(updateTask(actor(0), editInput({ project_id: otherProject.id })), /no longer available/);
     await assert.rejects(updateTask(actor(0), editInput({ task_id: "999999999" })), /no longer available/);
     assert.equal((await prisma.task.findUniqueOrThrow({ where: { id: created.id } })).status, "CANCELLED", "rejected updates do not change the task");
-    await assert.rejects(createTask(actor(2), input()), /permission/);
     await assert.rejects(createTask(actor(3), input()), /permission/);
     await assert.rejects(createTask(actor(0), input({ assigned_to: users[3] })), /active project member/);
     await prisma.user.update({ where: { id: users[2] }, data: { is_active: false } });
@@ -94,6 +93,16 @@ test("task creation, editing and deletion enforce permissions and project bounda
     await assert.rejects(createTask(actor(0), input({ deadline: "2026-02-30" })), /deadline/);
     assert.equal(await prisma.task.count({ where: { project_id: project.id } }), 2);
     await prisma.user.update({ where: { id: users[2] }, data: { is_active: true } });
+    // A contributor adds tasks: for themselves or for nobody, then runs their own.
+    await assert.rejects(createTask(actor(2), input({ assigned_to: users[1] })), /only to yourself/);
+    const own = await createTask(actor(2), input({ title: "Spotted a gap", assigned_to: users[2] }));
+    const ownInput = (extra: Record<string, string | number> = {}) => input({ task_id: own.id, status: "IN_PROGRESS", title: "Spotted a gap", ...extra });
+    await updateTask(actor(2), ownInput({ assigned_to: "" }));
+    await assert.rejects(updateTask(actor(2), ownInput({ assigned_to: users[0] })), /only to yourself/);
+    await changeTaskStatus(actor(2), form({ project_id: project.id, task_id: own.id, status: "IN_REVIEW", expected_status: "IN_PROGRESS" }));
+    await assert.rejects(deleteTask(actor(2), form({ project_id: project.id, task_id: unassigned.id })), /only delete tasks you added/);
+    await deleteTask(actor(2), form({ project_id: project.id, task_id: own.id }));
+    assert.equal(await prisma.task.findUnique({ where: { id: own.id } }), null);
     await updateTask(actor(0), editInput({ status: "TO_DO", assigned_to: users[2], title: "Board task" }));
     const statusInput = (extra: Record<string, string | number> = {}) =>
       form({ project_id: project.id, task_id: created.id, status: "IN_PROGRESS", expected_status: "TO_DO", ...extra });
