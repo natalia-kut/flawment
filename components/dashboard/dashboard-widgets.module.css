@@ -46,7 +46,8 @@
 .calendar [data-off=OTHER] { --off: var(--muted); }
 /* Your own day off: soft stripes, so the dots and number stay readable. */
 .day[data-off] { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--off) 14%, var(--background)) 0 5px, var(--background) 5px 10px); border-color: color-mix(in srgb, var(--off) 30%, transparent); }
-.teamOff { position: absolute; top: 4px; left: 5px; display: inline-flex; align-items: center; gap: 1px; color: var(--warning-strong); font-size: 9px; font-weight: 700; line-height: 1; }
+/* Bottom-left: the day number and the task dots fill the top and middle of a narrow cell. */
+.teamOff { position: absolute; bottom: 4px; left: 5px; display: inline-flex; align-items: center; gap: 1px; color: var(--warning-strong); font-size: 9px; font-weight: 700; line-height: 1; }
 .dayPanel .offList { display: grid; gap: 6px; margin: 0 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 .offList li { display: grid; gap: 1px; padding: 6px 10px; border-left: 3px solid var(--off); border-radius: 6px; background: var(--background); }
 .offList strong { font-size: 13px; }
@@ -72,7 +73,10 @@
 .ring { width: 72px; height: 72px; }
 /* Away today: the ring steps back, a moon says why. */
 .member[data-away] .ring { opacity: .45; filter: grayscale(.6); }
-.awayNote { padding: 2px 8px; border-radius: 999px; background: var(--warning-soft); color: var(--warning-strong); font-size: 10.5px; font-weight: 650; white-space: nowrap; }
+.awayNote, .festiveNote { padding: 2px 8px; border-radius: 999px; background: var(--warning-soft); color: var(--warning-strong); font-size: 10.5px; font-weight: 650; white-space: nowrap; }
+/* A birthday in the accent of its ring; an anniversary in green, so it never reads as "out" (amber). */
+.festiveNote[data-kind=birthday] { background: var(--accent-soft); color: var(--accent-strong); }
+.festiveNote[data-kind=anniversary] { background: var(--success-soft); color: var(--success-strong); }
 /* Birthday or work anniversary today: a festive outline around the ring. */
 .festiveRing { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 5 4; animation: spin 14s linear infinite; transform-origin: 36px 36px; }
 .festiveRing[data-kind=birthday] { stroke: var(--accent); }

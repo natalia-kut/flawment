@@ -837,7 +837,6 @@ a.team-card:hover .team-card-arrow, a.team-card:focus-visible .team-card-arrow {
 .page-header-actions form { margin: 0; }
 .secondary-button.danger-text { color: var(--critical); }
 .lead-badge { margin-left: 6px; background: var(--accent-soft); color: var(--accent-strong); }
-.new-title { display: grid; gap: 10px; padding: 12px; border-radius: 8px; background: var(--surface-sunken); }
 .move-warning { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; margin-top: 14px; padding: 12px 14px; border: 1px solid var(--warning); border-radius: 10px; background: var(--warning-soft); color: var(--warning-strong); font-size: 14px; }
 .move-warning > svg { flex-shrink: 0; }
 .move-warning p { flex: 1; min-width: 220px; margin: 0; line-height: 1.5; }

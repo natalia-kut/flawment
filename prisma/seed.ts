@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { readFileSync } from "node:fs";
 import { hashPassword } from "../lib/auth/password";
+import { isManagerialTitle } from "../lib/people/job-titles";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import type { AbsenceType, ProjectRole, ProjectStatus, TaskPriority, TaskStatus } from "../src/generated/prisma/enums";
@@ -223,12 +224,9 @@ async function seedPeople() {
   console.log(`Seeded ${teams.length} teams, ${birthdays.length} birthdays and ${absences.length} time off entries.`);
 }
 
-/** Managers and leads may lead a team. */
-const canLead = (title: string) => /manager|lead/i.test(title);
-
 /** Links a job title from the list, adding it first when it is missing. */
 const jobTitle = (name: string) => ({
-  connectOrCreate: { where: { name_key: name.toLowerCase() }, create: { name, name_key: name.toLowerCase(), can_lead: canLead(name) } },
+  connectOrCreate: { where: { name_key: name.toLowerCase() }, create: { name, name_key: name.toLowerCase(), can_lead: isManagerialTitle(name) } },
 });
 
 /** The starting list a super admin picks titles from; they can add more later. */
@@ -236,7 +234,7 @@ const baseJobTitles = ["Manager", "Project manager", "Team lead", "Developer", "
 
 async function seedJobTitles() {
   for (const name of baseJobTitles) {
-    await prisma.jobTitle.upsert({ where: { name_key: name.toLowerCase() }, update: {}, create: { name, name_key: name.toLowerCase(), can_lead: canLead(name) } });
+    await prisma.jobTitle.upsert({ where: { name_key: name.toLowerCase() }, update: {}, create: { name, name_key: name.toLowerCase(), can_lead: isManagerialTitle(name) } });
   }
 }
 

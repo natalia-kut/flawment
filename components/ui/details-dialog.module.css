@@ -1,6 +1,8 @@
 /* The details dialog shared by tasks and projects: fields that look like text until you
    point at them, and a grid of facts. */
 .detailsContext { margin: -.25rem 0 1rem; font-size: .85rem; color: var(--muted); }
+/* Under an editable title (a field with its own border) the line needs room to breathe. */
+.detailsFieldset > .detailsContext:first-child { margin-top: .6rem; }
 .detailsDescription { margin: 0 0 1.25rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .detailsEmpty { margin: 0 0 1.25rem; font-style: italic; color: var(--text-subtle); }
 .detailsFacts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.5rem; margin: 0 0 1.25rem; padding: 1rem; background: var(--background); border: 1px solid var(--border); border-radius: .75rem; }

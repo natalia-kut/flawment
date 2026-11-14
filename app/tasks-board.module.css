@@ -55,8 +55,12 @@
 .column > h3 { margin: .2rem .15rem .8rem; font-family: var(--font-geist-mono), monospace; font-size: .75rem; font-weight: 400; letter-spacing: .1em; color: var(--muted); }
 .dropTarget { background: var(--accent-soft); border-color: var(--accent); }
 .dropHint { padding: .5rem; font-size: .8rem; color: var(--text-subtle); }
-/* At the foot of To do: adds a task to this project without choosing it. */
-.addTask { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; border: 1px dashed var(--border-strong); border-radius: 10px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease; }
+/* At the foot of every column: adds a task to this project in this status. It appears when the
+   column is hovered or focused (always on touch screens), and keeps its space so nothing jumps. */
+.addTask { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; border: 1px dashed var(--border-strong); border-radius: 10px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; opacity: 0; transition: opacity 140ms ease, border-color 140ms ease, background-color 140ms ease, color 140ms ease; }
+.column:hover .addTask, .column:focus-within .addTask { opacity: 1; }
+.dropTarget .addTask { opacity: 0; }
+@media (hover: none) { .addTask { opacity: 1; } }
 .addTask:hover, .addTask:focus-visible { border-color: var(--accent-border); background: var(--card); color: var(--accent-strong); }
 .addTask span { font-size: 16px; line-height: 1; }
 

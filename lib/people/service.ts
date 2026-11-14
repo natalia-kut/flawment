@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Actor } from "@/lib/rbac";
 import type { Prisma } from "@/src/generated/prisma/client";
+import { isManagerialTitle } from "./job-titles";
 
 export class PeopleError extends Error {}
 
@@ -14,12 +15,13 @@ function optionalId(value: FormDataEntryValue | null) {
   return Number(text);
 }
 
-/** Finds a job title by name (ignoring case and spacing), or adds it to the list. */
-async function findOrCreateJobTitle(tx: Prisma.TransactionClient, rawName: string, canLead: boolean) {
+/** Finds a job title by name (ignoring case and spacing), or adds it to the list; its name says whether it is managerial. */
+async function findOrCreateJobTitle(tx: Prisma.TransactionClient, rawName: string) {
   const name = rawName.trim().replace(/\s+/g, " ");
   if (!name || name.length > 80) throw new PeopleError("Use a job title between 1 and 80 characters.");
   const name_key = name.toLowerCase();
-  return await tx.jobTitle.findUnique({ where: { name_key } }) ?? tx.jobTitle.create({ data: { name, name_key, can_lead: canLead } });
+  return await tx.jobTitle.findUnique({ where: { name_key } })
+    ?? tx.jobTitle.create({ data: { name, name_key, can_lead: isManagerialTitle(name) } });
 }
 
 /**
@@ -45,7 +47,7 @@ export async function updatePerson(actor: Actor, data: FormData) {
     // "new" adds a title to the list; otherwise an existing one (or none).
     const titleChoice = String(data.get("job_title_id") ?? "");
     const jobTitle = titleChoice === "new"
-      ? await findOrCreateJobTitle(tx, String(data.get("new_job_title") ?? ""), data.get("new_job_title_can_lead") === "on")
+      ? await findOrCreateJobTitle(tx, String(data.get("new_job_title") ?? ""))
       : titleChoice ? await tx.jobTitle.findUnique({ where: { id: optionalId(titleChoice)! } }) : null;
     if (titleChoice && !jobTitle) throw new PeopleError("This job title no longer exists.");
 
@@ -56,10 +58,29 @@ export async function updatePerson(actor: Actor, data: FormData) {
     if (wantsLead && teamId === null) throw new PeopleError("Put this person in a team before making them its lead.");
     if (wantsLead && !jobTitle?.can_lead) throw new PeopleError("Only people with a managerial job title can lead a team.");
 
+    // A team has one lead: a new one takes over from whoever led it.
+    if (wantsLead) await tx.user.updateMany({ where: { team_id: teamId!, team_lead: true, id: { not: userId } }, data: { team_lead: false } });
     return tx.user.update({
       where: { id: userId },
       data: { first_name, last_name, email, job_title_id: jobTitle?.id ?? null, team_id: teamId, team_lead: wantsLead },
       select: { id: true },
     });
+  }, { isolationLevel: "Serializable" });
+}
+
+/**
+ * A super admin corrects whether a job title is managerial, when its name guessed wrong
+ * (a "Scrum Master" who leads, an "Account manager" who does not). Taking it away also
+ * ends the team lead role of everyone with this title, so no team keeps a lead who may not lead.
+ */
+export async function setJobTitleCanLead(actor: Actor, data: FormData) {
+  if (actor.role !== "SUPER_ADMIN") throw new PeopleError("Only administrators can change job titles.");
+  const titleId = optionalId(data.get("job_title_id"));
+  if (titleId === null) throw new PeopleError("Choose a job title.");
+  const canLead = data.get("can_lead") === "on";
+  return prisma.$transaction(async (tx) => {
+    if (!await tx.jobTitle.findUnique({ where: { id: titleId }, select: { id: true } })) throw new PeopleError("This job title no longer exists.");
+    if (!canLead) await tx.user.updateMany({ where: { job_title_id: titleId, team_lead: true }, data: { team_lead: false } });
+    return tx.jobTitle.update({ where: { id: titleId }, data: { can_lead: canLead }, select: { id: true } });
   }, { isolationLevel: "Serializable" });
 }

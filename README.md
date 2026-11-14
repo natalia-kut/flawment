@@ -291,7 +291,7 @@ The sidebar **Tasks** page displays an interactive board across projects returne
 by the authorized workspace loader. Standard users see their projects; super
 admins see all projects. Search titles and descriptions, or filter by project,
 assignee, stage, priority, **Overdue** and **Only my tasks**. Grouped by project,
-**+ Add task** at the foot of a project's To do column adds a task straight into it;
+hovering a column shows **+ Create new**, which adds a task to that project in that column's status;
 grouped by person, **New task** in the header lets you pick the project.
 Click a card to open task details, then use **Open project** to navigate to its
 project. Existing project permissions apply. No tasks are fetched from a separate
@@ -414,10 +414,14 @@ A super admin also creates, renames and deletes teams, adds people to a team
 and sees warnings when a team has no lead. **New hires** on the Teams page lists
 accounts still missing a job title or a team, with **Set up** to finish them.
 **People** (super admins only) lists every account to edit name, email, job title,
-team and lead. Job titles come from a shared list: pick one, or add a new one and
-mark whether it is managerial. Only people with a managerial job title can lead a
-team or start a project; losing that title, moving team or deleting the team ends
-a lead role. Deleting a team leaves its people without a team.
+team and lead. Job titles come from a shared list: type to pick one, or type a new
+name to add it. A new title is managerial when its name says so (manager, lead,
+head, director, chief, CTO…, or kierownik, dyrektor, lider, szef); **Job titles**
+on the same page lists every title with a switch to correct that guess. Only people
+with a managerial job title can lead a team or start a project, and a team has one
+lead: making someone its lead replaces the previous one (the form names them first).
+Losing that title, its managerial switch, moving team or deleting the team ends a
+lead role. Deleting a team leaves its people without a team.
 
 ### Time off
 
@@ -436,7 +440,8 @@ For existing installations, stop the dev server, run `npm install`,
 `npm run db:deploy` and `npm run db:generate`, then restart `npm run dev`.
 `npm run bootstrap` includes the migrations and generation for fresh installations.
 The migrations preserve existing data: free-text job titles become list entries
-(titles containing "manager" or "lead" are marked managerial), project
+(titles with a managerial word such as "manager" or "lead" are marked managerial,
+and leads whose title is not lose the role), project
 specializations and the profile description are removed, and project roles become Owner (the project's
 creator), Coordinator (former admins and managers) and Contributor (former
 participants). `npm run db:seed` adds sample teams, job titles, birthdays, time

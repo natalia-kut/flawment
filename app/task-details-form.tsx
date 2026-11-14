@@ -17,8 +17,10 @@ type Task = WorkspaceProject["tasks"][number];
  * description and every fact are fields, edited in place. Used by the Tasks
  * board and by the project page, so both look and behave the same.
  */
-export default function TaskDetailsForm({ project: initialProject, projectChoices, task, overdue = false, showOpenProject = true, onClose, onSaved }: {
+export default function TaskDetailsForm({ project: initialProject, projectChoices, task, initialStatus = "TO_DO", overdue = false, showOpenProject = true, onClose, onSaved }: {
   project: WorkspaceProject;
+  /** For a new task: the status it starts in, e.g. the board column it was created from. */
+  initialStatus?: string;
   /** For a new task started outside a project (the Tasks board): the projects it may go into. */
   projectChoices?: WorkspaceProject[];
   /** Leave out to create a new task. */
@@ -33,7 +35,7 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
   const project = projectChoices?.find((choice) => choice.id === projectId) ?? initialProject;
   const choosingProject = creating && !!projectChoices && projectChoices.length > 1;
   const initial = {
-    title: task?.title ?? "", description: task?.description ?? "", status: (task?.status ?? "TO_DO") as string,
+    title: task?.title ?? "", description: task?.description ?? "", status: (task?.status ?? initialStatus) as string,
     priority: (task?.priority ?? "MEDIUM") as string, assigned_to: task?.assignedTo?.toString() ?? "",
     deadline: task?.deadline ?? "", stage_id: task?.stageId?.toString() ?? "",
   };
@@ -80,12 +82,12 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
         <textarea name="description" className={details.descriptionInput} aria-label="Description" maxLength={5000}
           placeholder="Add a description…" value={fields.description} onChange={(e) => update("description", e.target.value)} />
         <div className={details.detailsFacts}>
-          {/* A new task always starts as "To do". */}
-          {!creating && <label><span>Status</span>
+          {/* A new task starts in the column it was created from ("To do" from elsewhere), and can be changed here. */}
+          <label><span>Status</span>
             <select name="status" value={fields.status} onChange={(e) => update("status", e.target.value)}>
               {Object.entries(taskStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
-          </label>}
+          </label>
           <label><span>Priority</span>
             <select name="priority" value={fields.priority} onChange={(e) => update("priority", e.target.value)}>
               {Object.entries(taskPriorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}

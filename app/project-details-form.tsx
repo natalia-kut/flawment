@@ -35,7 +35,7 @@ export default function ProjectDetailsForm({ project, onClose, onSaved }: {
   const formId = "project-details-" + (project?.id ?? "new");
   const canSave = creating ? fields.name.trim() !== "" : dirty;
 
-  return <TaskDetailsDialog title={project?.name ?? "New project"} onClose={onClose} focusFirstField={creating} heading={
+  return <TaskDetailsDialog title={project?.name ?? "New project"} onClose={onClose} heading={
     // A textarea so long names wrap like a heading; Enter must not add a line break.
     <textarea form={formId} name="name" className={details.titleInput} aria-label="Project name" placeholder="Project name"
       required maxLength={120} rows={1} value={fields.name}

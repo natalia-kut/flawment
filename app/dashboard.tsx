@@ -66,9 +66,12 @@ function Stat({ label, value, href, tone }: { label: string; value: number; href
   </Link>;
 }
 
-/** A slowly turning sun when the week is free; a calendar with a pulse when something is due. */
-function SummaryIcon({ free }: { free: boolean }) {
-  return free
+/** A slowly turning sun when nothing is due or late; a warning when something is overdue; otherwise a calendar with a pulse. */
+function SummaryIcon({ tone }: { tone: "free" | "late" | "due" }) {
+  if (tone === "late") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" /><path d="M12 7v6M12 16.5v.5" />
+  </svg>;
+  return tone === "free"
     ? <svg className={styles.sun} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
       <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" />
       <g className={styles.rays}><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></g>
@@ -118,8 +121,11 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
     celebratesToday: m.birthday?.inDays === 0 ? "birthday" as const : m.anniversary?.inDays === 0 ? "anniversary" as const : null,
   }]));
 
-  const free = dueThisWeek.length === 0;
-  const summary = free ? "Nothing due this week"
+  // Overdue work outranks the week ahead: no sunshine while something is already late.
+  const tone = overdue.length > 0 ? "late" : dueThisWeek.length === 0 ? "free" : "due";
+  const summary = tone === "late"
+    ? `${overdue.length} overdue ${overdue.length === 1 ? "task" : "tasks"}${dueThisWeek.length > 0 ? ` · ${dueThisWeek.length} due this week` : ""}`
+    : tone === "free" ? "Nothing due this week"
     : `${dueThisWeek.length} ${dueThisWeek.length === 1 ? "task" : "tasks"} due this week`;
 
   return (
@@ -127,7 +133,7 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
       <PageHeader title={<>Welcome, {firstName}</>}
         description={<span className={styles.summary}>
           {longDay.format(new Date(today + "T00:00:00Z"))}
-          <span className={styles.summaryPill} data-free={free || undefined}><SummaryIcon free={free} />{summary}</span>
+          <span className={styles.summaryPill} data-tone={tone}><SummaryIcon tone={tone} />{summary}</span>
         </span>} />
 
       {celebrations.map((celebration) => <CelebrationBanner key={celebration.kind} celebration={celebration} />)}

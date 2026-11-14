@@ -3,7 +3,8 @@
 /* ---- Summary under the greeting ---- */
 .summary { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .summaryPill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px 4px 9px; font-size: 13px; font-weight: 600; color: var(--warning-strong); background: var(--warning-soft); border-radius: 20px; }
-.summaryPill[data-free] { color: var(--success-strong); background: var(--success-soft); }
+.summaryPill[data-tone=free] { color: var(--success-strong); background: var(--success-soft); }
+.summaryPill[data-tone=late] { color: var(--critical); background: var(--critical-soft); }
 .sun { color: #e0a21a; }
 .rays { transform-origin: 12px 12px; animation: spin 9s linear infinite; }
 /* A calendar with a soft pulse: something is waiting this week. */
