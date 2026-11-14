@@ -4,7 +4,7 @@ import Link from "next/link";
 import TaskDetailsDialog from "./task-details-dialog";
 import TaskDetailsForm from "./task-details-form";
 import { formatTaskDeadline, taskPriorityLabels, taskStatusLabels } from "@/lib/tasks/labels";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { WorkspaceProject } from "@/lib/projects/data";
@@ -23,6 +23,7 @@ import { celebrate } from "@/components/ui/confetti";
 const OVERDUE_PREVIEW = 4;
 const PROJECT_STORAGE_KEY = "flawment.tasks.project";
 const ORDER_STORAGE_KEY = "flawment.tasks.projectOrder";
+const MESSAGE_MS = 4000;
 
 function readOrder(raw: string | null): number[] {
   try {
@@ -83,10 +84,16 @@ export default function TasksOverview({ projects, currentUserId, today }: {
   const [dragging, setDragging] = useState<number | null>(null);
   const [saving, setSaving] = useState<number | null>(null);
   const [message, setMessage] = useState("");
+  // A confirmation is a moment, not a state: it fades back to the task count after a few seconds.
+  useEffect(() => {
+    if (!message) return;
+    const timer = setTimeout(() => setMessage(""), MESSAGE_MS);
+    return () => clearTimeout(timer);
+  }, [message]);
   const [error, setError] = useState("");
   const [detailsId, setDetailsId] = useState<number | null>(null);
-  // A new task: in one project (its "+ Add task"), or "choose" one in the form (the header button).
-  const [creatingIn, setCreatingIn] = useState<number | "choose" | null>(null);
+  // A new task: in one project's column (its "+ Create new"), or "choose" a project in the form (the header button).
+  const [creatingIn, setCreatingIn] = useState<{ projectId: number; status: TaskStatus } | "choose" | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   // Statuses moved on the board but not yet confirmed by fresh server data.
   const [pending, setPending] = useState<Record<number, TaskStatus>>({});
@@ -327,7 +334,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
         const collapsible = groups.length > 1;
         const collapsed = collapsible && (toggledGroups[key] ?? (progress.total > 0 && progress.percent === 100));
         const boardId = "board-" + grouping + "-" + key;
-        // Grouped by project: "+ Add task" at the foot of To do, straight into this project.
+        // Grouped by project: "+ Create new" at the foot of each column, straight into this project and status.
         const addTo = grouping === "project" ? creatable.find((project) => String(project.id) === key) : undefined;
         return <section key={key} className={styles.group} aria-label={name}>
           {!singleProject && <div className={styles.groupHeading}>
@@ -384,16 +391,19 @@ export default function TasksOverview({ projects, currentUserId, today }: {
                   <h4>{task.title}</h4>
                   <p className={isTaskOverdue(task, today) ? styles.lateText : ""}>{isTaskOverdue(task, today) ? "Overdue · " : ""}{formatShortDeadline(task.deadline)}</p>
                 </article>)}
-                {cards.length === 0 && !(column.status === "TO_DO" && addTo) && <p className={styles.dropHint}>No tasks</p>}
-                {column.status === "TO_DO" && addTo && <button type="button" className={styles.addTask} onClick={() => setCreatingIn(addTo.id)}>
-                  <span aria-hidden="true">+</span> Add task</button>}
+                {cards.length === 0 && <p className={styles.dropHint}>No tasks</p>}
+                {addTo && column.status !== "CANCELLED" && <button type="button" className={styles.addTask}
+                  aria-label={"Create new task in " + column.label}
+                  onClick={() => setCreatingIn({ projectId: addTo.id, status: column.status })}>
+                  <span aria-hidden="true">+</span> Create new</button>}
               </section>;
             })}
           </div>}
         </section>;
       })}
     {creatingIn !== null && <TaskDetailsForm
-      project={creatable.find((p) => creatingIn === "choose" ? String(p.id) === chosenProjectId : p.id === creatingIn) ?? creatable[0]}
+      project={creatable.find((p) => creatingIn === "choose" ? String(p.id) === chosenProjectId : p.id === creatingIn.projectId) ?? creatable[0]}
+      initialStatus={creatingIn === "choose" ? undefined : creatingIn.status}
       projectChoices={creatingIn === "choose" ? creatable : undefined} showOpenProject={false} onClose={() => setCreatingIn(null)}
       onSaved={() => { setMessage("Task added."); setCreatingIn(null); router.refresh(); }} />}
     {detailsTask && (detailsProject && detailsSource?.canEdit

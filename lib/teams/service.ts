@@ -36,6 +36,8 @@ export async function mutateTeam(actor: Actor, data: FormData) {
       const lead = data.get("team_lead") === "on";
       // Leading a team is for managers: the job title decides, not a checkbox alone.
       if (lead && !user.job_title?.can_lead) throw new TeamError("Only people with a managerial job title can lead a team.");
+      // A team has one lead: a new one takes over from whoever led it.
+      if (lead) await tx.user.updateMany({ where: { team_id: user.team_id, team_lead: true, id: { not: userId } }, data: { team_lead: false } });
       return tx.user.update({ where: { id: userId }, data: { team_lead: lead }, select: { id: true } });
     }
     const teamId = operation === "create" ? null : id(data.get("team_id"));

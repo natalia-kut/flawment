@@ -1,0 +1,37 @@
+/* "Leads this team" and, under it, why it cannot be ticked or who it replaces. */
+.leadField { display: grid; gap: 4px; }
+/* A fixed checkbox (16px, no browser margin) plus the label's 10px gap: the line below starts under the label text. */
+.leadField label input[type=checkbox] { width: 16px; height: 16px; margin: 0; flex: none; }
+.leadField > p { padding-left: 26px; }
+/* Saving will take the lead away from someone: make sure it is noticed. */
+.leadField > p.replacing { color: var(--critical); font-weight: 600; }
+
+/* Cards that fold: Everyone (open by default) and Job titles (folded). A chevron turns as they open. */
+.collapsible { position: relative; }
+.collapsible + .collapsible { margin-top: 20px; }
+.collapsible > summary { display: flex; align-items: center; gap: 12px; min-height: 40px; font-weight: inherit; list-style: none; cursor: pointer; }
+.collapsible > summary::-webkit-details-marker { display: none; }
+.collapsible > summary::before { content: ""; flex: none; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform 160ms ease; }
+.collapsible[open] > summary::before { transform: rotate(45deg); }
+.collapsible > summary h2 { margin: 0; }
+.collapsible > table { margin-top: 12px; }
+.collapsible > p { margin: 12px 0 14px; }
+/* Search sits on the summary's line, at the right, though it is not part of it. */
+.headerSearch { position: absolute; top: 24px; right: 24px; }
+@media (max-width: 640px) { .headerSearch { position: static; margin-top: 12px; } }
+.summaryHint { margin-left: auto; font-size: 13px; color: var(--muted); }
+.groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; }
+/* Each group is a drop zone: dashed while a chip from the other group hovers over it. */
+.group { min-height: 64px; margin: -8px; padding: 8px; border: 1px dashed transparent; border-radius: 12px; transition: background-color 140ms ease, border-color 140ms ease; }
+.group[data-over] { background: var(--accent-soft); border-color: var(--accent); }
+.chip[draggable=true] { cursor: grab; }
+.chip[draggable=true]:active { cursor: grabbing; }
+.chip[data-dragging] { opacity: .4; }
+.collapsible .groups h3 { margin: 0 0 8px; font-family: var(--font-geist-mono), monospace; font-size: 11px; font-weight: 400; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; font: inherit; font-size: 13px; font-weight: 600; color: var(--foreground); background: var(--background); border: 1px solid var(--border-strong); border-radius: 999px; cursor: pointer; transition: border-color 140ms ease, background-color 140ms ease; }
+.chip:hover, .chip:focus-visible { border-color: var(--accent-border); }
+.chip[data-lead] { color: var(--accent-strong); background: var(--accent-soft); border-color: var(--accent-border); }
+.chip:disabled { opacity: .6; cursor: progress; }
+.chipCount { min-width: 18px; padding: 0 5px; font-size: 11px; line-height: 18px; text-align: center; color: var(--muted); background: var(--card); border-radius: 999px; }
+@media (prefers-reduced-motion: reduce) { .collapsible > summary::before, .chip { transition: none; } }

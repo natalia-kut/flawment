@@ -9,7 +9,7 @@ import { getTeamsOverview } from "../../lib/teams/data";
 import { mutateTimeOff } from "../../lib/time-off/service";
 import { updateProfile, updateProfileField, profileVisibility } from "../../lib/profiles/service";
 import { setStatus } from "../../lib/status/service";
-import { updatePerson } from "../../lib/people/service";
+import { setJobTitleCanLead, updatePerson } from "../../lib/people/service";
 import { getCalendarTimeOff } from "../../lib/time-off/calendar";
 import { findAvailableMembers } from "../../lib/projects/service";
 import { addDays } from "../../lib/time-off/dates";
@@ -50,7 +50,7 @@ test("teams, birthdays and time off respect who may see and change them", async 
     await assert.rejects(mutateTeam(lead, form({ operation: "lead", user_id: lead.id, team_lead: "on" })), /Only administrators/);
     // Only a managerial job title can lead; a super admin picks titles from the list (or adds one).
     await assert.rejects(mutateTeam(root, form({ operation: "lead", user_id: lead.id, team_lead: "on" })), /managerial/);
-    await updatePerson(root, person(lead.id, { job_title_id: "new", new_job_title: `${prefix} Manager`, new_job_title_can_lead: "on", team_id: team.id }));
+    await updatePerson(root, person(lead.id, { job_title_id: "new", new_job_title: `${prefix} Manager`, team_id: team.id }));
     await mutateTeam(root, form({ operation: "lead", user_id: lead.id, team_lead: "on" }));
 
     // Teammates see each other (photos included); outsiders do not.
@@ -142,6 +142,17 @@ test("teams, birthdays and time off respect who may see and change them", async 
     await assert.rejects(updatePerson(root, person(ben.id, { email: `${prefix}anna@example.test` })), /already uses this email/);
     await updatePerson(root, person(root.id, { team_id: team.id }));
     assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: root.id } })).team_id, null, "super admins stay out of teams");
+    // A super admin corrects a title the name guessed wrong; a team has one lead, so a new one takes over.
+    const isLead = async (id: number) => (await prisma.user.findUniqueOrThrow({ where: { id } })).team_lead;
+    await assert.rejects(setJobTitleCanLead(anna, form({ job_title_id: details.job_title_id!, can_lead: "on" })), /Only administrators/);
+    await setJobTitleCanLead(root, form({ job_title_id: details.job_title_id!, can_lead: "on" }));
+    await updatePerson(root, person(ben.id, { job_title_id: details.job_title_id!, team_id: team.id, team_lead: "on" }));
+    assert.equal(await isLead(ben.id), true);
+    assert.equal(await isLead(lead.id), false, "the previous lead hands over");
+    // Taking the managerial flag away ends the lead role of everyone with that title.
+    await setJobTitleCanLead(root, form({ job_title_id: details.job_title_id! }));
+    assert.equal(await isLead(ben.id), false);
+    await mutateTeam(root, form({ operation: "lead", user_id: lead.id, team_lead: "on" }));
     assert.deepEqual(details.skills, ["Testing", "Playwright"]);
     await assert.rejects(updateProfileField(ben, "phone", "call me"), /phone/);
     await assert.rejects(updateProfileField(ben, "skills", Array.from({ length: 16 }, (_, i) => "s" + i).join(",")), /15 skills/);

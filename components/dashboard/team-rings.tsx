@@ -79,6 +79,8 @@ export default function TeamRings({ tasks, currentUserKey, people: details = new
           <span className={styles.memberMeta}>
             {members && person.total === 0 ? "No shared tasks" : <>{person.open} open{person.overdue > 0 && <b> · {person.overdue} late</b>}</>}
           </span>
+          {/* The badge on the ring says what is going on; these say it in words. */}
+          {festive && <span className={styles.festiveNote} data-kind={festive}>{festive === "birthday" ? "Birthday today" : "Work anniversary"}</span>}
           {away && <span className={styles.awayNote}>Out until {formatShortDay(away.until)}</span>}
         </li>;
       })}

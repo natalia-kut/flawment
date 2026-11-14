@@ -26,7 +26,8 @@ export async function updateTask(actor: Actor, data: FormData) {
 
 async function saveTask(actor: Actor, data: FormData, editing: boolean) {
   const taskId = editing ? recordId(text(data, "task_id")) : null;
-  const status = editing ? text(data, "status") as TaskStatus : "TO_DO";
+  // A new task starts in the board column it was created from, or "To do".
+  const status = (text(data, "status") || (editing ? "" : "TO_DO")) as TaskStatus;
   if (!taskStatuses.includes(status)) throw new TaskError("Choose a valid task status.");
   const projectId = recordId(text(data, "project_id"));
   const stageValue = text(data, "stage_id");

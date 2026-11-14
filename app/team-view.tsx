@@ -152,7 +152,7 @@ function TeamPage({ team, currentUserId, own, admin }: {
       : <ul className="people-grid">{team.members.map((person) => <PersonCard key={person.id} person={person} you={person.id === currentUserId}
         onOpen={() => setOpenId(person.id)} />)}</ul>}
     {open && <PersonDialog person={open} you={open.id === currentUserId} onClose={() => setOpenId(null)}
-      manage={admin ? <MemberControls person={open} /> : undefined} />}
+      manage={admin ? <MemberControls person={open} currentLead={team.members.find((p) => p.teamLead && p.id !== open.id)} /> : undefined} />}
   </>;
 }
 
@@ -222,11 +222,15 @@ function AddMember({ team, people, teams }: { team: Team; people: TeamPerson[]; 
 }
 
 /** Lead and remove controls on a member card (super admin only). */
-function MemberControls({ person }: { person: TeamPerson }) {
+function MemberControls({ person, currentLead }: { person: TeamPerson; currentLead?: TeamPerson }) {
   const [leadState, lead, leadPending] = useTeamForm();
   const [removeState, remove, removePending] = useTeamForm();
+  // A team has one lead, so making someone else the lead replaces the current one: ask first.
+  const replaces = !person.teamLead && currentLead;
   return <div className="member-admin">
-    <form action={lead}>
+    <form action={lead} onSubmit={(e) => {
+      if (replaces && !window.confirm(`${currentLead.first_name} ${currentLead.last_name} leads this team now. Make ${person.first_name} the lead instead?`)) e.preventDefault();
+    }}>
       <input type="hidden" name="operation" value="lead" /><input type="hidden" name="user_id" value={person.id} />
       {!person.teamLead && <input type="hidden" name="team_lead" value="on" />}
       {/* Leading is for managers, so the job title decides who can. */}
