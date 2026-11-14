@@ -18,6 +18,7 @@ import { todaysCelebrations, workspaceDay, workspaceToday } from "@/lib/time-off
 import { activeStatus, statusSelect } from "@/lib/status/status";
 import { getCalendarTimeOff } from "@/lib/time-off/calendar";
 import { getTeamsOverview } from "@/lib/teams/data";
+import { getLeadTitleRequests, getPendingTitleRequests } from "@/lib/job-title-requests/data";
 
 async function Workspace() {
   const user = await requireUser();
@@ -35,15 +36,18 @@ async function Workspace() {
   const teams = await getTeamsOverview(user, today);
   const own = teams.teams.find((team) => team.id === teams.myTeamId);
   const myTeam = own ? { name: own.name, members: own.members } : null;
+  // Job title requests: a super admin decides them, a team lead follows their own.
+  const [pendingRequests, leadRequests] = await Promise.all([getPendingTitleRequests(user), getLeadTitleRequests(user)]);
+  const admin = user.role === "SUPER_ADMIN" ? { requests: pendingRequests, people: teams.people, teams: teams.teams } : null;
   const myAbsences = await prisma.absence.findMany({ where: { user_id: user.id, ...relevantAbsences(today) }, select: { start_date: true, end_date: true, type: true } });
   return (
     <AppShell
       user={{ ...user, celebrations, status: activeStatus(me), availability: availability(toRanges(myAbsences, true), today) }}
       profile={<ProfileSection />}
-      team={<TeamSection overview={teams} />}
+      team={<TeamSection overview={teams} titleRequests={leadRequests.byPerson} />}
       timeOff={<TimeOffSection />}
       people={<PeopleSection />}
-      workspace={{ projects, userId: user.id, today, timeOff, myTeam }}
+      workspace={{ projects, userId: user.id, today, timeOff, myTeam, admin }}
       sidebarCollapsed={sidebarCollapsed}
       tasks={<TasksOverview projects={projects} currentUserId={user.id} today={today} />}
       projects={<ProjectsView projects={projects} today={today} canCreateProjects={canCreateProjects} />}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type ReactNode } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { projectAction } from "@/lib/projects/actions";
 import { projectStatusLabels } from "@/lib/projects/labels";
@@ -11,9 +11,11 @@ import TaskDetailsDialog from "./task-details-dialog";
  * Create or edit a project in the same in-place style as a task: the name is
  * the heading, then the description, then a grid of dates and status.
  */
-export default function ProjectDetailsForm({ project, onClose, onSaved }: {
+export default function ProjectDetailsForm({ project, onClose, onSaved, footer }: {
   /** Leave out to create a new project. */
   project?: WorkspaceProject;
+  /** Below the form, apart from it: e.g. deleting the project (a form of its own, so it cannot sit inside this one). */
+  footer?: ReactNode;
   onClose: () => void;
   onSaved: (projectId?: number) => void;
 }) {
@@ -73,5 +75,6 @@ export default function ProjectDetailsForm({ project, onClose, onSaved }: {
         </div>
       </fieldset>
     </form>
+    {footer && <div className={details.detailsFooter}>{footer}</div>}
   </TaskDetailsDialog>;
 }

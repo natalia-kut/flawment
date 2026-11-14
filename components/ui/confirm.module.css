@@ -1,0 +1,14 @@
+/* The in-app confirmation: a small warm card, the question, and the two answers.
+   The global reset zeroes margins, so the modal centres itself again with margin: auto. */
+.dialog { position: fixed; inset: 0; margin: auto; height: fit-content; width: min(420px, calc(100vw - 32px)); padding: 22px 22px 18px; color: var(--foreground); background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 24px 60px -20px #261b1259; }
+.dialog::backdrop { background: rgb(38 27 18 / 35%); backdrop-filter: blur(2px); }
+.dialog[open] { animation: rise 160ms ease-out; }
+.body { display: flex; align-items: flex-start; gap: 14px; }
+.icon { display: grid; flex: none; place-items: center; width: 36px; height: 36px; font-size: 17px; font-weight: 800; color: var(--accent-strong); background: var(--accent-soft); border-radius: 50%; }
+.icon[data-danger] { color: var(--critical); background: var(--critical-soft); }
+.body h2 { margin: 6px 0 4px; font-size: 17px; overflow-wrap: anywhere; }
+.body p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-secondary); }
+.actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(6px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) { .dialog[open] { animation: none; } }

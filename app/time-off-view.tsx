@@ -6,6 +6,7 @@ import { timeOffAction, type TimeOffState } from "@/lib/time-off/actions";
 import { absenceTypeLabels } from "@/lib/time-off/labels";
 import { daySpan, formatRange } from "@/lib/time-off/dates";
 import type { AbsenceType } from "@/src/generated/prisma/enums";
+import { useConfirmSubmit } from "@/components/ui/confirm";
 
 type Entry = { id: number; type: AbsenceType; start_date: string; end_date: string; note: string | null };
 
@@ -73,6 +74,7 @@ function AddTimeOff({ today }: { today: string }) {
 
 function TimeOffItem({ entry, today }: { entry: Entry; today: string }) {
   const [state, action, pending] = useActionState(timeOffAction, {});
+  const confirmSubmit = useConfirmSubmit();
   const days = daySpan(entry.start_date, entry.end_date);
   const now = entry.start_date <= today && entry.end_date >= today;
   return <li className={`time-off-item ${entry.type.toLowerCase()}`}>
@@ -82,7 +84,7 @@ function TimeOffItem({ entry, today }: { entry: Entry; today: string }) {
       {entry.note && <p>{entry.note}</p>}
       {state.error && <p className="form-error" role="alert">{state.error}</p>}
     </div>
-    <form action={action} onSubmit={(event) => { if (!window.confirm("Remove this time off?")) event.preventDefault(); }}>
+    <form action={action} onSubmit={confirmSubmit({ title: "Remove this time off?", message: `${formatRange(entry.start_date, entry.end_date)} will no longer show you as away.`, confirm: "Remove" })}>
       <input type="hidden" name="operation" value="delete" />
       <input type="hidden" name="absence_id" value={entry.id} />
       <button className="icon-button" disabled={pending} aria-label={`Remove time off ${formatRange(entry.start_date, entry.end_date)}`} title="Remove">

@@ -20,6 +20,7 @@ import styles from "./dashboard.module.css";
 import CelebrationBanner from "./celebration-banner";
 import type { Celebration } from "@/lib/time-off/dates";
 import type { CalendarTimeOff } from "@/lib/time-off/calendar";
+import NeedsYou, { setupNeeds, type AdminData } from "./admin-panels";
 
 const UP_NEXT = 5;
 const DAY = 86_400_000;
@@ -87,10 +88,14 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
   firstName: string;
   /** Your birthday or work anniversary, when it is today. */
   celebrations?: Celebration[];
-  workspace: { projects: WorkspaceProject[]; userId: number; today: string; timeOff?: CalendarTimeOff[]; myTeam?: { name: string; members: TeamPerson[] } | null };
+  workspace: {
+    projects: WorkspaceProject[]; userId: number; today: string; timeOff?: CalendarTimeOff[]; myTeam?: { name: string; members: TeamPerson[] } | null;
+    /** A super admin's dashboard is about the workspace, not tasks: requests to decide and people to set up. */
+    admin?: AdminData | null;
+  };
   onOpenTemplate: (templateId: string) => void;
 }) {
-  const { projects, userId, today, timeOff = [], myTeam = null } = workspace;
+  const { projects, userId, today, timeOff = [], myTeam = null, admin = null } = workspace;
   const started = chat.messages.length > 0;
   // Clicking a task previews it here, so a quick look never leaves the dashboard.
   const [previewId, setPreviewId] = useState<number | null>(null);
@@ -121,9 +126,15 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
     celebratesToday: m.birthday?.inDays === 0 ? "birthday" as const : m.anniversary?.inDays === 0 ? "anniversary" as const : null,
   }]));
 
+  const needs = admin && setupNeeds(admin);
+  const waiting = needs ? needs.noTitle.length + needs.noTeam.length + needs.leaderless.length : 0;
   // Overdue work outranks the week ahead: no sunshine while something is already late.
-  const tone = overdue.length > 0 ? "late" : dueThisWeek.length === 0 ? "free" : "due";
-  const summary = tone === "late"
+  const tone = admin ? (admin.requests.length || waiting ? "due" : "free")
+    : overdue.length > 0 ? "late" : dueThisWeek.length === 0 ? "free" : "due";
+  const summary = admin
+    ? admin.requests.length ? `${admin.requests.length} job title ${admin.requests.length === 1 ? "request" : "requests"} to decide`
+      : waiting ? `${waiting} ${waiting === 1 ? "thing" : "things"} to set up` : "Everything is set up"
+    : tone === "late"
     ? `${overdue.length} overdue ${overdue.length === 1 ? "task" : "tasks"}${dueThisWeek.length > 0 ? ` · ${dueThisWeek.length} due this week` : ""}`
     : tone === "free" ? "Nothing due this week"
     : `${dueThisWeek.length} ${dueThisWeek.length === 1 ? "task" : "tasks"} due this week`;
@@ -140,7 +151,7 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
 
       {/* Flawiusz first: the dashboard starts with a question. */}
       <section className={`flawiusz-hero ${styles.assistant}${started ? " started" : ""}`} aria-labelledby="flawiusz-hero-title">
-        <span className={styles.glow} aria-hidden="true"><span /><span /><span /></span>
+        <span className={styles.sparkles} aria-hidden="true" />
         <div className="flawiusz-hero-intro">
           <Image className="flawiusz-hero-avatar" src="/flawiusz.png" alt="" width={68} height={68} priority />
           <div>
@@ -161,47 +172,58 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
         <Composer chat={chat} placeholder="e.g. What should I focus on this week?" />
       </section>
 
-      <div className={styles.stats}>
-        <Stat label="Your open tasks" value={mine.length} href="/?view=tasks&mine=1" />
-        <Stat label="Overdue" value={overdue.length} href={"/?view=tasks&overdue=1" + scopeParam} tone={overdue.length > 0 ? "critical" : undefined} />
-        <Stat label="Due this week" value={dueThisWeek.length} href={"/?view=tasks" + scopeParam} />
-        <Stat label="Active projects" value={activeProjects.length} href="/?view=projects" />
-      </div>
+      {admin && needs ? <>
+        <div className={styles.stats}>
+          <Stat label="Requests to decide" value={admin.requests.length} href="#title-requests" tone={admin.requests.length > 0 ? "critical" : undefined} />
+          <Stat label="No job title" value={needs.noTitle.length} href="/?view=team" />
+          <Stat label="No team" value={needs.noTeam.length} href="/?view=team" />
+          <Stat label="Teams without a lead" value={needs.leaderless.length} href="/?view=team" />
+        </div>
+        <NeedsYou requests={admin.requests} needs={needs} today={today} />
+      </> : <>
+        <div className={styles.stats}>
+          <Stat label="Your open tasks" value={mine.length} href="/?view=tasks&mine=1" />
+          <Stat label="Overdue" value={overdue.length} href={"/?view=tasks&overdue=1" + scopeParam} tone={overdue.length > 0 ? "critical" : undefined} />
+          <Stat label="Due this week" value={dueThisWeek.length} href={"/?view=tasks" + scopeParam} />
+          <Stat label="Active projects" value={activeProjects.length} href="/?view=projects" />
+        </div>
 
-      <div className={styles.columns}>
-        <section className={styles.panel} aria-label="Deadlines">
-          <TaskCalendar today={today} tasks={tasks.filter((task) => task.status !== "CANCELLED")} timeOff={timeOff} onOpenTask={setPreviewId} />
-        </section>
+        <div className={styles.columns}>
+          <section className={styles.panel} aria-label="Deadlines">
+            <TaskCalendar today={today} tasks={tasks.filter((task) => task.status !== "CANCELLED")} timeOff={timeOff} onOpenTask={setPreviewId} />
+          </section>
 
-        <section className={styles.panel} aria-labelledby="up-next-title">
-          <div className={styles.panelHeading}>
-            <h2 id="up-next-title">Up next</h2>
-            <Link href="/?view=tasks">All tasks →</Link>
-          </div>
-          {upNext.length === 0
-            ? <p className={styles.empty}>Nothing open. Enjoy the calm.</p>
-            : <ul className={styles.upNext}>
-              {upNext.map((task) => {
-                const soon = !task.overdue && task.deadline !== "" && daysUntil(task.deadline, today) <= 1;
-                return <li key={task.id}>
-                  <button type="button" className={styles.task} onClick={() => setPreviewId(task.id)}>
-                    <span className={styles.priority} data-priority={task.priority} title={taskPriorityLabels[task.priority] + " priority"} />
-                    <span className={styles.taskText}>
-                      <strong>{task.title}</strong>
-                      <span>{task.projectName} · {task.assignedTo === userId ? <em className={styles.you}>You</em> : task.assigneeName}</span>
-                    </span>
-                    <span className={styles.due} data-state={task.overdue ? "late" : soon ? "soon" : undefined}>{dueLabel(task.deadline, today)}</span>
-                  </button>
-                </li>;
-              })}
-            </ul>}
-        </section>
-      </div>
+          <section className={styles.panel} aria-labelledby="up-next-title">
+            <div className={styles.panelHeading}>
+              <h2 id="up-next-title">Up next</h2>
+              <Link href="/?view=tasks">All tasks →</Link>
+            </div>
+            {upNext.length === 0
+              ? <p className={styles.empty}>Nothing open. Enjoy the calm.</p>
+              : <ul className={styles.upNext}>
+                {upNext.map((task) => {
+                  const soon = !task.overdue && task.deadline !== "" && daysUntil(task.deadline, today) <= 1;
+                  return <li key={task.id}>
+                    <button type="button" className={styles.task} onClick={() => setPreviewId(task.id)}>
+                      <span className={styles.priority} data-priority={task.priority} title={taskPriorityLabels[task.priority] + " priority"} />
+                      <span className={styles.taskText}>
+                        <strong>{task.title}</strong>
+                        <span>{task.projectName} · {task.assignedTo === userId ? <em className={styles.you}>You</em> : task.assigneeName}</span>
+                      </span>
+                      <span className={styles.due} data-state={task.overdue ? "late" : soon ? "soon" : undefined}>{dueLabel(task.deadline, today)}</span>
+                    </button>
+                  </li>;
+                })}
+              </ul>}
+          </section>
+        </div>
+      </>}
 
-      <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="timeline-title">
+      {/* A super admin looks after people and accounts, not project work. */}
+      {!admin && <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="timeline-title">
         <div className={styles.panelHeading}><h2 id="timeline-title">Timeline</h2></div>
         <ProjectTimeline projects={projects} today={today} />
-      </section>
+      </section>}
 
       {/* Everyone sees their own team: who is in, who is away, how their work is going. */}
       {myTeam && <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="team-title">

@@ -15,6 +15,7 @@ import AvailabilityBadge from "./availability-badge";
 import StatusDialog, { StatusText } from "./status-dialog";
 import PageHeader from "@/components/page-header";
 import EmailText from "./email-text";
+import { useConfirmSubmit } from "@/components/ui/confirm";
 
 type Person = { id: number; first_name: string; last_name: string; photoVersion: string | null };
 
@@ -32,6 +33,8 @@ export default function ProfileView({ user, today }: { today: string; user: {
   const [editingStatus, setEditingStatus] = useState(false);
   // Remounts the file input after an upload, so it forgets the chosen file.
   const [photoInputKey, setPhotoInputKey] = useState(0);
+  const [photoError, setPhotoError] = useState("");
+  const confirmSubmit = useConfirmSubmit();
   const [state, action, pending] = useActionState(async (previous: Awaited<ReturnType<typeof profileAction>>, data: FormData) => {
     const result = await profileAction(previous, data);
     setPhoto(null);
@@ -42,7 +45,8 @@ export default function ProfileView({ user, today }: { today: string; user: {
   function choosePhoto(input: HTMLInputElement) {
     const file = input.files?.[0];
     if (!file) return;
-    if (file.size > MAX_PHOTO_BYTES) { window.alert("Choose a photo no larger than 2 MB."); setPhotoInputKey((k) => k + 1); return; }
+    setPhotoError("");
+    if (file.size > MAX_PHOTO_BYTES) { setPhotoError("Choose a photo no larger than 2 MB."); setPhotoInputKey((k) => k + 1); return; }
     setPhoto(file); // Shown while it uploads.
     input.form?.requestSubmit();
   }
@@ -73,12 +77,12 @@ export default function ProfileView({ user, today }: { today: string; user: {
         </form>
         {/* Hangs under the circle without adding to its height, so the name centres on the photo. */}
         <div className="profile-photo-actions">
-        {user.photoVersion && !photo && <form action={action} onSubmit={(e) => { if (!window.confirm("Remove your profile photo?")) e.preventDefault(); }}>
+        {user.photoVersion && !photo && <form action={action} onSubmit={confirmSubmit({ title: "Remove your profile photo?", message: "Your initials show instead.", confirm: "Remove photo" })}>
           <input type="hidden" name="remove_photo" value="on" />
           <button className="text-button muted" disabled={pending}>Remove photo</button>
         </form>}
         {pending && <p className="field-help" role="status">Saving photo…</p>}
-        {state.error && <p role="alert" className="form-error">{state.error}</p>}
+        {(photoError || state.error) && <p role="alert" className="form-error">{photoError || state.error}</p>}
         </div>
       </div>
 

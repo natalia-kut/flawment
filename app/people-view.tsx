@@ -8,6 +8,8 @@ import UserAvatar from "./user-avatar";
 import JobTitleField from "./job-title-field";
 import styles from "./people-view.module.css";
 import { isManagerialTitle } from "@/lib/people/job-titles";
+import { useConfirm } from "@/components/ui/confirm";
+import { PencilIcon } from "@/components/ui/icons";
 
 type Person = PeopleDirectory["people"][number];
 
@@ -28,7 +30,7 @@ export default function PeopleView({ directory }: { directory: PeopleDirectory }
       <summary><h2>Everyone <span className="role-badge">{directory.people.length}</span></h2></summary>
       {/* Outside the summary: a space typed into it would fold the card. */}
       <input type="search" className={"people-search " + styles.headerSearch} placeholder="Search name, email, title or team" aria-label="Search people" value={filter} onChange={(e) => setFilter(e.target.value)} />
-      {people.length === 0 ? <p>No matching people.</p> : <table className="people-table">
+      {people.length === 0 ? <p>No matching people.</p> : <table className={"people-table " + styles.table}>
         <thead><tr><th scope="col">Person</th><th scope="col">Job title</th><th scope="col">Team</th><th scope="col"><span className="visually-hidden">Actions</span></th></tr></thead>
         <tbody>{people.map((person) => <tr key={person.id}>
           <td><div className="member-identity"><UserAvatar id={person.id} firstName={person.first_name} lastName={person.last_name} photoVersion={person.photoVersion} size={32} />
@@ -36,7 +38,8 @@ export default function PeopleView({ directory }: { directory: PeopleDirectory }
           <td>{titleName(person.job_title_id) ?? <span className="muted-value">Not set</span>}</td>
           <td>{person.role === "SUPER_ADMIN" ? <span className="role-badge">Super admin</span>
             : <>{teamName(person.team_id) ?? <span className="muted-value">No team</span>}{person.team_lead && <span className="role-badge lead-badge">Lead</span>}</>}</td>
-          <td><button type="button" className="secondary-button" onClick={() => setEditingId(person.id)}>Edit</button></td>
+          <td><button type="button" className={"icon-button edit " + styles.rowAction} onClick={() => setEditingId(person.id)}
+            aria-label={`Edit ${person.first_name} ${person.last_name}`} title="Edit"><PencilIcon /></button></td>
         </tr>)}</tbody>
       </table>}
     </details>
@@ -93,7 +96,8 @@ export function EditPerson({ person, directory, onClose }: { person: Person; dir
           <label>Email<input name="email" type="email" required maxLength={254} defaultValue={person.email} /></label>
           <input type="hidden" name="job_title_id" value={titleId} />
           {titleId === "new" && <input type="hidden" name="new_job_title" value={typedTitle} />}
-          <JobTitleField titles={directory.jobTitles} value={titleText} onChange={setTitleText} isNew={titleId === "new"} />
+          <JobTitleField titles={directory.jobTitles} value={titleText} onChange={setTitleText}
+            hint={titleId === "new" && <>&ldquo;{typedTitle}&rdquo; will be added as a new job title.</>} />
           {admin ? <p className="field-help">Super admins are not part of a team.</p> : <>
             <label>Team
               <select name="team_id" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
@@ -135,12 +139,16 @@ function JobTitles({ directory }: { directory: PeopleDirectory }) {
     { key: "lead", label: "Can lead a team", empty: "None yet", titles: directory.jobTitles.filter((t) => t.can_lead) },
     { key: "other", label: "Other titles", empty: "None", titles: directory.jobTitles.filter((t) => !t.can_lead) },
   ] as const;
-  function toggle(title: PeopleDirectory["jobTitles"][number]) {
+  const ask = useConfirm();
+  async function toggle(title: PeopleDirectory["jobTitles"][number]) {
     const canLead = !title.can_lead;
     const leads = directory.people.filter((p) => p.job_title_id === title.id && p.team_lead);
     // Taking it away ends their lead role: name who loses it and ask first.
-    if (!canLead && leads.length > 0 && !window.confirm(
-      `${leads.map((p) => `${p.first_name} ${p.last_name}`).join(", ")} will no longer lead ${leads.length === 1 ? "their team" : "their teams"}. Continue?`)) return;
+    if (!canLead && leads.length > 0 && !await ask({
+      title: `${title.name} can no longer lead a team?`,
+      message: `${leads.map((p) => `${p.first_name} ${p.last_name}`).join(", ")} will no longer lead ${leads.length === 1 ? "their team" : "their teams"}.`,
+      confirm: "Move to Other titles",
+    })) return;
     const data = new FormData();
     data.set("job_title_id", String(title.id));
     if (canLead) data.set("can_lead", "on");

@@ -36,6 +36,8 @@ export type TeamPerson = {
   anniversary: { years: number; inDays: number } | null;
   /** The month and year the account was created, e.g. "March 2021". */
   joined: string;
+  /** The workspace day the account was created (YYYY-MM-DD): who joined this month. */
+  joinedOn: string;
   /** Carries `reasons` only when the viewer may know them. */
   availability: Availability;
   /** Day and month only: the year never leaves the server. */
@@ -50,7 +52,7 @@ export function toPerson(row: PersonRow, viewer: Viewer, today: string): TeamPer
     jobTitle: row.job_title?.name ?? null, canLead: row.job_title?.can_lead ?? false, pronouns: row.pronouns, phone: row.phone, location: row.location,
     workingHours: row.working_hours, skills: row.skills, status: activeStatus(row),
     anniversary: nextAnniversary(workspaceDay(row.created_at), today),
-    joined: monthYear.format(row.created_at),
+    joined: monthYear.format(row.created_at), joinedOn: workspaceDay(row.created_at),
     availability: availability(toRanges(row.absences, canSeeAbsenceReason(viewer, row)), today),
     birthday: birth ? { label: formatBirthday(birth), inDays: daysUntilBirthday(birth, today) } : null,
   };
@@ -82,6 +84,8 @@ export async function getTeamsOverview(actor: Actor, today: string) {
     /** The viewer's own team, listed first and marked. */
     myTeamId: viewer.team_id,
     teams: teams.map((team) => ({ ...team, members: all.filter((p) => p.teamId === team.id) }))
+      // An empty team is a super admin's work in progress: nobody else sees it.
+      .filter((team) => actor.role === "SUPER_ADMIN" || team.members.length > 0)
       .sort((a, b) => Number(b.id === viewer.team_id) - Number(a.id === viewer.team_id)),
     people: all,
   };

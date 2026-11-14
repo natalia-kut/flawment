@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import styles from "./job-title-field.module.css";
 
 /**
@@ -8,8 +8,10 @@ import styles from "./job-title-field.module.css";
  * that is not on it to add it as a new one. Replaces a native select, whose popup
  * grows with every title added and cannot be given a height.
  */
-export default function JobTitleField({ titles, value, onChange, isNew }: {
-  titles: { id: number; name: string }[]; value: string; onChange: (value: string) => void; isNew: boolean;
+export default function JobTitleField({ titles, value, onChange, hint, label = "Job title", placeholder = "No job title" }: {
+  titles: { id: number; name: string }[]; value: string; onChange: (value: string) => void;
+  /** A line under the field, e.g. that a typed name will be added as a new title. */
+  hint?: ReactNode; label?: string; placeholder?: string;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,10 +37,10 @@ export default function JobTitleField({ titles, value, onChange, isNew }: {
   }
 
   return <div className={styles.field}>
-    <label>Job title
+    <label>{label}
       <input ref={inputRef} role="combobox" aria-autocomplete="list" aria-expanded={expanded} aria-controls={id + "-list"}
         aria-activedescendant={expanded && active >= 0 ? id + "-" + active : undefined}
-        maxLength={80} autoComplete="off" placeholder={adding ? "Type the new job title" : "No job title"} value={value}
+        maxLength={80} autoComplete="off" placeholder={adding ? "Type the new job title" : placeholder} value={value}
         onChange={(e) => { onChange(e.target.value); setOpen(true); setActive(-1); }}
         onFocus={() => setOpen(true)} onClick={() => setOpen(true)} onBlur={() => { setOpen(false); setAdding(false); }}
         onKeyDown={(e) => {
@@ -62,6 +64,6 @@ export default function JobTitleField({ titles, value, onChange, isNew }: {
           : query && !exact ? <>+ Add &ldquo;{value.trim()}&rdquo; as a new job title</> : "+ Add a new job title…"}
       </li>)}
     </ul>}
-    {isNew && <p className="field-help">&ldquo;{value.trim()}&rdquo; will be added as a new job title.</p>}
+    {hint && <p className="field-help">{hint}</p>}
   </div>;
 }

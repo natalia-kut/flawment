@@ -17,6 +17,8 @@ import { projectAction } from "@/lib/projects/actions";
 import { projectRoleLabels } from "@/lib/projects/labels";
 import type { ProjectRole } from "@/src/generated/prisma/enums";
 import PageHeader from "@/components/page-header";
+import { useConfirmSubmit } from "@/components/ui/confirm";
+import people from "./project-people.module.css";
 
 function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, className = "workspace-form" }: {
   children: ReactNode; operation: string; projectId?: number;
@@ -49,16 +51,6 @@ function RoleSelect({ canNameCoordinators, value = "CONTRIBUTOR", saveOnChange =
   </select></label>;
 }
 
-/** Only roles above the default get a badge (Owner or Coordinator), next to whether they are away. */
-function MemberBadges({ member }: { member: WorkspaceProject["members"][number] }) {
-  const role = member.role === "CONTRIBUTOR" ? null : projectRoleLabels[member.role];
-  if (!role && !member.availability) return null;
-  return <span className="member-badges">
-    {role && <span className="role-badge">{role}</span>}
-    {member.availability && <AvailabilityBadge availability={member.availability} />}
-  </span>;
-}
-
 /** "Manage" opens a small menu; clicking anywhere else or pressing Escape closes it. */
 function ManageMenu({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDetailsElement>(null);
@@ -72,7 +64,9 @@ function ManageMenu({ children }: { children: ReactNode }) {
     document.addEventListener("keydown", close);
     return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", close); };
   }, []);
-  return <details ref={ref} className="member-settings"><summary>Manage</summary>{children}</details>;
+  return <details ref={ref} className={`member-settings ${people.manage}`}>
+    <summary title="Manage"><span aria-hidden="true">⋯</span><span className="visually-hidden">Manage</span></summary>{children}
+  </details>;
 }
 
 function ProjectDialog({ title, description, onClose, children }: {
@@ -105,6 +99,7 @@ export default function ProjectsView({ projects, today, canCreateProjects }: {
   canCreateProjects: boolean;
 }) {
   const router = useRouter();
+  const confirmSubmit = useConfirmSubmit();
   const search = useSearchParams();
   const selected = search.get("project");
   const project = projects.find((p) => String(p.id) === selected);
@@ -131,36 +126,47 @@ export default function ProjectsView({ projects, today, canCreateProjects }: {
       <PageHeader breadcrumbs={breadcrumbs} title={project.name}
         actions={project.canEdit && <button className="secondary-button" onClick={() => setModal("edit")}>Edit project</button>} />
       <ProjectStages key={"stages-" + project.id} project={project} />
-      <ProjectTaskList key={project.id} project={project}
+      <ProjectTaskList key={project.id} project={project} today={today}
         onCreate={() => { setEditingTaskId(null); setModal("task"); }}
         onEdit={(id) => { setModal(null); setEditingTaskId(id); }} />
       <section className="workspace-card project-team" key={"people-" + project.id}>
-          <div className="section-heading"><div><h2>People <span className="role-badge">{project.members.length}</span></h2><p>The team making it happen.</p></div>{project.canManage && <button className="primary-button" onClick={() => setModal("add")}>Add member</button>}</div>
+          <div className="section-heading"><div><h2>Working on this project <span className="role-badge">{project.members.length}</span></h2></div>{project.canManage && <button className="primary-button" onClick={() => setModal("add")}><span aria-hidden="true">+</span> Add member</button>}</div>
           {project.members.length === 0 && <p>No team members yet.</p>}
-          <ul className="member-list">{project.members.map((member) => <li key={member.id}>
-            <div className="member-identity"><UserAvatar id={member.id} firstName={member.first_name} lastName={member.last_name} photoVersion={member.photoVersion} /><div><strong>{member.first_name} {member.last_name}</strong><small>{[member.jobTitle, member.email].filter(Boolean).join(" · ")}</small>
-              <MemberBadges member={member} />
-              {member.status && <div className="member-status"><StatusText status={member.status} /></div>}
-            </div></div>
+          {/* A tile each: face, name and project role, job title, then whether they are away or busy. */}
+          <ul className={people.grid}>{project.members.map((member) => <li key={member.id} className={people.member} title={member.email}>
+            <UserAvatar id={member.id} firstName={member.first_name} lastName={member.last_name} photoVersion={member.photoVersion} size={40} />
+            <div className={people.info}>
+              <p className={people.name}><strong>{member.first_name} {member.last_name}</strong></p>
+              {/* A line each: the project role (when above contributor), then the job title. */}
+              {member.role !== "CONTRIBUTOR" && <span className={people.role} data-role={member.role}>{projectRoleLabels[member.role]}</span>}
+              <p className={people.title}>{member.jobTitle ?? "No job title"}</p>
+              {(member.availability || member.status) && <div className={people.extra}>
+                {member.availability && <AvailabilityBadge availability={member.availability} />}
+                {member.status && <StatusText status={member.status} />}
+              </div>}
+            </div>
             {project.canManage && member.id !== project.owner_id && (project.canAssignRoles || member.role === "CONTRIBUTOR") && <ManageMenu><div className="member-controls">
               {project.canAssignRoles && <ChangeForm operation="role" projectId={project.id} className="compact-form"><input type="hidden" name="user_id" value={member.id} /><RoleSelect canNameCoordinators value={member.role} saveOnChange /></ChangeForm>}
-              <ChangeForm operation="remove" projectId={project.id} className="compact-form" onSubmit={(event) => { if (!window.confirm(`Remove ${member.first_name} from this project?`)) event.preventDefault(); }}>
+              <ChangeForm operation="remove" projectId={project.id} className="compact-form" onSubmit={confirmSubmit({ title: `Remove ${member.first_name} from this project?`, message: "They lose access to this project.", confirm: "Remove" })}>
                 <input type="hidden" name="user_id" value={member.id} /><button className="text-button danger">Remove from project</button>
               </ChangeForm>
             </div></ManageMenu>}
           </li>)}</ul>
       </section>
-      {project.canDelete && <details className="project-danger-zone"><summary>Project settings</summary><p>Deleting this project also deletes its tasks and memberships.</p><ChangeForm operation="delete" projectId={project.id} onSuccess={() => router.push("/?view=projects")} onSubmit={(event) => { if (!window.confirm(`Permanently delete “${project.name}” and all its tasks?`)) event.preventDefault(); }}><button className="danger-button">Delete project</button></ChangeForm></details>}
     </>}
 
     {/* The same in-place editor as a card on the Tasks board. */}
-    {editingTask && project?.canManageTasks && <TaskDetailsForm key={"task-" + editingTask.id} project={project} task={editingTask}
+    {editingTask?.canEdit && project && <TaskDetailsForm key={"task-" + editingTask.id} project={project} task={editingTask}
       overdue={isTaskOverdue(editingTask, today)} showOpenProject={false} onClose={close} onSaved={() => { close(); router.refresh(); }} />}
-    {modal === "task" && project?.canManageTasks && <TaskDetailsForm project={project} showOpenProject={false}
+    {modal === "task" && project?.canCreateTasks && <TaskDetailsForm project={project} showOpenProject={false}
       onClose={close} onSaved={() => { close(); router.refresh(); }} />}
     {/* The same in-place style as the task dialog. */}
     {modal === "create" && <ProjectDetailsForm onClose={close} onSaved={(id) => { close(); router.push(`/?project=${id}`); }} />}
-    {modal === "edit" && project && <ProjectDetailsForm key={"edit-" + project.id} project={project} onClose={close} onSaved={() => { close(); router.refresh(); }} />}
+    {modal === "edit" && project && <ProjectDetailsForm key={"edit-" + project.id} project={project} onClose={close} onSaved={() => { close(); router.refresh(); }}
+      footer={project.canDelete && <ChangeForm operation="delete" projectId={project.id} className="compact-form" onSuccess={() => router.push("/?view=projects")}
+        onSubmit={confirmSubmit({ title: `Delete “${project.name}”?`, message: "Its tasks, stages and memberships go with it. This cannot be undone.", confirm: "Delete project" })}>
+        <button className="text-button danger">Delete project</button>
+      </ChangeForm>} />}
     {modal === "add" && project && <ProjectDialog title="Bring someone on board" description={`Add a registered user to ${project.name}.`} onClose={close}>
       {project.eligible.length === 0 ? <p>There are no other available users to add.</p> : <ChangeForm operation="add" projectId={project.id} onSuccess={close}>
         <label>Available users<select name="user_id" required defaultValue=""><option value="" disabled>Select a user</option>{project.eligible.map((user) => <option key={user.id} value={user.id}>{user.first_name} {user.last_name} ({user.email}){user.availability ? ` · ${user.availability.label}` : ""}</option>)}</select></label>

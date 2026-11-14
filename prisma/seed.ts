@@ -173,7 +173,7 @@ const birthdays: [Username, number, number][] = [
 // [username, years and days ago the account was created]: drives work anniversaries.
 const joined: [Username, number, number][] = [
   ["natalia.kwiatek", 4, 0], ["jakub.nowak", 3, -6], ["zofia.wisniewska", 2, 40], ["michal.zielinski", 1, -2],
-  ["aleksandra.lewandowska", 5, 120], ["piotr.kaminski", 1, 200], ["julia.dabrowska", 3, 300], ["tomasz.wojcik", 0, 90],
+  ["aleksandra.lewandowska", 5, 120], ["piotr.kaminski", 1, 200], ["julia.dabrowska", 3, 300], ["tomasz.wojcik", 0, 8],
 ];
 
 const details: { username: Username; job_title: string; pronouns?: string; phone: string; location: string; working_hours: string; skills: string[]; lead?: true }[] = [
@@ -282,6 +282,27 @@ async function seedJoinDates() {
   }
 }
 
+// [username, suggested title, reason, days ago]: sample job title requests from each person's team lead.
+const titleRequests: [Username, string, string, number][] = [
+  ["michal.zielinski", "Senior full-stack developer", "Has owned the billing service end to end since the summer.", 0],
+  ["zofia.wisniewska", "Design lead", "Runs the design system and mentors two juniors.", 1],
+  ["aleksandra.lewandowska", "Operations manager", "Back to running operations after the QA rotation.", 3],
+];
+
+/** Pending requests for the super admin's dashboard, sent by the person's current team lead. Safe to run again. */
+async function seedTitleRequests() {
+  let added = 0;
+  for (const [username, title, note, daysAgo] of titleRequests) {
+    const person = await prisma.user.findUnique({ where: { username }, select: { id: true, team_id: true, title_requests_about: { select: { id: true }, take: 1 } } });
+    if (!person || person.team_id === null || person.title_requests_about.length) continue;
+    const lead = await prisma.user.findFirst({ where: { team_id: person.team_id, team_lead: true, id: { not: person.id } }, select: { id: true } });
+    if (!lead) continue;
+    await prisma.jobTitleRequest.create({ data: { user_id: person.id, requested_by: lead.id, title, note, created_at: day(-daysAgo) } });
+    added++;
+  }
+  if (added) console.log(`Added ${added} job title requests.`);
+}
+
 async function main() {
   if ((await prisma.user.count({ where: { role: "USER" } })) > 0) {
     console.log("Users already exist — skipping sample users and projects.");
@@ -290,6 +311,7 @@ async function main() {
     await seedDetails();
     await seedJoinDates();
     await seedAdminProfile();
+    await seedTitleRequests();
     return;
   }
 
@@ -346,6 +368,7 @@ async function main() {
   await seedDetails();
   await seedJoinDates();
   await seedAdminProfile();
+  await seedTitleRequests();
 }
 
 main()

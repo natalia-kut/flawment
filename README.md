@@ -172,8 +172,11 @@ Projects opens as a table. Clicking a project name shows its dedicated view; use
 the **Projects → project name** breadcrumb to return to the list. The selected
 project is stored in the URL, so refresh and browser back/forward preserve
 navigation. **New project**, **Edit project** and **Add member** open dialogs with
-Cancel, Escape and backdrop dismissal. **Manage** on a member opens a small menu
-(role and **Remove from project**) that closes when you click elsewhere.
+Cancel, Escape and backdrop dismissal. **Working on this project** shows the
+members as tiles; **⋯** on a tile opens a small menu (role and **Remove from
+project**) that closes when you click elsewhere. Deleting the project lives at the
+foot of **Edit project**, for whoever may delete it. Deletions and removals ask
+for confirmation in an in-app dialog.
 
 Document templates belong to their creator. Standard users can only read or change
 their own custom templates; super admins can manage all, including legacy
@@ -244,10 +247,13 @@ bootstrap. This deletion cannot be undone.
 
 ### Project task management
 
-Open a project in **Projects** to view its tasks. Every member can use **New task**;
-**Edit task** appears on the tasks you may edit (see the table above). The edit dialog supports
-title, description, priority, deadline, assignment and these statuses:
-TO DO, IN PROGRESS, IN REVIEW, COMPLETED and CANCELLED.
+Open a project in **Projects** to see its tasks as a compact table: a priority dot
+and the title over its stage and description, then status, assignee and due date
+(red once overdue). Every member can use **New task**. Click a task you may edit
+(see the table above) to open the edit dialog: title, description, priority,
+deadline, assignment and these statuses: TO DO, IN PROGRESS, IN REVIEW, COMPLETED
+and CANCELLED. **Open on the Tasks board** shows the project there, to search and
+filter its tasks.
 
 Tasks can only be assigned to active standard users who belong to the project.
 Contributors assign tasks only to themselves (or leave them unassigned), edit and
@@ -256,34 +262,20 @@ assigned, by dragging a card or using **Move to** in task details.
 Failed validation in the task form keeps its values for correction.
 Apply the committed migrations before using task and stage features.
 
-To check editing manually, create a task, open **Edit task**, change its status
-and priority, save and refresh the project. Confirm the changes remain visible.
+To check editing manually, create a task, click it, change its status and
+priority, save and refresh the project. Confirm the changes remain visible.
 Run the database integration coverage with `npm run test:integration`.
 
 ### Deleting project tasks
 
-Owners, coordinators and super admins can use **Delete task** on any task in a
-project's task list; contributors on the tasks they added. Confirming the browser
-prompt permanently removes that task; Cancel keeps it. Permissions and project ownership of
-the task are checked again on the server. Deleting a task does not delete its
-project or other tasks.
+Owners, coordinators and super admins can delete any task in a project's task
+list with the bin that appears on hover; contributors the tasks they added.
+Confirming the browser prompt permanently removes that task; Cancel keeps it.
+Permissions and project ownership of the task are checked again on the server.
+Deleting a task does not delete its project or other tasks.
 
-For a manual check, create a disposable task, click **Delete task**, cancel once,
-then confirm on a second attempt. Refresh and confirm the task stays removed.
-
-### Searching and filtering project tasks
-
-In a project's Tasks section, search titles and descriptions or filter by status,
-priority, stage and assignee (including **No stage** and **Unassigned**). Filters
-combine, search ignores
-letter case, and the result count shows how many tasks match. **Clear filters**
-restores the complete project task list. Filters reset when another project is
-opened and do not change stored tasks. They operate in the browser on the tasks
-already loaded for the current project; existing server authorization still applies.
-
-Manual check: create tasks with different statuses and priorities, search for a
-word from a description, combine filters, check a no-results case, then clear.
-Run `npm test` for search and filter coverage.
+For a manual check, create a disposable task, click its bin, cancel once, then
+confirm on a second attempt. Refresh and confirm the task stays removed.
 
 ### Workspace Tasks page
 
@@ -407,12 +399,26 @@ Open a tile to see its people: availability, lead, job title and up to two
 skills; click a person for their contact details, birthday, start date, status
 and all skills. The Dashboard shows your own team as rings with each person's
 open and late tasks (counted from projects you share) and who is away or
-celebrating today.
+celebrating today. **This month** on the Teams page greets everyone who joined
+this month (a super admin sees **New hires** to finish setting up above it). Empty teams are visible only to super admins.
 
 A super admin also creates, renames and deletes teams, adds people to a team
 (moving someone from another team asks for confirmation first), picks its lead
 and sees warnings when a team has no lead. **New hires** on the Teams page lists
 accounts still missing a job title or a team, with **Set up** to finish them.
+
+**Job title requests.** A team lead opens someone in their team and chooses
+**Suggest a new job title** (from the list or a new name, with an optional
+reason). One request waits per person; a new one replaces it, and the lead can
+withdraw it. A super admin approves or declines it on the dashboard: approving
+sets the title (adding it to the list when new) and, if it cannot lead, ends a
+lead role, which the request card warns about first. The lead sees the outcome
+on that person's card, and **Promoted this month** on the Teams page lets
+everyone congratulate them in the same card.
+
+**A super admin's dashboard** is about people rather than tasks: **Needs you**
+(requests to decide, who still needs a job title or a team, teams without a
+lead).
 **People** (super admins only) lists every account to edit name, email, job title,
 team and lead. Job titles come from a shared list: type to pick one, or type a new
 name to add it. A new title is managerial when its name says so (manager, lead,
@@ -429,8 +435,8 @@ lead role. Deleting a team leaves its people without a team.
 sick leave, business trip or other, with an optional note. Ranges cannot overlap
 and can reach back at most 30 days. Colleagues only ever see that you are away
 ("Out of office until 20 Nov", or "Away 24 – 28 Nov" within the next 14 days).
-The type (sick leave is health data) is added only for your team's leads and
-super admins; the server leaves it out for everyone else. The note is visible to
+The type (sick leave is health data) is added only for your team's lead, not
+even for super admins; the server leaves it out for everyone else. The note is visible to
 you alone. Away badges appear on team pages, in project People lists, when adding
 a project member and when assigning a task; back-to-back ranges read as one
 absence. The dashboard calendar stripes your own days off, and shows a team lead
