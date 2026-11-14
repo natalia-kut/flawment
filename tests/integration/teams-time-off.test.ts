@@ -81,7 +81,7 @@ test("teams, birthdays and time off respect who may see and change them", async 
     // The team lead and super admins learn why; nobody but Ben reads his note.
     const asLead = (await getTeamsOverview(lead, today)).people.find((p) => p.id === ben.id)!;
     assert.deepEqual(asLead.availability?.reasons, ["SICK_LEAVE", "BUSINESS_TRIP"]);
-    assert.deepEqual((await getTeamsOverview(root, today)).people.find((p) => p.id === ben.id)!.availability?.reasons, ["SICK_LEAVE", "BUSINESS_TRIP"]);
+    assert.equal((await getTeamsOverview(root, today)).people.find((p) => p.id === ben.id)!.availability?.reasons, undefined, "a super admin runs accounts, not people's days");
     assert.ok(!JSON.stringify(await getTeamsOverview(lead, today)).includes("Flu"));
     // Calendar: your own time off, plus your team's when you lead it.
     const leadsCalendar = await getCalendarTimeOff(lead, today);

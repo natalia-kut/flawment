@@ -16,7 +16,7 @@ function optionalId(value: FormDataEntryValue | null) {
 }
 
 /** Finds a job title by name (ignoring case and spacing), or adds it to the list; its name says whether it is managerial. */
-async function findOrCreateJobTitle(tx: Prisma.TransactionClient, rawName: string) {
+export async function findOrCreateJobTitle(tx: Prisma.TransactionClient, rawName: string) {
   const name = rawName.trim().replace(/\s+/g, " ");
   if (!name || name.length > 80) throw new PeopleError("Use a job title between 1 and 80 characters.");
   const name_key = name.toLowerCase();

@@ -11,16 +11,24 @@
 .dueIcon { position: relative; display: inline-grid; place-items: center; }
 .dueIcon::after { content: ""; position: absolute; top: -2px; right: -3px; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 1.8s ease-out infinite; }
 
-/* ---- Flawiusz: warm light drifting behind the card ---- */
+/* ---- Flawiusz: the warm card of the month's news, with sparkles instead of confetti ---- */
 section.assistant { position: relative; isolation: isolate; max-width: none; margin: 0 0 22px; overflow: hidden;
-  background:
-    radial-gradient(circle at 1px 1px, rgb(63 42 24 / 5%) 1px, transparent 0) 0 0 / 18px 18px,
-    linear-gradient(135deg, #fffaf5 0%, var(--card) 50%, #fef8f0 100%); }
-.glow { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-.glow span { position: absolute; width: 340px; height: 340px; border-radius: 50%; filter: blur(70px); opacity: .26; animation: drift 18s ease-in-out infinite alternate; }
-.glow span:nth-child(1) { top: -170px; left: 8%; background: #f4a26f; }
-.glow span:nth-child(2) { top: -120px; right: 6%; background: #f6cf74; animation-duration: 22s; animation-delay: -6s; }
-.glow span:nth-child(3) { bottom: -230px; left: 42%; background: #e98a62; opacity: .18; animation-duration: 26s; animation-delay: -12s; }
+  background: linear-gradient(110deg, var(--accent-soft) 0%, var(--card) 55%); border: 1px solid var(--accent-border); border-radius: 18px; }
+/* Two layers of sparkles on the right, fading towards the text, twinkling in turn. */
+.sparkles { position: absolute; inset: 0 0 0 40%; z-index: -1; pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%); mask-image: linear-gradient(90deg, transparent, #000 45%); }
+.sparkles::before, .sparkles::after { content: ""; position: absolute; inset: 0; animation: twinkle 4s ease-in-out infinite alternate; }
+.sparkles::before { background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23c24a1f' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 14% 30% / 14px 14px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23d39b1e' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 38% 72% / 10px 10px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23e3a07f' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 62% 22% / 18px 18px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%233f8a4f' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 86% 64% / 11px 11px no-repeat; }
+.sparkles::after { background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23e3a07f' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 26% 58% / 9px 9px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%233f8a4f' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 50% 30% / 12px 12px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23c24a1f' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 74% 78% / 9px 9px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23d39b1e' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 94% 24% / 14px 14px no-repeat;
+  animation-delay: -2s; }
 
 /* ---- Stat tiles ---- */
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
@@ -36,6 +44,8 @@ section.assistant { position: relative; isolation: isolate; max-width: none; mar
 .panel { padding: 22px 24px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; }
 .wide { margin-top: 18px; }
 .panelHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+/* The team's name beside "Your team". */
+.teamName { margin-left: 6px; color: var(--muted); font-size: 13px; font-weight: 500; }
 .panelHeading h2 { margin: 0; font-size: 19px; }
 .panelHeading a { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--accent-strong); text-decoration: none; }
 .panelHeading a:hover { text-decoration: underline; }
@@ -61,7 +71,7 @@ section.assistant { position: relative; isolation: isolate; max-width: none; mar
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgb(194 74 31 / 55%); } 100% { box-shadow: 0 0 0 7px rgb(194 74 31 / 0%); } }
-@keyframes drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(60px, 40px) scale(1.15); } }
+@keyframes twinkle { from { opacity: .35; } to { opacity: 1; } }
 
 @media (max-width: 1200px) {
   .columns { grid-template-columns: 1fr; }
@@ -72,7 +82,7 @@ section.assistant { position: relative; isolation: isolate; max-width: none; mar
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rays, .dueIcon::after, .glow span { animation: none; }
+  .rays, .dueIcon::after, .sparkles::before, .sparkles::after { animation: none; }
   .stat, .task { transition: none; }
   .stat:hover { transform: none; }
 }

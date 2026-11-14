@@ -92,7 +92,6 @@
 .memberMeta { font-size: 11px; color: var(--muted); }
 .memberMeta b { color: var(--critical); }
 
-.teamName { margin-left: 6px; color: var(--muted); font-size: 13px; font-weight: 500; }
 
 @keyframes pop { from { transform: scale(0); } }
 @keyframes spin { to { transform: rotate(360deg); } }

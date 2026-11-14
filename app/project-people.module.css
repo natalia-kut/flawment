@@ -1,0 +1,26 @@
+/* A project's people as tiles: two or three to a row. */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+/* White tiles, so the beige badges and avatars inside them stand out. */
+.member { position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 12px 40px 12px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease; }
+/* Lifts a little under the pointer, like the project cards. */
+.member:hover, .member:focus-within { border-color: var(--accent-border); box-shadow: 0 8px 18px -10px #39220f40; transform: translateY(-2px); }
+/* Every line starts at the same left edge; pills keep their own width instead of stretching. */
+.info { display: grid; flex: 1; justify-items: start; gap: 2px; min-width: 0; text-align: left; }
+.info p { margin: 0; }
+.name { overflow: hidden; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
+/* Project roles above the default, in colour: the owner in the accent, a coordinator in green. */
+.role { margin: 2px 0; padding: 1px 8px; font-size: 11px; font-weight: 700; border-radius: 999px; }
+.role[data-role=OWNER] { color: var(--accent-strong); background: var(--accent-soft); }
+.role[data-role=COORDINATOR] { color: var(--success-strong); background: var(--success-soft); }
+.title { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.extra { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font-size: 12.5px; }
+
+/* "Manage" as a quiet ⋯ in the tile's corner; its menu opens below it. */
+/* Waits until the tile is pointed at or focused, like the task and stage icons (always on touch screens, and while open). */
+li.member > details.manage { position: absolute; top: 8px; right: 8px; margin: 0; opacity: 0; transition: opacity 120ms ease; }
+li.member:hover > details.manage, li.member > details.manage:focus-within, li.member > details.manage[open] { opacity: 1; }
+@media (hover: none) { li.member > details.manage { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .member, li.member > details.manage { transition: none; } .member:hover, .member:focus-within { transform: none; } }
+li.member > details.manage > summary { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; font-size: 18px; line-height: 1; color: var(--muted); border-radius: 8px; list-style: none; cursor: pointer; }
+li.member > details.manage > summary::-webkit-details-marker { display: none; }
+li.member > details.manage > summary:hover, li.member > details.manage[open] > summary { color: var(--foreground); background: var(--background); }

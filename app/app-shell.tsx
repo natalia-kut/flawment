@@ -1,21 +1,19 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import AccountMenu from "./account-menu";
 import type { Availability } from "@/lib/time-off/availability";
 import type { Status } from "@/lib/status/status";
 import type { Celebration } from "@/lib/time-off/dates";
-import type { CalendarTimeOff } from "@/lib/time-off/calendar";
-import type { TeamPerson } from "@/lib/teams/data";
 import Dashboard from "./dashboard";
 import { FlawiuszPanel } from "@/components/flawiusz/panel";
 import { useFlawiuszChat } from "@/components/flawiusz/use-flawiusz-chat";
 import { RequestedTemplateContext } from "@/components/documents/requested-template-context";
 import { SIDEBAR_COOKIE } from "@/lib/ui/sidebar";
-import type { WorkspaceProject } from "@/lib/projects/data";
 import PageHeader from "@/components/page-header";
+import { ConfirmProvider } from "@/components/ui/confirm";
 
 const navigation = [
   "Dashboard",
@@ -47,7 +45,7 @@ const adminOnly: readonly NavigationItem[] = ["People"];
 export default function AppShell({ documents, projects, tasks, profile, team, timeOff, people, user, workspace, sidebarCollapsed = false }: {
   documents: ReactNode; projects: ReactNode; tasks: ReactNode; profile: ReactNode; team: ReactNode; timeOff: ReactNode; people: ReactNode; sidebarCollapsed?: boolean;
   /** What the dashboard summarises: the projects (with tasks) this user can see. */
-  workspace: { projects: WorkspaceProject[]; userId: number; today: string; timeOff: CalendarTimeOff[]; myTeam: { name: string; members: TeamPerson[] } | null };
+  workspace: ComponentProps<typeof Dashboard>["workspace"];
   user: { id: number; first_name: string; last_name: string; role: string; photoVersion: string | null; availability: Availability; status: Status | null; celebrations: Celebration[] };
 }) {
   const router = useRouter();
@@ -87,6 +85,7 @@ export default function AppShell({ documents, projects, tasks, profile, team, ti
   }
 
   return (
+    <ConfirmProvider>
     <div className="app-shell" data-sidebar={collapsed ? "collapsed" : "expanded"}>
       <aside className="sidebar">
         <div className="sidebar-top">
@@ -151,5 +150,6 @@ export default function AppShell({ documents, projects, tasks, profile, team, ti
         <FlawiuszPanel chat={chat} onOpenChange={setChatOpen} onOpenTemplate={openTemplate} open={chatOpen} />
       )}
     </div>
+    </ConfirmProvider>
   );
 }

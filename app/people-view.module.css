@@ -3,6 +3,18 @@
 /* A fixed checkbox (16px, no browser margin) plus the label's 10px gap: the line below starts under the label text. */
 .leadField label input[type=checkbox] { width: 16px; height: 16px; margin: 0; flex: none; }
 .leadField > p { padding-left: 26px; }
+/* A row lights up under the pointer, like the task rows. */
+.table tbody td { transition: background-color 120ms ease; }
+.table tbody tr:hover td { background: var(--background); }
+.table tbody tr:hover td:first-child { border-radius: 10px 0 0 10px; }
+.table tbody tr:hover td:last-child { border-radius: 0 10px 10px 0; }
+
+/* The pencil in each row waits until the row is pointed at or focused (always on touch screens). */
+.rowAction { opacity: 0; transition: opacity 120ms ease; }
+tr:hover .rowAction, .rowAction:focus-visible { opacity: 1; }
+@media (hover: none) { .rowAction { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .rowAction, .table tbody td { transition: none; } }
+
 /* Saving will take the lead away from someone: make sure it is noticed. */
 .leadField > p.replacing { color: var(--critical); font-weight: 600; }
 
@@ -18,7 +30,9 @@
 .collapsible > p { margin: 12px 0 14px; }
 /* Search sits on the summary's line, at the right, though it is not part of it. */
 .headerSearch { position: absolute; top: 24px; right: 24px; }
-@media (max-width: 640px) { .headerSearch { position: static; margin-top: 12px; } }
+/* Smaller than body text, so the whole placeholder fits. */
+input.headerSearch { width: 280px; font-size: 13.5px; }
+@media (max-width: 640px) { .headerSearch { position: static; margin-top: 12px; } input.headerSearch { width: 100%; } }
 .summaryHint { margin-left: auto; font-size: 13px; color: var(--muted); }
 .groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; }
 /* Each group is a drop zone: dashed while a chip from the other group hovers over it. */

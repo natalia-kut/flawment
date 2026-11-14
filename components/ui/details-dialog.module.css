@@ -16,6 +16,8 @@
 .titleInput:hover, .descriptionInput:hover { border-color: var(--border); }
 .titleInput:focus, .descriptionInput:focus { outline: none; background: #fff; border-color: var(--accent-border); }
 .detailsFieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+/* Set apart under the form: rare, destructive actions such as deleting the project. */
+.detailsFooter { margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--border); }
 .detailsFacts label { display: grid; gap: .35rem; min-width: 0; }
 .detailsFacts label > span { font-family: var(--font-geist-mono), monospace; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .detailsFacts label > span em { font-style: normal; text-transform: none; letter-spacing: 0; }

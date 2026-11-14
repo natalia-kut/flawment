@@ -1,31 +1,39 @@
 .section { margin-bottom: 1.25rem; }
+.board { font-size: .85rem; font-weight: 600; }
 
-.list { display: grid; gap: .75rem; margin: 1rem 0 0; padding: 0; list-style: none; }
-.task { padding: 1rem 1.1rem; background: var(--background); border: 1px solid var(--border); border-radius: .75rem; }
-.heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
-.titleBlock { min-width: 0; }
-.heading h3 { margin: 0; font-size: 1.05rem; overflow-wrap: anywhere; }
-.stage { margin: .2rem 0 0; font-size: .85rem; color: var(--muted); }
-.actions { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-left: auto; }
-.description { margin: .75rem 0 0; font-size: .9rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-
-.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin: .9rem 0 0; padding-top: .9rem; border-top: 1px solid var(--border); }
-.facts dt { margin-bottom: .3rem; font-family: var(--font-geist-mono), monospace; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.facts dd { margin: 0; font-size: .9rem; font-weight: 600; overflow-wrap: anywhere; }
+/* One row per task: title (with a priority dot) over stage and description, then status, person, due date. */
+.table { margin-top: 1rem; }
+.head, .row { display: grid; grid-template-columns: minmax(0, 1fr) 7.5rem 10rem 4.5rem 2.25rem; align-items: center; gap: .9rem; }
+.head { padding: 0 .75rem .5rem; font-family: var(--font-geist-mono), monospace; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+.row { padding: .55rem .75rem; border-bottom: 1px solid var(--border); border-radius: .5rem; transition: background-color 120ms ease; }
+.row:hover { background: var(--background); }
+.main { min-width: 0; }
+.open { display: grid; width: 100%; padding: 0; font: inherit; color: inherit; text-align: left; background: none; border: 0; cursor: pointer; }
+.open:hover .title, .open:focus-visible .title { color: var(--accent-strong); }
+.title { display: flex; align-items: center; gap: .5rem; overflow: hidden; font-size: .95rem; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.detail { display: block; overflow: hidden; margin-left: 1rem; font-size: .8rem; color: var(--muted); white-space: nowrap; text-overflow: ellipsis; }
+.detail:empty { display: none; }
+.assignee { overflow: hidden; font-size: .85rem; white-space: nowrap; text-overflow: ellipsis; }
+.assignee[data-empty] { color: var(--muted); font-style: italic; }
+.due { font-size: .85rem; color: var(--text-secondary); }
+.due[data-late] { font-weight: 600; color: var(--critical); }
+/* The bin waits until the row is pointed at or focused. */
+.delete { opacity: 0; transition: opacity 120ms ease; }
+.row:hover .delete, .delete:focus-within { opacity: 1; }
+@media (hover: none) { .delete { opacity: 1; } }
 
 /* Same colours as the board: status by stage of work, priority by urgency. */
-.status, .priority { display: inline-block; padding: .2rem .6rem; font-size: .8rem; font-weight: 600; white-space: nowrap; border-radius: 1rem; }
-.status { color: var(--text-secondary); background: var(--surface-sunken); }
+.status { display: inline-block; padding: .15rem .55rem; font-size: .75rem; font-weight: 600; white-space: nowrap; color: var(--text-secondary); background: var(--surface-sunken); border-radius: 1rem; }
 .status[data-status=IN_PROGRESS], .status[data-status=IN_REVIEW] { color: var(--warning-strong); background: var(--warning-soft); }
 .status[data-status=COMPLETED] { color: var(--success-strong); background: var(--success-soft); }
 .status[data-status=CANCELLED] { color: var(--muted); background: transparent; border: 1px dashed var(--border-strong); }
-.priority { color: var(--warning-strong); background: var(--warning-soft); }
-.priority[data-priority=HIGH], .priority[data-priority=URGENT] { color: var(--critical); background: var(--critical-soft); }
-.priority[data-priority=LOW] { color: var(--muted); background: var(--surface-sunken); }
+.priority { flex: none; width: .5rem; height: .5rem; background: var(--warning); border-radius: 50%; }
+.priority[data-priority=HIGH], .priority[data-priority=URGENT] { background: var(--critical); }
+.priority[data-priority=LOW] { background: var(--border-strong); }
 
-.empty { margin-top: 1rem; padding: 1rem; border: 1px dashed var(--border-hover); border-radius: .5rem; }
-
-@media (max-width: 600px) {
-  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .actions { margin-left: 0; }
+@media (max-width: 700px) {
+  .head { display: none; }
+  .row { grid-template-columns: minmax(0, 1fr) auto auto; row-gap: .3rem; }
+  .main { grid-column: 1 / -1; }
 }
+@media (prefers-reduced-motion: reduce) { .row, .delete { transition: none; } }

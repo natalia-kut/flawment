@@ -87,6 +87,10 @@ model User {
   sessions          Session[]
   templates         DocumentTemplate[]
 
+  title_requests_about   JobTitleRequest[] @relation("TitleRequestPerson")
+  title_requests_made    JobTitleRequest[] @relation("TitleRequestRequester")
+  title_requests_decided JobTitleRequest[] @relation("TitleRequestDecider")
+
   owned_projects Project[]           @relation("ProjectOwner")
   memberships    ProjectMembership[]
   assigned_tasks Task[]              @relation("TaskAssignee")
@@ -105,6 +109,33 @@ model JobTitle {
   can_lead   Boolean  @default(false)
   users      User[]
   created_at DateTime @default(now())
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+// A team lead asks a super admin to change a team member's job title.
+// `title` is a name, so a lead may suggest one that is not on the list yet.
+model JobTitleRequest {
+  id           Int           @id @default(autoincrement())
+  user_id      Int
+  user         User          @relation("TitleRequestPerson", fields: [user_id], references: [id], onDelete: Cascade)
+  requested_by Int
+  requester    User          @relation("TitleRequestRequester", fields: [requested_by], references: [id], onDelete: Cascade)
+  title        String
+  note         String?
+  status       RequestStatus @default(PENDING)
+  decided_by   Int?
+  decider      User?         @relation("TitleRequestDecider", fields: [decided_by], references: [id], onDelete: SetNull)
+  decided_at   DateTime?
+  created_at   DateTime      @default(now())
+
+  @@index([status])
+  @@index([user_id])
+  @@index([requested_by, decided_at])
 }
 
 model Team {

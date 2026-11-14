@@ -10,7 +10,7 @@ type DayRange = { start: string; end: string; type?: AbsenceType };
 /**
  * What a viewer may know about someone's time off. Everyone learns that they
  * are away and when; `reasons` (sick leave is health data) only reaches their
- * team lead and super admins. The note never leaves its author.
+ * team lead. The note never leaves its author.
  */
 export type Availability =
   | { state: "away"; until: string; label: string; reasons?: AbsenceType[] }
@@ -60,11 +60,14 @@ export function toRanges(absences: { start_date: Date; end_date: Date; type?: Ab
   }));
 }
 
-/** May `viewer` know why `person` is away? Themselves, their team lead, or a super admin. */
+/**
+ * May `viewer` know why `person` is away? Themselves and their team lead only: sick leave
+ * is health data, and a super admin runs accounts, not people's days.
+ */
 export function canSeeAbsenceReason(
-  viewer: { id: number; role: string; team_id: number | null; team_lead: boolean },
+  viewer: { id: number; team_id: number | null; team_lead: boolean },
   person: { id: number; team_id: number | null },
 ) {
-  return viewer.role === "SUPER_ADMIN" || viewer.id === person.id
+  return viewer.id === person.id
     || (viewer.team_lead && viewer.team_id !== null && viewer.team_id === person.team_id);
 }

@@ -1,0 +1,32 @@
+/* This month: one warm card, a summary line, and a row per new face or promotion. */
+.card { position: relative; isolation: isolate; display: grid; justify-items: start; gap: 2px; margin-bottom: 18px; padding: 18px 22px; overflow: hidden;
+  background: linear-gradient(110deg, var(--accent-soft) 0%, var(--card) 55%); border: 1px solid var(--accent-border); border-radius: 18px; }
+
+/* Scattered dots in the accent, success and warning colours, fading towards the text. */
+.confetti { position: absolute; inset: 0 0 0 45%; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(circle, var(--accent) 0 3px, transparent 3.5px) 12% 28% / 10px 10px no-repeat,
+    radial-gradient(circle, var(--success) 0 2.5px, transparent 3px) 30% 75% / 10px 10px no-repeat,
+    radial-gradient(circle, var(--warning) 0 3px, transparent 3.5px) 48% 18% / 10px 10px no-repeat,
+    radial-gradient(circle, var(--accent-border) 0 4px, transparent 4.5px) 63% 62% / 10px 10px no-repeat,
+    radial-gradient(circle, var(--success) 0 2px, transparent 2.5px) 78% 30% / 10px 10px no-repeat,
+    radial-gradient(circle, var(--accent) 0 2.5px, transparent 3px) 90% 80% / 10px 10px no-repeat;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%); mask-image: linear-gradient(90deg, transparent, #000 40%); }
+
+.eyebrow { margin: 0; font-family: var(--font-geist-mono), monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-strong); }
+.card h2 { margin: 0; font-size: 18px; }
+
+/* A row per person, two columns when there is room: face with its emoji, what happened, and a hello.
+   A welcome is tinted in the accent, a promotion in green. */
+.rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px; width: 100%; margin: 12px 0 0; padding: 0; list-style: none; }
+.rows li { --tint: var(--accent-soft); --ring: var(--accent-border);
+  display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 8px; background: color-mix(in srgb, var(--tint) 55%, var(--card)); border-radius: 14px; }
+.rows li[data-kind=promotion] { --tint: var(--success-soft); --ring: color-mix(in srgb, var(--success) 40%, transparent); }
+.face { position: relative; flex: none; border-radius: 50%; box-shadow: 0 0 0 2px var(--ring); }
+.emoji { position: absolute; right: -6px; bottom: -5px; font-size: 15px; line-height: 1; }
+.text { display: grid; flex: 1; min-width: 0; }
+.text strong { font-size: 14px; }
+.text small { overflow: hidden; font-size: 12px; color: var(--text-secondary); white-space: nowrap; text-overflow: ellipsis; }
+.rows a { display: inline-flex; flex: none; align-items: center; height: 32px; min-height: 0; padding: 0 12px; font-size: 13px; }
+.card > :global(.text-button) { margin-top: 8px; }
+

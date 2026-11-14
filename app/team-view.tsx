@@ -13,6 +13,14 @@ import { yearsLabel } from "@/lib/time-off/dates";
 import type { PeopleDirectory } from "@/lib/people/data";
 import { EditPerson } from "./people-view";
 import EmailText from "./email-text";
+import TitleRequestControls from "./title-request-controls";
+import styles from "./team-view.module.css";
+import ThisMonth from "./this-month";
+import type { LeadTitleRequests, Promotion } from "@/lib/job-title-requests/data";
+import { useConfirmSubmit } from "@/components/ui/confirm";
+
+/** For a team lead: their job title requests by person, and the titles to pick from. */
+type Lead = { requests: LeadTitleRequests["byPerson"]; jobTitles: { id: number; name: string }[] };
 
 type Team = TeamsOverview["teams"][number];
 
@@ -21,15 +29,20 @@ type Team = TeamsOverview["teams"][number];
  * any of them. A super admin also creates teams, sets up new hires and, on a
  * team's page, places people and picks its lead.
  */
-export default function TeamView({ overview, directory, currentUserId }: { overview: TeamsOverview; directory: PeopleDirectory | null; currentUserId: number }) {
+export default function TeamView({ overview, directory, currentUserId, lead, month, promotions }: {
+  overview: TeamsOverview; directory: PeopleDirectory | null; currentUserId: number; lead: Lead | null; promotions: Promotion[];
+  /** This month in the workspace (YYYY-MM): who counts as new. */
+  month: string;
+}) {
   const selected = useSearchParams().get("team");
   if (selected) {
     const team = overview.teams.find((t) => String(t.id) === selected);
     return team ? <TeamPage team={team} currentUserId={currentUserId} own={team.id === overview.myTeamId}
+      lead={team.id === overview.myTeamId ? lead : null}
       admin={overview.canManage ? { people: overview.people, teams: overview.teams } : undefined} />
       : <><PageHeader title="Team unavailable" breadcrumbs={<TeamsCrumb />} /><section className="project-empty-state"><h2>This team no longer exists</h2><Link href="/?view=team" className="secondary-button">Back to teams</Link></section></>;
   }
-  return <TeamsIndex overview={overview} directory={directory} />;
+  return <TeamsIndex overview={overview} directory={directory} month={month} promotions={promotions} />;
 }
 
 function TeamsCrumb({ name }: { name?: string }) {
@@ -41,14 +54,19 @@ function TeamsCrumb({ name }: { name?: string }) {
 
 /* ---------- Teams index ---------- */
 
-function TeamsIndex({ overview, directory }: { overview: TeamsOverview; directory: PeopleDirectory | null }) {
+function TeamsIndex({ overview, directory, month, promotions }: { overview: TeamsOverview; directory: PeopleDirectory | null; month: string; promotions: Promotion[] }) {
+  const teamName = (id: number | null) => overview.teams.find((t) => t.id === id)?.name;
   const [creating, setCreating] = useState(false);
   const admin = overview.canManage;
   return <>
     <PageHeader title="Teams" actions={admin && <button className="primary-button" onClick={() => setCreating(true)}><span aria-hidden="true">+</span> New team</button>} />
     {!admin && overview.myTeamId === null && <p className="not-in-team-note">You are not in a team yet. Your administrator will add you to one.</p>}
     {creating && <CreateTeam onDone={() => setCreating(false)} />}
+    {/* A super admin finishes setting new people up; everyone else just meets them. */}
+    {/* A super admin's work comes first; then the month's good news, for everyone. */}
     {directory && <NewHires directory={directory} />}
+    <ThisMonth newPeople={overview.people.filter((p) => p.joinedOn.startsWith(month))} teamName={teamName}
+      promotions={promotions.flatMap((r) => overview.people.filter((p) => p.id === r.personId).map((person) => ({ person, title: r.title })))} />
     {overview.teams.length === 0 && !creating
       ? <section className="project-empty-state"><span aria-hidden="true">◎</span><h2>No teams yet</h2>
         <p>{admin ? "Create teams that mirror your company, then open one to add people." : "Your administrator has not set up any teams yet."}</p></section>
@@ -64,18 +82,14 @@ function NewHires({ directory }: { directory: PeopleDirectory }) {
   const pending = directory.people.filter((p) => p.role !== "SUPER_ADMIN" && (p.job_title_id === null || p.team_id === null));
   const editing = directory.people.find((p) => p.id === editingId);
   if (pending.length === 0) return null;
-  return <section className="workspace-card new-hires" aria-labelledby="new-hires-title">
-    <div className="section-heading"><div>
-      <h2 id="new-hires-title">New hires <span className="role-badge">{pending.length}</span></h2>
-      <p>Give them a job title and a team to finish setting them up.</p>
-    </div></div>
+  return <section className={styles.setup} aria-labelledby="new-hires-title">
+    <p className={styles.eyebrow}>New hires</p>
+    <h2 id="new-hires-title">Finish setting up {pending.length === 1 ? "1 person" : `${pending.length} people`}</h2>
+    <p className={styles.lede}>Give them a job title and a team.</p>
     <ul>{pending.map((p) => <li key={p.id}>
       <UserAvatar id={p.id} firstName={p.first_name} lastName={p.last_name} photoVersion={p.photoVersion} size={36} />
-      <div className="new-hire-name"><strong>{p.first_name} {p.last_name}</strong><small>{p.email} · joined {joinedDate.format(new Date(p.joined))}</small></div>
-      <span className="new-hire-missing">
-        {p.job_title_id === null && <span className="missing-chip">No job title</span>}
-        {p.team_id === null && <span className="missing-chip">No team</span>}
-      </span>
+      <span className={styles.who}><strong>{p.first_name} {p.last_name}</strong><small>{p.email} · joined {joinedDate.format(new Date(p.joined))}</small></span>
+      <span className={styles.missing}>{[p.job_title_id === null && "No job title", p.team_id === null && "No team"].filter(Boolean).join(" · ")}</span>
       <button type="button" className="secondary-button" onClick={() => setEditingId(p.id)}>Set up</button>
     </li>)}</ul>
     {editing && <EditPerson key={editing.id} person={editing} directory={directory} onClose={() => setEditingId(null)} />}
@@ -128,8 +142,8 @@ function CreateTeam({ onDone }: { onDone: () => void }) {
 
 /* ---------- One team (everyone; a super admin also manages it) ---------- */
 
-function TeamPage({ team, currentUserId, own, admin }: {
-  team: Team; currentUserId: number; own: boolean;
+function TeamPage({ team, currentUserId, own, lead, admin }: {
+  team: Team; currentUserId: number; own: boolean; lead: Lead | null;
   /** Present for a super admin: who can be added, and the teams they come from. */
   admin?: { people: TeamPerson[]; teams: Team[] };
 }) {
@@ -152,7 +166,10 @@ function TeamPage({ team, currentUserId, own, admin }: {
       : <ul className="people-grid">{team.members.map((person) => <PersonCard key={person.id} person={person} you={person.id === currentUserId}
         onOpen={() => setOpenId(person.id)} />)}</ul>}
     {open && <PersonDialog person={open} you={open.id === currentUserId} onClose={() => setOpenId(null)}
-      manage={admin ? <MemberControls person={open} currentLead={team.members.find((p) => p.teamLead && p.id !== open.id)} /> : undefined} />}
+      manage={admin ? <div className="dialog-actions"><MemberControls person={open} currentLead={team.members.find((p) => p.teamLead && p.id !== open.id)} /></div>
+        // Their team lead suggests a new job title; a super admin approves it.
+        : lead && open.id !== currentUserId ? <TitleRequestControls key={open.id} person={open} request={lead.requests[open.id]} jobTitles={lead.jobTitles} />
+        : undefined} />}
   </>;
 }
 
@@ -161,6 +178,7 @@ function TeamActions({ team }: { team: Team }) {
   const [renaming, setRenaming] = useState(false);
   const [renameState, rename, renamePending] = useTeamForm(() => setRenaming(false));
   const [deleteState, remove, deletePending] = useTeamForm(() => router.push("/?view=team"));
+  const confirmSubmit = useConfirmSubmit();
   if (renaming) return <form action={rename} className="team-rename">
     <input type="hidden" name="operation" value="rename" /><input type="hidden" name="team_id" value={team.id} />
     <fieldset disabled={renamePending}>
@@ -172,7 +190,7 @@ function TeamActions({ team }: { team: Team }) {
   </form>;
   return <>
     <button type="button" className="secondary-button" onClick={() => setRenaming(true)}>Rename</button>
-    <form action={remove} onSubmit={(e) => { if (!window.confirm(`Delete the ${team.name} team? Its people stay, just without a team.`)) e.preventDefault(); }}>
+    <form action={remove} onSubmit={confirmSubmit({ title: `Delete the ${team.name} team?`, message: "Its people stay, just without a team.", confirm: "Delete team" })}>
       <input type="hidden" name="operation" value="delete" /><input type="hidden" name="team_id" value={team.id} />
       <button className="secondary-button danger-text" disabled={deletePending}>Delete team</button>
     </form>
@@ -225,12 +243,14 @@ function AddMember({ team, people, teams }: { team: Team; people: TeamPerson[]; 
 function MemberControls({ person, currentLead }: { person: TeamPerson; currentLead?: TeamPerson }) {
   const [leadState, lead, leadPending] = useTeamForm();
   const [removeState, remove, removePending] = useTeamForm();
+  const confirmSubmit = useConfirmSubmit();
   // A team has one lead, so making someone else the lead replaces the current one: ask first.
   const replaces = !person.teamLead && currentLead;
   return <div className="member-admin">
-    <form action={lead} onSubmit={(e) => {
-      if (replaces && !window.confirm(`${currentLead.first_name} ${currentLead.last_name} leads this team now. Make ${person.first_name} the lead instead?`)) e.preventDefault();
-    }}>
+    <form action={lead} onSubmit={replaces ? confirmSubmit({
+      title: `Make ${person.first_name} the team lead?`, message: `${currentLead.first_name} ${currentLead.last_name} leads this team now and will hand over.`,
+      confirm: "Make team lead", danger: false,
+    }) : undefined}>
       <input type="hidden" name="operation" value="lead" /><input type="hidden" name="user_id" value={person.id} />
       {!person.teamLead && <input type="hidden" name="team_lead" value="on" />}
       {/* Leading is for managers, so the job title decides who can. */}
@@ -239,7 +259,7 @@ function MemberControls({ person, currentLead }: { person: TeamPerson; currentLe
         {person.teamLead ? "Remove as lead" : "Make team lead"}
       </button>
     </form>
-    <form action={remove} onSubmit={(e) => { if (!window.confirm(`Remove ${person.first_name} from this team?`)) e.preventDefault(); }}>
+    <form action={remove} onSubmit={confirmSubmit({ title: `Remove ${person.first_name} from this team?`, message: "They keep their account, just without a team.", confirm: "Remove" })}>
       <input type="hidden" name="operation" value="assign" /><input type="hidden" name="user_id" value={person.id} />
       <button className="text-button danger" disabled={removePending}>Remove from team</button>
     </form>
@@ -325,7 +345,7 @@ function PersonDialog({ person, you, onClose, manage }: { person: TeamPerson; yo
         <h3>Skills</h3>
         <ul className="skill-list">{person.skills.map((s) => <li key={s} className="skill-chip">{s}</li>)}</ul>
       </section>}
-      {manage && <div className="dialog-actions">{manage}</div>}
+      {manage}
     </div>
   </dialog>;
 }
