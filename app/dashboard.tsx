@@ -150,7 +150,7 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
 
       {/* Flawiusz first: the dashboard starts with a question. */}
       <section className={`flawiusz-hero ${styles.assistant}${started ? " started" : ""}`} aria-labelledby="flawiusz-hero-title">
-        <span className={styles.ripples} aria-hidden="true"><span /><span /><span /><span /></span>
+        <span className={styles.ripples} aria-hidden="true"><span /><span /><span /><span /><span /><span /><span /><span /></span>
         <div className="flawiusz-hero-intro">
           <Image className="flawiusz-hero-avatar" src="/flawiusz.png" alt="" width={68} height={68} priority />
           <div>
