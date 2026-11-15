@@ -4,7 +4,7 @@
 
 /* Status colours, same as elsewhere: planned is neutral, in progress the accent, completed green. */
 .timeline [data-status] { --bar: var(--border-hover); --bar-fill: var(--muted); }
-.timeline [data-status=IN_PROGRESS] { --bar: #f2c4ad; --bar-fill: var(--accent); }
+.timeline [data-status=IN_PROGRESS] { --bar: #b9dcd8; --bar-fill: var(--accent); }
 .timeline [data-status=COMPLETED] { --bar: #c5dfc9; --bar-fill: var(--success); }
 .timeline [data-status=CANCELLED] { --bar: var(--surface-sunken); --bar-fill: var(--text-faint); }
 
@@ -34,8 +34,8 @@
 .row { position: relative; height: var(--row); }
 .gridline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); }
 /* Overlap bands: soft stripes where two projects run together, stronger for three or more. */
-.band { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, rgb(194 74 31 / 7%) 0 6px, transparent 6px 12px); }
-.band[data-strong] { background: repeating-linear-gradient(135deg, rgb(194 74 31 / 14%) 0 6px, transparent 6px 12px); }
+.band { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, rgb(31 111 107 / 7%) 0 6px, transparent 6px 12px); }
+.band[data-strong] { background: repeating-linear-gradient(135deg, rgb(31 111 107 / 14%) 0 6px, transparent 6px 12px); }
 .today { position: absolute; top: -26px; bottom: 0; z-index: 1; width: 2px; background: var(--accent); pointer-events: none; }
 .today span { position: absolute; top: 0; left: 6px; padding: 1px 6px; font-size: 10px; font-weight: 700; color: #fff; white-space: nowrap; background: var(--accent); border-radius: 6px; }
 
@@ -56,8 +56,8 @@
 /* ---- Key ---- */
 .key { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; padding: 0; font-size: 12px; color: var(--muted); list-style: none; }
 .key li { display: flex; align-items: center; gap: 7px; }
-.keyBar { width: 22px; height: 10px; background: linear-gradient(90deg, var(--accent) 55%, #f2c4ad 55%); border-radius: 3px; }
-.keyBand { width: 22px; height: 12px; background: repeating-linear-gradient(135deg, rgb(194 74 31 / 18%) 0 4px, transparent 4px 8px); border-radius: 3px; }
+.keyBar { width: 22px; height: 10px; background: linear-gradient(90deg, var(--accent) 55%, #b9dcd8 55%); border-radius: 3px; }
+.keyBand { width: 22px; height: 12px; background: repeating-linear-gradient(135deg, rgb(31 111 107 / 18%) 0 4px, transparent 4px 8px); border-radius: 3px; }
 .keyMilestone { width: 8px; height: 8px; margin: 0 4px; border: 2px solid var(--foreground); border-radius: 2px; transform: rotate(45deg); }
 .keyOpen { width: 22px; height: 10px; background: linear-gradient(90deg, var(--border-hover), transparent); border-radius: 3px; }
 

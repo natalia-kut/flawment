@@ -20,23 +20,32 @@
   --border-strong: #d9cabc;
   --border-hover: #cdb8a5;
 
-  /* Accent: actions and "selected" only. White on it is 4.9:1. */
-  --accent: #c24a1f;
-  --accent-hover: #a83d18;
-  --accent-strong: #9c3c19;
-  --accent-soft: #fcefe6;
-  --accent-border: #e3a07f;
+  /* Accent: actions and "selected" only. A cool teal on the warm cream, so a button never
+     reads as an error. White on it is 5.9:1. */
+  --accent: #1f6f6b;
+  --accent-hover: #195d5a;
+  --accent-strong: #175652;
+  --accent-soft: #e3f1ef;
+  --accent-border: #8fc3bd;
+  /* The accent on the dark sidebar and the favicon, where the deep teal would disappear. */
+  --accent-on-dark: #6cbcb4;
 
-  /* States: a cooler red than the accent, so "urgent" never reads as "clickable". */
+  /* States: red is for errors and urgency only. Success is olive, so it is not mistaken for the teal accent. */
   --critical: #b42318;
   --critical-soft: #f9e7e2;
   --critical-border: #f0c2b4;
-  --success: #3f8a4f;
-  --success-strong: #286444;
-  --success-soft: #e3f0e5;
+  --success: #6b8a2f;
+  --success-strong: #445a1f;
+  --success-soft: #eef2df;
   --warning: #d39b1e;
   --warning-strong: #4c3414;
   --warning-soft: #f8e9ce;
+
+  /* Time off types: their own hues, apart from the accent and the states (Time off page and calendar). */
+  --absence-vacation: #e0883a;
+  --absence-sick-leave: #7b5ea7;
+  --absence-business-trip: #3d6fb4;
+  --absence-other: var(--muted);
 }
 
 @theme inline {
@@ -106,7 +115,7 @@ a:focus-visible {
 }
 
 .brand .brand-dot {
-  color: var(--accent);
+  color: var(--accent-on-dark);
 }
 
 .brand-short {
@@ -199,9 +208,10 @@ a:focus-visible {
 .main-content {
   /* A flex child: without this, wide content would stretch the page sideways. */
   min-width: 0;
-  width: min(100%, 1500px);
+  /* Wide screens get a wider page (grids of tiles gain columns); the side padding grows with the window. */
+  width: min(100%, 1760px);
   margin: 0 auto;
-  padding: 45px 54px 60px;
+  padding: 45px clamp(24px, 3.5vw, 72px) 60px;
 }
 
 .page-header {
@@ -459,7 +469,8 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { background-color: va
 .form-error { color: var(--critical); font-size: 14px; }
 .form-success { color: var(--success-strong); font-size: 14px; }
 .projects-workspace { min-width: 0; }
-.workspace-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; min-width: 0; }
+/* White on cream already sets a card apart: no frame on top of it (one level of containers). */
+.workspace-card { background: var(--card); border-radius: 14px; padding: 24px; min-width: 0; }
 .workspace-card h2 { font-size: 22px; margin: 0 0 14px; overflow-wrap: anywhere; }
 .workspace-card h3 { margin: 24px 0 12px; }
 .workspace-card p { color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
@@ -468,6 +479,8 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { background-color: va
 .role-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 4px 7px; background: var(--surface-sunken); border-radius: 4px; }
 /* Beside a heading, a count sits on the baseline and its padding hangs below it: lift it to the middle of the capitals. */
 :is(h1, h2, h3) .role-badge { line-height: 1; vertical-align: 4px; }
+/* Counts beside headings: round, quiet pills everywhere, as on the Tasks board. */
+:is(h1, h2, h3) .role-badge { min-width: 1.7em; padding: 3px 8px; text-align: center; font-size: 11.5px; font-weight: 600; color: var(--muted); border-radius: 999px; }
 /* Role and remove on one row, one height: "Role [Participant ▾]   Remove from project". */
 /* Opens as a small menu under "Manage", over the content, so the member row never reflows. */
 .member-controls { position: absolute; top: calc(100% + 6px); right: 0; z-index: 5; display: flex; align-items: center; gap: 16px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); box-shadow: 0 12px 30px -12px #39220f40; white-space: nowrap; }
@@ -562,7 +575,8 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { background-color: va
 .account-chevron { flex-shrink: 0; color: var(--text-faint); }
 .account-avatar { position: relative; display: inline-flex; flex-shrink: 0; }
 .away-dot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; background: var(--warning); border: 2px solid var(--sidebar); }
-.account-menu { position: fixed; inset: auto; width: 260px; margin: 0; padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--foreground); box-shadow: 0 18px 50px #24170d2e, 0 2px 6px #24170d14; }
+/* 300px fits "Out of office until 19 Nov · Business trip" on one line; account-menu.tsx keeps phones in view with the same width. */
+.account-menu { position: fixed; inset: auto; width: 300px; overflow-x: hidden; margin: 0; padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--foreground); box-shadow: 0 18px 50px #24170d2e, 0 2px 6px #24170d14; }
 .account-menu-header { display: flex; align-items: center; gap: 10px; padding: 8px 8px 10px; min-width: 0; }
 .account-menu-header strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
 .account-menu-header small { color: var(--muted); font-size: 12px; }
@@ -687,10 +701,10 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { background-color: va
 .type-choice:hover { border-color: var(--border-hover); }
 .type-choice:has(input:checked) { border-color: var(--type-color); background: color-mix(in srgb, var(--type-color) 9%, white); }
 .type-choice:has(input:focus-visible) { outline: 3px solid var(--accent-border); outline-offset: 2px; }
-.vacation { --type-color: var(--accent); }
-.sick_leave { --type-color: #7b5ea7; }
-.business_trip { --type-color: #2f7d8c; }
-.other { --type-color: var(--muted); }
+.vacation { --type-color: var(--absence-vacation); }
+.sick_leave { --type-color: var(--absence-sick-leave); }
+.business_trip { --type-color: var(--absence-business-trip); }
+.other { --type-color: var(--absence-other); }
 .time-off-form-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border); }
 .time-off-summary { color: var(--muted); font-size: 13px; font-weight: 600; }
 .workspace-card.time-off-lists { contain: size; display: flex; flex-direction: column; min-width: 0; padding-right: 12px; }
@@ -765,6 +779,8 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { background-color: va
 .profile-hero-meta .status-text, .profile-hero-meta .status-placeholder { font-size: 13px; }
 .account-menu-status { display: grid; justify-items: start; gap: 8px; }
 .account-menu .status-trigger { width: 100%; min-height: 0; border-radius: 8px; }
+/* Longer badges wrap rather than pushing the menu sideways. */
+.account-menu .availability-badge { white-space: normal; }
 .person-card > .status-text { padding: 6px 10px; border-radius: 8px; background: var(--surface-sunken); }
 .status-input { display: flex; align-items: center; gap: 8px; padding: 4px; border: 1px solid var(--border-hover); border-radius: 8px; background: #fff; }
 .status-input:focus-within { outline: 3px solid var(--accent-border); outline-offset: 2px; }
@@ -816,12 +832,10 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { background-color: va
 
 /* ---- Teams index and team page ---- */
 .team-grid > li { display: flex; }
-a.team-card { position: relative; flex: 1; color: inherit; text-decoration: none; transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease; }
-a.team-card:hover { border-color: var(--border-hover); box-shadow: 0 8px 24px -16px #39220f55; transform: translateY(-1px); }
-.workspace-card.team-card h2 { margin: 0 0 6px; padding-right: 28px; font-size: 19px; }
+a.team-card { position: relative; flex: 1; color: inherit; text-decoration: none; transition: box-shadow 140ms ease, transform 140ms ease; }
+a.team-card:hover { box-shadow: 0 10px 26px -16px #39220f55; transform: translateY(-2px); }
+.workspace-card.team-card h2 { margin: 0 0 6px; font-size: 19px; }
 /* Says "opens": slides and takes the accent colour on hover or keyboard focus. */
-.team-card-arrow { position: absolute; top: 26px; right: 22px; color: var(--text-faint); transition: color 140ms ease, transform 140ms ease; }
-a.team-card:hover .team-card-arrow, a.team-card:focus-visible .team-card-arrow { color: var(--accent); transform: translateX(3px); }
 .workspace-card.team-card p { margin: 0; font-size: 13px; }
 .add-member-form { margin-bottom: 24px; }
 .add-member-form fieldset { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; border: 0; padding: 0; margin: 0; }

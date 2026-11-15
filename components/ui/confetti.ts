@@ -4,7 +4,7 @@
  * Plain DOM and the Web Animations API, cleaned up when it lands; skipped
  * entirely when the user prefers reduced motion.
  */
-const COLOURS = ["#c24a1f", "#d39b1e", "#3f8a4f", "#7d4f8a", "#e98a62"];
+const COLOURS = ["#1f6f6b", "#6cbcb4", "#d39b1e", "#6b8a2f", "#e0883a"];
 
 export function celebrate(level: "small" | "big" = "small", origin?: { x: number; y: number }) {
   if (typeof window === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;

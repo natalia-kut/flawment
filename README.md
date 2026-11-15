@@ -353,17 +353,17 @@ Tests cover permissions, project boundaries, validation, assignment and deletion
 
 ### Project browser
 
-Projects are displayed in a table with deadline, status, task completion and
-member count. Search names and descriptions, combine with a status filter, or
+Projects are displayed as cards: name and description, a progress ring with
+the share of tasks done, status, deadline ("Due in 5 days" when close, red once
+past), overdue tasks (a link to them on the Tasks board) and the people. Search
+names and descriptions, combine with a status filter, or
 enable Show archived. Selecting the Archived status also reveals archived
 projects. Clear filters restores the default view, which excludes archived items.
 
 Completion is calculated from task statuses: completed tasks divided by all
 non-cancelled tasks. A project without active tasks shows 0%. Project status
-remains an independently managed value. Click a project name to open its details.
-The table displays named statuses, long dates, overdue task counts and segmented
-task progress. Search and status controls are available under **Filters**.
-The displayed **Planned** status corresponds to `TO_DO` in the database.
+remains an independently managed value. Click anywhere on a card to open the
+project. The displayed **Planned** status corresponds to `TO_DO` in the database.
 
 ### Profiles, statuses and celebrations
 
@@ -404,8 +404,8 @@ this month (a super admin sees **New hires** to finish setting up above it). Emp
 
 A super admin also creates, renames and deletes teams, adds people to a team
 (moving someone from another team asks for confirmation first), picks its lead
-and sees warnings when a team has no lead. **New hires** on the Teams page lists
-accounts still missing a job title or a team, with **Set up** to finish them.
+and sees warnings when a team has no lead. **New hires** on the Teams page is one
+line of accounts still missing a job title or a team; click one to finish it.
 
 **Job title requests.** A team lead opens someone in their team and chooses
 **Suggest a new job title** (from the list or a new name, with an optional

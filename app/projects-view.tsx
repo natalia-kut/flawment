@@ -20,8 +20,8 @@ import PageHeader from "@/components/page-header";
 import { useConfirmSubmit } from "@/components/ui/confirm";
 import people from "./project-people.module.css";
 
-function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, className = "workspace-form" }: {
-  children: ReactNode; operation: string; projectId?: number;
+function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, className = "workspace-form", id }: {
+  children?: ReactNode; operation: string; projectId?: number; id?: string;
   onSubmit?: FormEventHandler<HTMLFormElement>; onSuccess?: (projectId?: number) => void; className?: string;
 }) {
   const [state, action, pending] = useActionState(async (previous: Awaited<ReturnType<typeof projectAction>>, data: FormData) => {
@@ -29,7 +29,7 @@ function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, class
     if (result.success) onSuccess?.(result.projectId);
     return result;
   }, {});
-  return <form action={action} className={className} onSubmit={onSubmit}>
+  return <form id={id} action={action} className={className} onSubmit={onSubmit}>
     <input type="hidden" name="operation" value={operation} />
     {projectId && <input type="hidden" name="project_id" value={projectId} />}
     <fieldset disabled={pending}>{children}</fieldset>
@@ -163,10 +163,10 @@ export default function ProjectsView({ projects, today, canCreateProjects }: {
     {/* The same in-place style as the task dialog. */}
     {modal === "create" && <ProjectDetailsForm onClose={close} onSaved={(id) => { close(); router.push(`/?project=${id}`); }} />}
     {modal === "edit" && project && <ProjectDetailsForm key={"edit-" + project.id} project={project} onClose={close} onSaved={() => { close(); router.refresh(); }}
-      footer={project.canDelete && <ChangeForm operation="delete" projectId={project.id} className="compact-form" onSuccess={() => router.push("/?view=projects")}
-        onSubmit={confirmSubmit({ title: `Delete “${project.name}”?`, message: "Its tasks, stages and memberships go with it. This cannot be undone.", confirm: "Delete project" })}>
-        <button className="text-button danger">Delete project</button>
-      </ChangeForm>} />}
+      // Its own form (forms cannot nest); the dialog's "Delete project" button submits it by id.
+      deletion={project.canDelete ? { formId: "delete-project-" + project.id, form: <ChangeForm id={"delete-project-" + project.id} operation="delete" projectId={project.id}
+        className="compact-form" onSuccess={() => router.push("/?view=projects")}
+        onSubmit={confirmSubmit({ title: `Delete “${project.name}”?`, message: "Its tasks, stages and memberships go with it. This cannot be undone.", confirm: "Delete project" })} /> } : undefined} />}
     {modal === "add" && project && <ProjectDialog title="Bring someone on board" description={`Add a registered user to ${project.name}.`} onClose={close}>
       {project.eligible.length === 0 ? <p>There are no other available users to add.</p> : <ChangeForm operation="add" projectId={project.id} onSuccess={close}>
         <label>Available users<select name="user_id" required defaultValue=""><option value="" disabled>Select a user</option>{project.eligible.map((user) => <option key={user.id} value={user.id}>{user.first_name} {user.last_name} ({user.email}){user.availability ? ` · ${user.availability.label}` : ""}</option>)}</select></label>

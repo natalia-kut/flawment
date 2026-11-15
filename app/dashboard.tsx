@@ -132,8 +132,7 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
   const tone = admin ? (admin.requests.length || waiting ? "due" : "free")
     : overdue.length > 0 ? "late" : dueThisWeek.length === 0 ? "free" : "due";
   const summary = admin
-    ? admin.requests.length ? `${admin.requests.length} job title ${admin.requests.length === 1 ? "request" : "requests"} to decide`
-      : waiting ? `${waiting} ${waiting === 1 ? "thing" : "things"} to set up` : "Everything is set up"
+    ? admin.requests.length || waiting ? "A few things need you" : "Everything is set up"
     : tone === "late"
     ? `${overdue.length} overdue ${overdue.length === 1 ? "task" : "tasks"}${dueThisWeek.length > 0 ? ` · ${dueThisWeek.length} due this week` : ""}`
     : tone === "free" ? "Nothing due this week"
@@ -151,7 +150,7 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
 
       {/* Flawiusz first: the dashboard starts with a question. */}
       <section className={`flawiusz-hero ${styles.assistant}${started ? " started" : ""}`} aria-labelledby="flawiusz-hero-title">
-        <span className={styles.sparkles} aria-hidden="true" />
+        <span className={styles.ripples} aria-hidden="true" />
         <div className="flawiusz-hero-intro">
           <Image className="flawiusz-hero-avatar" src="/flawiusz.png" alt="" width={68} height={68} priority />
           <div>
@@ -174,12 +173,19 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
 
       {admin && needs ? <>
         <div className={styles.stats}>
-          <Stat label="Requests to decide" value={admin.requests.length} href="#title-requests" tone={admin.requests.length > 0 ? "critical" : undefined} />
+          <Stat label="Requests to decide" value={admin.requests.length} href="#title-requests" />
           <Stat label="No job title" value={needs.noTitle.length} href="/?view=team" />
           <Stat label="No team" value={needs.noTeam.length} href="/?view=team" />
           <Stat label="Teams without a lead" value={needs.leaderless.length} href="/?view=team" />
         </div>
-        <NeedsYou requests={admin.requests} needs={needs} today={today} />
+        {/* Deadlines on the left, like everyone's dashboard; what needs the super admin on the right. */}
+        <div className={styles.columns}>
+          {/* Only their own work: a super admin oversees people, not every project's deadlines. */}
+          <section className={styles.panel} aria-label="Deadlines">
+            <TaskCalendar today={today} tasks={tasks.filter((task) => task.status !== "CANCELLED" && task.assignedTo === userId)} timeOff={timeOff} onOpenTask={setPreviewId} />
+          </section>
+          <NeedsYou requests={admin.requests} needs={needs} today={today} />
+        </div>
       </> : <>
         <div className={styles.stats}>
           <Stat label="Your open tasks" value={mine.length} href="/?view=tasks&mine=1" />

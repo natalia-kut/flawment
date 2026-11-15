@@ -3,7 +3,7 @@
   --status-to-do: #7d4f8a;
   --status-in-progress: #d65325;
   --status-in-review: #d39b1e;
-  --status-completed: #3f8a4f;
+  --status-completed: #6b8a2f;
   --status-cancelled: #b9b1a7;
   /* Reserved state colors: always paired with an icon or label. */
   --tone-good: #0b8a3e;
@@ -150,7 +150,7 @@
 .builder-field textarea:focus,
 .builder-field select:focus {
   border-color: var(--accent);
-  outline: 2px solid rgb(214 83 37 / 16%);
+  outline: 2px solid rgb(31 111 107 / 18%);
 }
 
 /* Template list */
@@ -229,11 +229,15 @@
     font-size: 13px;
     font-weight: 600;
     text-align: left;
+    transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
   }
   
-  .new-template-button:hover {
-    border-color: var(--accent);
-    color: var(--accent);
+  /* Lights up white, like "+ Create new" on the Tasks board. */
+  .new-template-button:hover,
+  .new-template-button:focus-visible {
+    border-color: var(--accent-border);
+    background: var(--card);
+    color: var(--accent-strong);
 }
 
 .storage-notice {
@@ -505,9 +509,9 @@
 .document-cover {
   margin: 0 calc(-1 * clamp(25px, 3.4vw, 46px));
   padding: 22px clamp(25px, 3.4vw, 46px) 26px;
-  background:
-    radial-gradient(circle at 100% 0%, rgb(214 83 37 / 38%), transparent 46%),
-    var(--sidebar);
+  /* Flawment's dark brown, as in the sidebar. A neutral light in the corner gives it depth;
+     a coloured glow on brown turns muddy. The accent shows only in the logo's dot. */
+  background: radial-gradient(circle at 100% 0%, rgb(255 255 255 / 7%), transparent 50%), var(--sidebar);
   color: var(--surface);
 }
 
@@ -533,7 +537,7 @@
 }
 
 .document-cover-top b {
-  color: var(--accent);
+  color: var(--accent-on-dark);
 }
 
 .document-cover h2 {
@@ -547,7 +551,7 @@
 .document-cover p {
   max-width: 78%;
   margin: 9px 0 0;
-  color: var(--border-strong);
+  color: rgb(255 255 255 / 78%);
   font-size: 13px;
   line-height: 1.55;
 }
@@ -1107,7 +1111,7 @@ p.document-muted {
 .builder-name:focus,
 .builder-description:focus {
   border-color: var(--accent);
-  outline: 2px solid rgb(214 83 37 / 16%);
+  outline: 2px solid rgb(31 111 107 / 18%);
   background: var(--card);
 }
 

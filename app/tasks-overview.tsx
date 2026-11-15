@@ -19,8 +19,6 @@ import ProgressBar from "@/components/ui/progress-bar";
 import PageHeader from "@/components/page-header";
 import { celebrate } from "@/components/ui/confetti";
 
-// One full row of overdue tiles: 4 fills a row whether the box shows 4, 2 or 1 columns.
-const OVERDUE_PREVIEW = 4;
 const PROJECT_STORAGE_KEY = "flawment.tasks.project";
 const ORDER_STORAGE_KEY = "flawment.tasks.projectOrder";
 const MESSAGE_MS = 4000;
@@ -79,7 +77,6 @@ export default function TasksOverview({ projects, currentUserId, today }: {
   const [toggledGroups, setToggledGroups] = useState<Record<string, boolean>>({});
   const [groupBy, setGroupBy] = useState<"project" | "person">("project");
   const [overdueOnly, setOverdueOnly] = useState(search.get("overdue") === "1");
-  const [showAllOverdue, setShowAllOverdue] = useState(false);
   const [mineOnly, setMineOnly] = useState(search.get("mine") === "1");
   const [dragging, setDragging] = useState<number | null>(null);
   const [saving, setSaving] = useState<number | null>(null);
@@ -116,11 +113,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
   const tasks = filterOverviewTasks(allTasks, filters, projectId)
     .filter((task) => (!overdueOnly || isTaskOverdue(task, today)) &&
       (!mineOnly || task.assignedTo === currentUserId));
-  // Most overdue first. Deadlines are YYYY-MM-DD, so they sort as text.
-  const overdue = allTasks.filter((task) => isTaskOverdue(task, today) && (!projectId || String(task.projectId) === projectId))
-    .sort((a, b) => a.deadline.localeCompare(b.deadline));
-  const daysLate = (deadline: string) => Math.round((Date.parse(today) - Date.parse(deadline)) / 86_400_000);
-  const overdueShown = showAllOverdue ? overdue : overdue.slice(0, OVERDUE_PREVIEW);
+  const overdue = allTasks.filter((task) => isTaskOverdue(task, today) && (!projectId || String(task.projectId) === projectId));
   const assignees = Array.from(new Map(allTasks.map((task) =>
     [taskAssigneeKey(task), task.assigneeName] as const
   ))).filter(([key]) => key !== "unassigned").sort((a, b) => a[1].localeCompare(b[1]));
@@ -130,6 +123,8 @@ export default function TasksOverview({ projects, currentUserId, today }: {
   const scopeTasks = singleProject ? allTasks.filter((task) => String(task.projectId) === projectId) : allTasks;
   const scopeProgress = taskProgress(scopeTasks);
   const selectedProject = projects.find((project) => String(project.id) === projectId);
+  // The project a task can be added to when the board is empty: the one picked, if you may add tasks to it.
+  const emptyAddTo = singleProject ? creatable.find((project) => String(project.id) === projectId) : undefined;
   const groups = Array.from(new Map(tasks.map((task) => grouping === "project"
     ? [String(task.projectId), task.projectName] as const
     : [taskAssigneeKey(task), task.assigneeName] as const)));
@@ -148,7 +143,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
     saveOrder(ids);
   }
   function selectProject(id: string) {
-    setProjectId(id); update("stage", ""); setShowAllOverdue(false);
+    setProjectId(id); update("stage", "");
     if (id) localStorage.setItem(PROJECT_STORAGE_KEY, id);
     else localStorage.removeItem(PROJECT_STORAGE_KEY);
   }
@@ -248,30 +243,14 @@ export default function TasksOverview({ projects, currentUserId, today }: {
       </button>)}
       {customOrder && <button type="button" className={styles.resetOrder} onClick={() => saveOrder(null)}>Reset to A–Z</button>}
     </div>}
-    {overdue.length > 0 && !overdueOnly && <section className={styles.overdue} aria-label="Overdue tasks">
-      <div className={styles.groupHeading}><h2>Overdue · {overdue.length}</h2>
-        <button className="secondary-button" onClick={() => {
-          setOverdueOnly(true); setFilters({ ...emptyTaskFilters }); setMineOnly(false);
-        }}>Show only overdue</button>
-      </div>
-      <ul>{overdueShown.map((task) => {
-        const late = daysLate(task.deadline);
-        return <li key={task.id}>
-          <button type="button" className={styles.overdueItem} onClick={() => openDetails(task.id)}
-            title={task.title + " · due " + formatTaskDeadline(task.deadline)}>
-            <strong>{task.title}</strong>
-            <span className={styles.overdueMeta}>
-              <span>{task.assigneeName}</span>
-              <span className={styles.daysLate}>{late === 1 ? "1 day late" : late + " days late"}</span>
-            </span>
-          </button>
-        </li>;
-      })}</ul>
-      {overdue.length > OVERDUE_PREVIEW && <button type="button" className={styles.showMore} aria-expanded={showAllOverdue}
-        onClick={() => setShowAllOverdue(!showAllOverdue)}>
-        {showAllOverdue ? "Show fewer" : "Show all " + overdue.length}
-      </button>}
-    </section>}
+    {/* One quiet line instead of a block of tiles: the Overdue filter shows them. */}
+    {overdue.length > 0 && !overdueOnly && <p className={styles.overdueNote}>
+      <span className={styles.overdueDot} aria-hidden="true" />
+      <strong>{overdue.length} overdue {overdue.length === 1 ? "task" : "tasks"}</strong>
+      <button type="button" className={styles.showMore} onClick={() => {
+        setOverdueOnly(true); setFilters({ ...emptyTaskFilters }); setMineOnly(false);
+      }}>Show them</button>
+    </p>}
     <div className={controls.toolbar} role="group" aria-label="Task filters">
       <div className={controls.toolbarRow}>
         <input className={controls.search} type="search" aria-label="Search tasks" placeholder="Search tasks by title or description"
@@ -324,6 +303,10 @@ export default function TasksOverview({ projects, currentUserId, today }: {
               <section key={column.status} className={styles.column} aria-label={column.label}>
                 <h3>{column.label} · 0</h3>
                 <p className={styles.dropHint}>No tasks</p>
+                {/* One project picked: you can still add a task to it here, filters or not. */}
+                {emptyAddTo && <button type="button" className={styles.addTask} aria-label={"Create new task in " + column.label}
+                  onClick={() => setCreatingIn({ projectId: emptyAddTo.id, status: column.status })}>
+                  <span aria-hidden="true">+</span> Create new</button>}
               </section>)}
           </div>
         </section>
@@ -370,7 +353,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
                 }}>
                 <h3>{column.label} · {cards.length}</h3>
                 {cards.map((task) => <article key={task.id}
-                  className={styles.card + (isTaskOverdue(task, today) ? " " + styles.late : "") + (dragging === task.id ? " " + styles.dragging : "")}
+                  className={styles.card + (dragging === task.id ? " " + styles.dragging : "")}
                   style={{ viewTransitionName: "task-card-" + task.id, viewTransitionClass: "task-card" }}
                   draggable={task.canChangeStatus && saving === null}
                   aria-busy={saving === task.id}
@@ -387,9 +370,12 @@ export default function TasksOverview({ projects, currentUserId, today }: {
                     event.dataTransfer.effectAllowed = "move"; setDragging(task.id);
                   }}
                   onDragEnd={() => { setDragging(null); setDropTarget(null); }}>
-                  <div className={styles.cardMeta}><span>{task.assigneeName}</span><span className={styles.badge} data-priority={task.priority}>{task.priority.toLowerCase()}</span></div>
-                  <h4>{task.title}</h4>
-                  <p className={isTaskOverdue(task, today) ? styles.lateText : ""}>{isTaskOverdue(task, today) ? "Overdue · " : ""}{formatShortDeadline(task.deadline)}</p>
+                  <h4><span className={styles.priority} data-priority={task.priority} title={taskPriorityLabels[task.priority] + " priority"} />
+                    <span className="visually-hidden">{taskPriorityLabels[task.priority]} priority: </span>{task.title}</h4>
+                  <div className={styles.cardMeta}>
+                    <span>{task.assigneeName}</span>
+                    <span className={isTaskOverdue(task, today) ? styles.lateText : undefined}>{formatShortDeadline(task.deadline)}{isTaskOverdue(task, today) && <span className="visually-hidden"> (overdue)</span>}</span>
+                  </div>
                 </article>)}
                 {cards.length === 0 && <p className={styles.dropHint}>No tasks</p>}
                 {addTo && column.status !== "CANCELLED" && <button type="button" className={styles.addTask}
