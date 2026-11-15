@@ -14,21 +14,15 @@
 /* ---- Flawiusz: centred as in flawiusz.css, on the one tinted surface of the page, with ripples spreading from him ---- */
 section.assistant { position: relative; isolation: isolate; max-width: none; margin: 0 0 22px; padding: 30px 32px 28px; gap: 20px; overflow: hidden;
   background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 13%, var(--card)) 0%, var(--accent-soft) 70%); border: 0; border-radius: 16px; box-shadow: none; }
-/* Ripples born at Flawiusz that flow out to the card's edges and fade, one after another, as if the
-   beaver had just surfaced. Each ring is a circle 1800px across, centred on the avatar (30px padding + half
-   of 68px = 64px down), growing from the avatar's size to full and fading as it goes. Without motion the
-   first four rest as still rings. Gone once the chat starts and the card folds into a bar. */
-.ripples { position: absolute; top: -836px; left: calc(50% - 900px); z-index: -1; width: 1800px; height: 1800px; pointer-events: none; }
-.ripples > span { position: absolute; inset: 0; border: 2px solid rgb(31 111 107 / 30%); border-radius: 50%;
-  transform: scale(.05); opacity: 0; animation: ripple 20s cubic-bezier(.25, .6, .4, 1) infinite; }
-/* Eight rings, a new one every 2.5s; each takes 20s to reach the edge. */
-.ripples > span:nth-child(2) { animation-delay: -2.5s; }
-.ripples > span:nth-child(3) { animation-delay: -5s; }
-.ripples > span:nth-child(4) { animation-delay: -7.5s; }
-.ripples > span:nth-child(5) { animation-delay: -10s; }
-.ripples > span:nth-child(6) { animation-delay: -12.5s; }
-.ripples > span:nth-child(7) { animation-delay: -15s; }
-.ripples > span:nth-child(8) { animation-delay: -17.5s; }
+/* Ripples spreading from Flawiusz across the whole card, as if the beaver had just surfaced: thin rings in
+   the accent, fading towards the edges, two layers breathing in turn. 1800px across and centred on the avatar
+   (30px padding + half of 68px = 64px down). Gone once the chat starts and the card folds into a bar. */
+.ripples { position: absolute; top: -836px; left: calc(50% - 900px); z-index: -1; width: 1800px; height: 1800px; pointer-events: none;
+  -webkit-mask-image: radial-gradient(circle, #000 12%, transparent 62%); mask-image: radial-gradient(circle, #000 12%, transparent 62%); }
+.ripples::before, .ripples::after { content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: repeating-radial-gradient(circle, transparent 0 44px, rgb(31 111 107 / 22%) 44px 45.5px, transparent 45.5px 90px);
+  animation: ripple 6s ease-in-out infinite alternate; }
+.ripples::after { background: repeating-radial-gradient(circle, transparent 0 66px, rgb(31 111 107 / 14%) 66px 67.5px, transparent 67.5px 90px); animation-delay: -3s; }
 section.assistant:global(.started) .ripples { display: none; }
 
 /* ---- Counts: one strip of numbers with hairline dividers, not a row of boxes ---- */
@@ -73,7 +67,7 @@ section.assistant:global(.started) .ripples { display: none; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgb(31 111 107 / 55%); } 100% { box-shadow: 0 0 0 7px rgb(31 111 107 / 0%); } }
-@keyframes ripple { 0% { opacity: 0; transform: scale(.05); } 8% { opacity: 1; } 100% { opacity: 0; transform: scale(1); } }
+@keyframes ripple { from { opacity: .45; transform: scale(.97); } to { opacity: 1; transform: scale(1.02); } }
 
 @media (max-width: 1200px) {
   .columns { grid-template-columns: 1fr; }
@@ -89,13 +83,6 @@ section.assistant:global(.started) .ripples { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rays, .dueIcon::after { animation: none; }
-  /* Still rings at set sizes instead of flowing ones. */
-  .ripples > span { animation: none; opacity: .6; }
-  .ripples > span:nth-child(1) { transform: scale(.12); }
-  .ripples > span:nth-child(2) { transform: scale(.22); opacity: .45; }
-  .ripples > span:nth-child(3) { transform: scale(.34); opacity: .3; }
-  .ripples > span:nth-child(4) { transform: scale(.48); opacity: .18; }
-  .ripples > span:nth-child(n+5) { opacity: 0; }
+  .rays, .dueIcon::after, .ripples::before, .ripples::after { animation: none; }
   .stat, .task { transition: none; }
 }
