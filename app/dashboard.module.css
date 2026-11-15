@@ -14,15 +14,21 @@
 /* ---- Flawiusz: centred as in flawiusz.css, on the one tinted surface of the page, with ripples spreading from him ---- */
 section.assistant { position: relative; isolation: isolate; max-width: none; margin: 0 0 22px; padding: 30px 32px 28px; gap: 20px; overflow: hidden;
   background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 13%, var(--card)) 0%, var(--accent-soft) 70%); border: 0; border-radius: 16px; box-shadow: none; }
-/* Ripples spreading from Flawiusz across the whole card, as if the beaver had just surfaced: thin rings in
-   the accent, fading towards the edges, two layers breathing in turn. 1800px across and centred on the avatar
-   (30px padding + half of 68px = 64px down). Gone once the chat starts and the card folds into a bar. */
-.ripples { position: absolute; top: -836px; left: calc(50% - 900px); z-index: -1; width: 1800px; height: 1800px; pointer-events: none;
-  -webkit-mask-image: radial-gradient(circle, #000 12%, transparent 62%); mask-image: radial-gradient(circle, #000 12%, transparent 62%); }
-.ripples::before, .ripples::after { content: ""; position: absolute; inset: 0; border-radius: 50%;
-  background: repeating-radial-gradient(circle, transparent 0 44px, rgb(31 111 107 / 22%) 44px 45.5px, transparent 45.5px 90px);
-  animation: ripple 6s ease-in-out infinite alternate; }
-.ripples::after { background: repeating-radial-gradient(circle, transparent 0 66px, rgb(31 111 107 / 14%) 66px 67.5px, transparent 67.5px 90px); animation-delay: -3s; }
+/* Ripples on the water, coming in from two corners of the card rather than from Flawiusz (rings centred
+   on him read as hypnotic): each corner is the centre of a set of thin rings in the accent that fade
+   outwards, so only their arcs show inside the card. The two breathe on uneven periods, never in step.
+   Gone once the chat starts and the card folds into a bar. */
+.ripples { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.ripples::before, .ripples::after { content: ""; position: absolute; width: 1000px; height: 1000px; border-radius: 50%;
+  background: repeating-radial-gradient(circle, transparent 0 44px, rgb(31 111 107 / 22%) 44px 45.5px, transparent 45.5px 80px);
+  -webkit-mask-image: radial-gradient(circle, #000 15%, transparent 62%); mask-image: radial-gradient(circle, #000 15%, transparent 62%);
+  animation: ripple 5s ease-in-out infinite alternate; }
+/* Bottom right, centred on the corner. */
+.ripples::before { right: -500px; bottom: -500px; }
+/* Top left, a little further out, fainter and on its own period. */
+.ripples::after { top: -560px; left: -520px;
+  background: repeating-radial-gradient(circle, transparent 0 60px, rgb(31 111 107 / 15%) 60px 61.5px, transparent 61.5px 80px);
+  animation-duration: 7.3s; animation-delay: -2s; }
 section.assistant:global(.started) .ripples { display: none; }
 
 /* ---- Counts: one strip of numbers with hairline dividers, not a row of boxes ---- */
@@ -67,7 +73,7 @@ section.assistant:global(.started) .ripples { display: none; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgb(31 111 107 / 55%); } 100% { box-shadow: 0 0 0 7px rgb(31 111 107 / 0%); } }
-@keyframes ripple { from { opacity: .45; transform: scale(.97); } to { opacity: 1; transform: scale(1.02); } }
+@keyframes ripple { from { opacity: .45; transform: scale(.96); } to { opacity: .85; transform: scale(1.04); } }
 
 @media (max-width: 1200px) {
   .columns { grid-template-columns: 1fr; }
