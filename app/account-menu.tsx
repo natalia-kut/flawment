@@ -37,7 +37,8 @@ export default function AccountMenu({ user, compact, onOpen }: {
       style.left = `${box.left}px`;
       style.bottom = `${window.innerHeight - box.top + 8}px`;
     } else { // Below it (phones, where the sidebar is a top bar).
-      style.left = `${Math.max(12, Math.min(box.left, window.innerWidth - 272))}px`;
+      // The menu's 300px width (see .account-menu) plus a 12px margin.
+      style.left = `${Math.max(12, Math.min(box.left, window.innerWidth - 312))}px`;
       style.top = `${box.bottom + 8}px`;
     }
   }

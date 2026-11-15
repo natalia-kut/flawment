@@ -11,11 +11,14 @@ import TaskDetailsDialog from "./task-details-dialog";
  * Create or edit a project in the same in-place style as a task: the name is
  * the heading, then the description, then a grid of dates and status.
  */
-export default function ProjectDetailsForm({ project, onClose, onSaved, footer }: {
+export default function ProjectDetailsForm({ project, onClose, onSaved, deletion }: {
   /** Leave out to create a new project. */
   project?: WorkspaceProject;
-  /** Below the form, apart from it: e.g. deleting the project (a form of its own, so it cannot sit inside this one). */
-  footer?: ReactNode;
+  /**
+   * Deleting the project: a form of its own (forms cannot nest), rendered after this one;
+   * its button sits in this form's action row and submits it by id.
+   */
+  deletion?: { formId: string; form: ReactNode };
   onClose: () => void;
   onSaved: (projectId?: number) => void;
 }) {
@@ -66,6 +69,7 @@ export default function ProjectDetailsForm({ project, onClose, onSaved, footer }
         </div>
         {state.error && <p className="form-error" role="alert">{state.error}</p>}
         <div className="dialog-actions">
+          {deletion && <button type="submit" form={deletion.formId} className={`text-button danger ${details.detailsDelete}`}>Delete project</button>}
           {creating
             ? <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
             : dirty && <button type="button" className="secondary-button" onClick={() => setFields(initial)}>Discard</button>}
@@ -75,6 +79,6 @@ export default function ProjectDetailsForm({ project, onClose, onSaved, footer }
         </div>
       </fieldset>
     </form>
-    {footer && <div className={details.detailsFooter}>{footer}</div>}
+    {deletion?.form}
   </TaskDetailsDialog>;
 }

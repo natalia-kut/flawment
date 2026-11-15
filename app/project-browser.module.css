@@ -1,38 +1,46 @@
-.tableWrap { margin-top: 1rem; overflow-x: auto; background: var(--card); border: 1px solid var(--border-strong); border-radius: .75rem; box-shadow: 0 12px 22px -18px #39220f55; }
-.table { width: 100%; min-width: 50rem; table-layout: fixed; border-collapse: collapse; text-align: left; font-size: .95rem; }
-.caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+/* Projects as cards: what it is, how far along, when it is due, and who works on it. */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin: 1rem 0 0; padding: 0; list-style: none; }
+.card { position: relative; display: flex; flex-direction: column; gap: 14px; padding: 20px 22px 18px; background: var(--card); border-radius: 16px; transition: box-shadow 140ms ease, transform 140ms ease; }
+.card:hover, .card:focus-within { box-shadow: 0 10px 26px -16px #39220f55; transform: translateY(-2px); }
+.name { margin: 0; font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
+/* The name link covers the whole card (its ::after), so the card is one big target. */
+.cardLink { color: var(--foreground); text-decoration: none; }
+.cardLink::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.cardLink:focus-visible { outline: none; }
+.cardLink:focus-visible::after { outline: 2px solid var(--accent); outline-offset: 2px; }
+.description { display: -webkit-box; margin: -6px 0 0; overflow: hidden; font-size: 13.5px; line-height: 1.5; color: var(--text-secondary); -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.none { color: var(--text-subtle); }
 
-.table th, .table td { padding: 1.1rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
-.table thead th { padding-block: 1rem; font-family: var(--font-geist-mono), monospace; font-size: .75rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
-.table tbody tr { position: relative; height: 5rem; cursor: pointer; }
-.table tbody tr:last-child > * { border-bottom: 0; }
-.table tbody th { font-weight: 600; }
-.table tr > :nth-child(1) { width: 30%; padding-left: 1.25rem; }
-.table tr > :nth-child(2) { width: 18%; }
-.table tr > :nth-child(3) { width: 15%; }
-.table tr > :nth-child(4) { width: 20%; }
-.table tr > :nth-child(5) { width: 17%; padding-right: 1.25rem; }
+/* Progress: a ring with the percentage and the task count beside it. */
+.progress { display: flex; align-items: center; gap: 12px; }
+.progress > span { display: grid; }
+.progress strong { font-size: 18px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.progress small { font-size: 12.5px; color: var(--muted); }
+.ring { flex: none; }
+.ringTrack { fill: none; stroke: var(--surface-sunken); stroke-width: 5; }
+.ringFill { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; }
+.ring[data-done] .ringFill { stroke: var(--success); }
 
-/* The name link covers the whole row (its ::after), so the row is one big target. */
-.rowLink { color: var(--foreground); text-decoration: none; overflow-wrap: anywhere; }
-.rowLink::after { content: ""; position: absolute; inset: 0; }
-.rowLink:hover { text-decoration: underline; }
-.rowLink:focus-visible { outline: none; }
-.rowLink:focus-visible::after { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: .5rem; }
-
-/* Sits above the row's stretched link, so it opens the overdue tasks instead of the project. */
-.overdue { position: relative; z-index: 1; display: inline-block; margin-top: .35rem; font-size: .85rem; font-weight: 400; color: var(--critical); text-decoration: none; }
-.overdue:hover { text-decoration: underline; }
-.none { color: var(--text-subtle); font-size: .875rem; }
-
-.status { display: inline-block; padding: .25rem .75rem; font-family: var(--font-geist-mono), monospace; font-size: .75rem; line-height: 1.3; white-space: nowrap; color: var(--text-secondary); background: var(--surface-sunken); border-radius: 1.25rem; }
+.facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; font-size: 13px; }
+.status { display: inline-block; padding: .2rem .7rem; font-family: var(--font-geist-mono), monospace; font-size: .72rem; line-height: 1.3; white-space: nowrap; color: var(--text-secondary); background: var(--surface-sunken); border-radius: 1.25rem; }
 .status[data-status=IN_PROGRESS] { color: var(--warning-strong); background: var(--warning-soft); }
 .status[data-status=COMPLETED] { color: var(--success-strong); background: var(--success-soft); }
 .status[data-status=CANCELLED] { color: var(--critical); background: var(--critical-soft); }
 .status[data-status=ARCHIVED] { color: var(--muted); background: transparent; border: 1px dashed var(--border-strong); }
+.due { color: var(--muted); }
+.due[data-tone=soon] { font-weight: 600; color: var(--warning-strong); }
+.due[data-tone=late] { font-weight: 600; color: var(--critical); }
 
-/* People: up to three overlapping initials, then "+N". */
+/* The foot: overdue tasks (when there are any) and the people. */
+.foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+/* Sits above the card's stretched link, so it opens the overdue tasks instead of the project. */
+.overdue { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--critical); text-decoration: none; }
+.overdue:hover { text-decoration: underline; }
+.dot { width: 7px; height: 7px; background: var(--critical); border-radius: 50%; }
 .people { display: inline-flex; }
-.avatar { display: grid; place-items: center; width: 1.85rem; height: 1.85rem; margin-left: -.4rem; font-size: .7rem; font-weight: 700; color: var(--accent-strong); background: var(--accent-soft); border: 2px solid var(--card); border-radius: 50%; }
-.avatar:first-child { margin-left: 0; }
-.more { color: var(--muted); background: var(--surface-sunken); }
+.face { display: inline-grid; margin-left: -6px; border-radius: 50%; box-shadow: 0 0 0 2px var(--card); }
+.face:first-child { margin-left: 0; }
+.face > :global(.user-avatar) { font-size: 10.5px; }
+.more { place-items: center; width: 28px; height: 28px; font-size: 11px; font-weight: 700; color: var(--muted); background: var(--surface-sunken); }
+
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } .card:hover, .card:focus-within { transform: none; } }

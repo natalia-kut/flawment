@@ -82,15 +82,16 @@ function NewHires({ directory }: { directory: PeopleDirectory }) {
   const pending = directory.people.filter((p) => p.role !== "SUPER_ADMIN" && (p.job_title_id === null || p.team_id === null));
   const editing = directory.people.find((p) => p.id === editingId);
   if (pending.length === 0) return null;
+  // One quiet line, like "13 overdue tasks" on the Tasks board: a chip per person opens their set-up.
   return <section className={styles.setup} aria-labelledby="new-hires-title">
-    <p className={styles.eyebrow}>New hires</p>
-    <h2 id="new-hires-title">Finish setting up {pending.length === 1 ? "1 person" : `${pending.length} people`}</h2>
-    <p className={styles.lede}>Give them a job title and a team.</p>
+    <h2 id="new-hires-title"><span className={styles.dot} aria-hidden="true" />Finish setting up {pending.length === 1 ? "1 person" : `${pending.length} people`}</h2>
     <ul>{pending.map((p) => <li key={p.id}>
-      <UserAvatar id={p.id} firstName={p.first_name} lastName={p.last_name} photoVersion={p.photoVersion} size={36} />
-      <span className={styles.who}><strong>{p.first_name} {p.last_name}</strong><small>{p.email} · joined {joinedDate.format(new Date(p.joined))}</small></span>
-      <span className={styles.missing}>{[p.job_title_id === null && "No job title", p.team_id === null && "No team"].filter(Boolean).join(" · ")}</span>
-      <button type="button" className="secondary-button" onClick={() => setEditingId(p.id)}>Set up</button>
+      <button type="button" className={styles.person} onClick={() => setEditingId(p.id)}
+        title={`${p.email} · joined ${joinedDate.format(new Date(p.joined))}`} aria-label={`Set up ${p.first_name} ${p.last_name}`}>
+        <UserAvatar id={p.id} firstName={p.first_name} lastName={p.last_name} photoVersion={p.photoVersion} size={24} />
+        <strong>{p.first_name} {p.last_name}</strong>
+        <span className={styles.missing}>{[p.job_title_id === null && "No job title", p.team_id === null && "No team"].filter(Boolean).join(" · ")}</span>
+      </button>
     </li>)}</ul>
     {editing && <EditPerson key={editing.id} person={editing} directory={directory} onClose={() => setEditingId(null)} />}
   </section>;
@@ -102,7 +103,6 @@ function TeamTile({ team, own, admin }: { team: Team; own: boolean; admin: boole
   return <li>
     <Link href={`/?view=team&team=${team.id}`} className="workspace-card team-card" data-own={own || undefined}>
       {own && <span className="your-team-badge">Your team</span>}
-      <svg className="team-card-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
       <div>
         <h2>{team.name}</h2>
         <p>{team.members.length} {team.members.length === 1 ? "person" : "people"}{away ? ` · ${away} away` : ""}</p>

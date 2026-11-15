@@ -1,8 +1,9 @@
 .section { margin-bottom: 1.25rem; }
 
 /* A row per stage: name, its description, due date and progress; edit and delete as icons on the right. */
-.list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.stage { display: flex; align-items: center; gap: 12px; padding: 10px 8px 10px 14px; background: var(--background); border-radius: 12px; }
+.list { display: grid; margin: 0; padding: 0; list-style: none; }
+.list > li + li { border-top: 1px solid var(--border); }
+.stage { display: flex; align-items: center; gap: 12px; padding: 11px 4px; }
 .info { display: grid; flex: 1; gap: 3px; min-width: 0; }
 .info h3 { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
 .description { overflow: hidden; margin: 0; font-size: 13px; color: var(--text-secondary); white-space: nowrap; text-overflow: ellipsis; }

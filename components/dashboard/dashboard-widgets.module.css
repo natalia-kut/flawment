@@ -28,11 +28,13 @@
 
 .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .weekday { padding-bottom: 4px; font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .08em; text-align: center; text-transform: uppercase; color: var(--muted); }
-.day { position: relative; display: grid; align-content: start; justify-items: center; gap: 4px; min-height: 52px; padding: 6px 2px; font: inherit; color: var(--foreground); background: var(--background); border: 1px solid transparent; border-radius: 9px; cursor: pointer; transition: border-color 140ms ease, background-color 140ms ease; }
-.day:hover { border-color: var(--border-hover); }
+.day { position: relative; display: grid; align-content: start; justify-items: center; gap: 4px; min-height: 52px; padding: 6px 2px; font: inherit; color: var(--foreground); background: transparent; border: 0; border-radius: 9px; cursor: pointer; transition: background-color 140ms ease; }
+/* No tile per day: only the day under the pointer, today, the selected day and time off stand out. */
+.day:hover { background: var(--background); }
 .dayNumber { font-size: 13px; font-weight: 600; line-height: 1; }
 .day[data-today] .dayNumber { display: grid; place-items: center; width: 22px; height: 22px; margin-top: -3px; color: #fff; background: var(--accent); border-radius: 50%; }
-.day[data-selected] { background: var(--card); border-color: var(--accent-border); box-shadow: 0 4px 12px -8px #39220f55; }
+/* An accent ring as well as a tint, so the selected day shows even over the stripes of time off. */
+.day[data-selected] { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
 .day[data-late]::after { content: ""; position: absolute; top: 5px; right: 6px; width: 5px; height: 5px; background: var(--critical); border-radius: 50%; }
 .dots { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 3px; }
 .dot { flex-shrink: 0; width: 7px; height: 7px; background: var(--fill, var(--muted)); border-radius: 50%; animation: pop 320ms cubic-bezier(.2, .9, .3, 1.4) both; }
@@ -40,10 +42,10 @@
 
 /* ---- Time off in the calendar ---- */
 /* Same type colours as the Time off page. */
-.calendar [data-off=VACATION] { --off: var(--accent); }
-.calendar [data-off=SICK_LEAVE] { --off: #7b5ea7; }
-.calendar [data-off=BUSINESS_TRIP] { --off: #2f7d8c; }
-.calendar [data-off=OTHER] { --off: var(--muted); }
+.calendar [data-off=VACATION] { --off: var(--absence-vacation); }
+.calendar [data-off=SICK_LEAVE] { --off: var(--absence-sick-leave); }
+.calendar [data-off=BUSINESS_TRIP] { --off: var(--absence-business-trip); }
+.calendar [data-off=OTHER] { --off: var(--absence-other); }
 /* Your own day off: soft stripes, so the dots and number stay readable. */
 .day[data-off] { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--off) 14%, var(--background)) 0 5px, var(--background) 5px 10px); border-color: color-mix(in srgb, var(--off) 30%, transparent); }
 /* Bottom-left: the day number and the task dots fill the top and middle of a narrow cell. */

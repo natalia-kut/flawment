@@ -11,37 +11,39 @@
 .dueIcon { position: relative; display: inline-grid; place-items: center; }
 .dueIcon::after { content: ""; position: absolute; top: -2px; right: -3px; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 1.8s ease-out infinite; }
 
-/* ---- Flawiusz: the warm card of the month's news, with sparkles instead of confetti ---- */
-section.assistant { position: relative; isolation: isolate; max-width: none; margin: 0 0 22px; overflow: hidden;
-  background: linear-gradient(110deg, var(--accent-soft) 0%, var(--card) 55%); border: 1px solid var(--accent-border); border-radius: 18px; }
-/* Two layers of sparkles on the right, fading towards the text, twinkling in turn. */
-.sparkles { position: absolute; inset: 0 0 0 40%; z-index: -1; pointer-events: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%); mask-image: linear-gradient(90deg, transparent, #000 45%); }
-.sparkles::before, .sparkles::after { content: ""; position: absolute; inset: 0; animation: twinkle 4s ease-in-out infinite alternate; }
-.sparkles::before { background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23c24a1f' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 14% 30% / 14px 14px no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23d39b1e' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 38% 72% / 10px 10px no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23e3a07f' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 62% 22% / 18px 18px no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%233f8a4f' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 86% 64% / 11px 11px no-repeat; }
-.sparkles::after { background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23e3a07f' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 26% 58% / 9px 9px no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%233f8a4f' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 50% 30% / 12px 12px no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23c24a1f' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 74% 78% / 9px 9px no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23d39b1e' d='M12 0c.9 6.6 4.5 10.2 12 12-7.5 1.8-11.1 5.4-12 12-.9-6.6-4.5-10.2-12-12C7.5 10.2 11.1 6.6 12 0z'/%3E%3C/svg%3E") 94% 24% / 14px 14px no-repeat;
-  animation-delay: -2s; }
+/* ---- Flawiusz: centred as in flawiusz.css, on the one tinted surface of the page, with ripples spreading from him ---- */
+section.assistant { position: relative; isolation: isolate; max-width: none; margin: 0 0 22px; padding: 30px 32px 28px; gap: 20px; overflow: hidden;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 13%, var(--card)) 0%, var(--accent-soft) 70%); border: 0; border-radius: 16px; box-shadow: none; }
+/* Ripples on the water, coming in from two corners of the card rather than from Flawiusz (rings centred
+   on him read as hypnotic): each corner is the centre of a set of thin rings in the accent that fade
+   outwards, so only their arcs show inside the card. The two breathe on uneven periods, never in step.
+   Gone once the chat starts and the card folds into a bar. */
+.ripples { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.ripples::before, .ripples::after { content: ""; position: absolute; width: 1000px; height: 1000px; border-radius: 50%;
+  background: repeating-radial-gradient(circle, transparent 0 44px, rgb(31 111 107 / 22%) 44px 45.5px, transparent 45.5px 80px);
+  -webkit-mask-image: radial-gradient(circle, #000 15%, transparent 62%); mask-image: radial-gradient(circle, #000 15%, transparent 62%);
+  animation: ripple 5s ease-in-out infinite alternate; }
+/* Bottom right, centred on the corner. */
+.ripples::before { right: -500px; bottom: -500px; }
+/* Top left, a little further out, fainter and on its own period. */
+.ripples::after { top: -560px; left: -520px;
+  background: repeating-radial-gradient(circle, transparent 0 60px, rgb(31 111 107 / 15%) 60px 61.5px, transparent 61.5px 80px);
+  animation-duration: 7.3s; animation-delay: -2s; }
+section.assistant:global(.started) .ripples { display: none; }
 
-/* ---- Stat tiles ---- */
-.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
-.stat { display: grid; gap: 6px; padding: 18px 20px; color: var(--foreground); text-decoration: none; background: var(--card); border: 1px solid var(--border); border-radius: 14px; transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease; }
-.stat:hover { border-color: var(--border-hover); box-shadow: 0 8px 22px -14px #39220f40; transform: translateY(-2px); }
+/* ---- Counts: one strip of numbers with hairline dividers, not a row of boxes ---- */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 22px; padding: 4px 0 20px; border-bottom: 1px solid var(--border); }
+.stat { display: grid; gap: 6px; padding: 4px 22px; color: var(--foreground); text-decoration: none; border-left: 1px solid var(--border); transition: color 140ms ease; }
+.stat:first-child { padding-left: 4px; border-left: 0; }
+.stat:hover .statLabel { color: var(--accent-strong); }
 .statValue { font-size: 34px; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -1px; }
 .statLabel { font-family: var(--font-geist-mono), monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.stat[data-tone=critical] { border-left: 4px solid var(--critical); }
 .stat[data-tone=critical] .statValue { color: var(--critical); }
 
 /* ---- Panels ---- */
 .columns { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
-.panel { padding: 22px 24px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; }
+/* White on cream already sets a panel apart: no frame on top of it. */
+.panel { padding: 22px 24px; background: var(--card); border-radius: 16px; }
 .wide { margin-top: 18px; }
 .panelHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 /* The team's name beside "Your team". */
@@ -70,11 +72,16 @@ section.assistant { position: relative; isolation: isolate; max-width: none; mar
 .stat:focus-visible, .task:focus-visible, .panelHeading a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
-@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgb(194 74 31 / 55%); } 100% { box-shadow: 0 0 0 7px rgb(194 74 31 / 0%); } }
-@keyframes twinkle { from { opacity: .35; } to { opacity: 1; } }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgb(31 111 107 / 55%); } 100% { box-shadow: 0 0 0 7px rgb(31 111 107 / 0%); } }
+@keyframes ripple { from { opacity: .45; transform: scale(.96); } to { opacity: .85; transform: scale(1.04); } }
 
 @media (max-width: 1200px) {
   .columns { grid-template-columns: 1fr; }
+}
+/* Phones: the counts in two rows of two, each row starting without a divider. */
+@media (max-width: 720px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 16px; }
+  .stat:nth-child(odd) { padding-left: 4px; border-left: 0; }
 }
 
 @media (max-width: 720px) {
@@ -82,7 +89,6 @@ section.assistant { position: relative; isolation: isolate; max-width: none; mar
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rays, .dueIcon::after, .sparkles::before, .sparkles::after { animation: none; }
+  .rays, .dueIcon::after, .ripples::before, .ripples::after { animation: none; }
   .stat, .task { transition: none; }
-  .stat:hover { transform: none; }
 }

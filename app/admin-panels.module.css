@@ -1,20 +1,32 @@
 /* Needs you: a quiet list, one row per request or gap, the action on the right. */
-.needs { margin-bottom: 18px; }
-.list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--background); border-radius: 12px; }
-.row[aria-busy=true] { opacity: .6; }
+.list { display: grid; margin: 0; padding: 0; list-style: none; }
+/* Rows divided by a hairline rather than a box each. */
+.list > li + li { border-top: 1px solid var(--border); }
+.row { display: flex; align-items: center; gap: 12px; padding: 11px 8px; background: transparent; border-radius: 10px; }
+/* A request row is one button: it opens the request. */
+.open { width: 100%; font: inherit; color: inherit; text-align: left; border: 0; cursor: pointer; transition: background-color 120ms ease; }
+.open:hover, .open:focus-visible { background: var(--background); }
+.change { font-size: 13px; color: var(--muted); }
 .body { display: grid; flex: 1; gap: 2px; min-width: 0; }
-.body p { margin: 0; font-size: 14px; }
-.from { margin-left: 6px; color: var(--muted); }
-.arrow { color: var(--muted); }
+.body p, .body > strong { margin: 0; font-size: 14px; }
+.from { color: var(--muted); }
 .to { color: var(--accent-strong); }
-.tags { font-size: 12.5px; color: var(--muted); }
-.body .meta { overflow: hidden; font-size: 12.5px; color: var(--muted); white-space: nowrap; text-overflow: ellipsis; }
-.body .warn { font-size: 12.5px; font-weight: 600; color: var(--critical); }
 .body .missing { font-size: 12.5px; color: var(--warning-strong); }
-.actions { display: flex; flex: none; align-items: center; gap: 10px; }
-.actions button.primary-button { height: 32px; min-height: 0; padding: 0 14px; font-size: 13px; }
 .fix { flex: none; font-size: 13px; font-weight: 600; }
 .teamMark { display: inline-grid; flex: none; place-items: center; width: 36px; height: 36px; font-size: 12px; font-weight: 700; color: var(--warning-strong); background: var(--warning-soft); border-radius: 50%; }
-.caughtUp { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; padding: 12px 16px; font-weight: 600; color: var(--success-strong); background: var(--success-soft); border-radius: 12px; }
-@media (max-width: 640px) { .row { flex-wrap: wrap; } .actions { width: 100%; justify-content: flex-end; } }
+.caughtUp { display: flex; align-items: center; gap: 10px; margin: 0; padding: 12px 16px; font-weight: 600; color: var(--success-strong); background: var(--success-soft); border-radius: 12px; }
+
+/* The request dialog: who, the change, the reason in full, and the decision. */
+.dialog { position: fixed; inset: 0; margin: auto; height: fit-content; width: min(480px, calc(100vw - 32px)); padding: 22px; color: var(--foreground); background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 24px 60px -20px #261b1259; }
+.dialog::backdrop { background: rgb(38 27 18 / 35%); backdrop-filter: blur(2px); }
+.dialog p { margin: 0; }
+.dialogHead { display: flex; align-items: center; gap: 12px; }
+.dialogHead > div { flex: 1; min-width: 0; }
+.dialogHead h2 { margin: 0; font-size: 18px; }
+.dialogHead p { font-size: 13px; color: var(--muted); }
+.dialog .dialogChange { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-top: 18px; font-size: 16px; }
+.dialog .tags { margin-top: 6px; font-size: 12.5px; color: var(--success-strong); }
+.reason { margin: 14px 0 0; padding: 10px 14px; font-size: 14px; font-style: italic; line-height: 1.55; color: var(--text-secondary); background: var(--background); border-radius: 10px; overflow-wrap: anywhere; }
+.dialog .meta { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+.dialog .warn { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--critical); }
+.dialogActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }

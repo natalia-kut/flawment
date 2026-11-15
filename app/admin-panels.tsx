@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useActionState } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import type { TeamPerson } from "@/lib/teams/data";
 import type { PendingTitleRequest } from "@/lib/job-title-requests/data";
-import { titleRequestAction } from "@/lib/job-title-requests/actions";
+import { titleRequestAction, type TitleRequestState } from "@/lib/job-title-requests/actions";
 import UserAvatar from "./user-avatar";
 import dashboard from "./dashboard.module.css";
 import styles from "./admin-panels.module.css";
@@ -26,14 +26,14 @@ const ago = (day: string, today: string) => {
   return days === 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
 };
 
-/** Requests to decide, then gaps to fill: one quiet row each; a slim "all caught up" when there are none. */
+/** Requests to decide, then gaps to fill: one quiet row each; "all caught up" when there are none. */
 export default function NeedsYou({ requests, needs, today }: { requests: PendingTitleRequest[]; needs: ReturnType<typeof setupNeeds>; today: string }) {
   const unset = [...new Set([...needs.noTitle, ...needs.noTeam])];
   const count = requests.length + unset.length + needs.leaderless.length;
-  if (count === 0) return <p className={styles.caughtUp}><span aria-hidden="true">🎉</span> You&apos;re all caught up: no requests, and everyone is set up.</p>;
-  return <section className={`${dashboard.panel} ${styles.needs}`} id="title-requests" aria-labelledby="needs-title">
-    <div className={dashboard.panelHeading}><h2 id="needs-title">Needs you <span className="role-badge">{count}</span></h2></div>
-    <ul className={styles.list}>
+  return <section className={dashboard.panel} id="title-requests" aria-labelledby="needs-title">
+    <div className={dashboard.panelHeading}><h2 id="needs-title">Needs you{count > 0 && <> <span className="role-badge">{count}</span></>}</h2></div>
+    {count === 0 ? <p className={styles.caughtUp}><span aria-hidden="true">🎉</span> You&apos;re all caught up: no requests, and everyone is set up.</p>
+    : <ul className={styles.list}>
       {requests.map((r) => <RequestRow key={r.id} request={r} today={today} />)}
       {unset.map((p) => <li key={p.id} className={styles.row}>
         <UserAvatar id={p.id} firstName={p.first_name} lastName={p.last_name} photoVersion={p.photoVersion} size={36} />
@@ -51,32 +51,68 @@ export default function NeedsYou({ requests, needs, today }: { requests: Pending
         </div>
         <Link className={styles.fix} href={`/?view=team&team=${t.id}`}>Pick a lead →</Link>
       </li>)}
-    </ul>
+    </ul>}
   </section>;
 }
 
+/** A request as one short row; the whole of it, and the decision, open in a dialog. */
 function RequestRow({ request: r, today }: { request: PendingTitleRequest; today: string }) {
-  const [state, action, pending] = useActionState(titleRequestAction, {});
+  const [open, setOpen] = useState(false);
+  return <li>
+    <button type="button" className={`${styles.row} ${styles.open}`} onClick={() => setOpen(true)} aria-haspopup="dialog">
+      <UserAvatar id={r.personId} firstName={r.firstName} lastName={r.lastName} photoVersion={r.photoVersion} size={36} />
+      <span className={styles.body}>
+        <strong>{r.person}</strong>
+        <span className={styles.change}>{r.currentTitle ?? "No job title"} <span aria-hidden="true">→</span><span className="visually-hidden"> to </span> <b className={styles.to}>{r.title}</b></span>
+      </span>
+      <span className={styles.fix}>Review →</span>
+    </button>
+    {open && <RequestDialog request={r} today={today} onClose={() => setOpen(false)} />}
+  </li>;
+}
+
+/** Everything about one request, the reason in full, and Approve or Decline. */
+function RequestDialog({ request: r, today, onClose }: { request: PendingTitleRequest; today: string; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current!;
+    dialog.showModal();
+    return () => dialog.close();
+  }, []);
+  const [state, action, pending] = useActionState(async (previous: TitleRequestState, data: FormData) => {
+    const result = await titleRequestAction(previous, data);
+    if (result.success) onClose();
+    return result;
+  }, {});
   function decide(operation: "approve" | "decline") {
     const data = new FormData();
     data.set("operation", operation);
     data.set("request_id", String(r.id));
     startTransition(() => action(data));
   }
-  const tags = [r.isNewTitle && "new title", r.canLead && "can lead a team"].filter(Boolean).join(" · ");
-  return <li className={styles.row} aria-busy={pending}>
-    <UserAvatar id={r.personId} firstName={r.firstName} lastName={r.lastName} photoVersion={r.photoVersion} size={36} />
-    <div className={styles.body}>
-      <p><strong>{r.person}</strong> <span className={styles.from}>{r.currentTitle ?? "no job title"}</span>
-        <span className={styles.arrow} aria-hidden="true"> → </span><span className="visually-hidden"> to </span>
-        <strong className={styles.to}>{r.title}</strong>{tags && <span className={styles.tags}> · {tags}</span>}</p>
-      <p className={styles.meta}>{r.note && <>&ldquo;{r.note}&rdquo; </>}{r.requester}, {ago(r.createdOn, today)}</p>
-      {r.endsLead && <p className={styles.warn}>Approving ends their team lead role.</p>}
-      {state.error && <p className="form-error" role="alert">{state.error}</p>}
+  return <dialog ref={ref} className={styles.dialog} aria-labelledby={`request-${r.id}-title`} onCancel={onClose}
+    onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className={styles.dialogHead}>
+      <UserAvatar id={r.personId} firstName={r.firstName} lastName={r.lastName} photoVersion={r.photoVersion} size={44} />
+      <div>
+        <h2 id={`request-${r.id}-title`}>{r.person}</h2>
+        <p>{r.team ?? "No team"}</p>
+      </div>
+      <button type="button" className="dialog-close" onClick={onClose} aria-label="Close dialog">×</button>
     </div>
-    <div className={styles.actions}>
-      <button type="button" className="text-button" disabled={pending} onClick={() => decide("decline")}>Decline</button>
-      <button type="button" className="primary-button" disabled={pending} onClick={() => decide("approve")}>Approve</button>
+    <p className={styles.dialogChange}>
+      <span className={styles.from}>{r.currentTitle ?? "No job title"}</span>
+      <span aria-hidden="true">→</span><span className="visually-hidden"> to </span>
+      <strong className={styles.to}>{r.title}</strong>
+    </p>
+    {(r.isNewTitle || r.canLead) && <p className={styles.tags}>{[r.isNewTitle && "New title: added to the list on approval", r.canLead && "Can lead a team"].filter(Boolean).join(" · ")}</p>}
+    {r.note && <blockquote className={styles.reason}>{r.note}</blockquote>}
+    <p className={styles.meta}>Suggested by {r.requester}, {ago(r.createdOn, today)}</p>
+    {r.endsLead && <p className={styles.warn}>Approving ends their team lead role.</p>}
+    {state.error && <p className="form-error" role="alert">{state.error}</p>}
+    <div className={styles.dialogActions}>
+      <button type="button" className="secondary-button" disabled={pending} onClick={() => decide("decline")}>Decline</button>
+      <button type="button" className="primary-button" disabled={pending} onClick={() => decide("approve")}>{pending ? "Saving…" : "Approve"}</button>
     </div>
-  </li>;
+  </dialog>;
 }

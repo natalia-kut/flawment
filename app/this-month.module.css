@@ -1,6 +1,6 @@
 /* This month: one warm card, a summary line, and a row per new face or promotion. */
 .card { position: relative; isolation: isolate; display: grid; justify-items: start; gap: 2px; margin-bottom: 18px; padding: 18px 22px; overflow: hidden;
-  background: linear-gradient(110deg, var(--accent-soft) 0%, var(--card) 55%); border: 1px solid var(--accent-border); border-radius: 18px; }
+  background: linear-gradient(110deg, var(--accent-soft) 0%, var(--card) 55%); border-radius: 16px; }
 
 /* Scattered dots in the accent, success and warning colours, fading towards the text. */
 .confetti { position: absolute; inset: 0 0 0 45%; z-index: -1; pointer-events: none;
