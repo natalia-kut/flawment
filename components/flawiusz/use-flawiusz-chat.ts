@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { saveTemplate } from "@/lib/documents/actions";
+import { applyProjectPlan } from "@/lib/flawiusz/project-plan-action";
+import type { ProjectPlanProposal } from "@/lib/flawiusz/project-plan-schema";
 import type { AgentEvent } from "@/lib/flawiusz/agent";
 import { busyPhrases, unavailableMessage } from "@/lib/flawiusz/phrases";
 import type { ProjectChoice, TemplateProposal } from "@/lib/flawiusz/tools/tool-list";
@@ -14,6 +16,7 @@ const stoppedText = "*The request was interrupted*";
 type SavedTemplate = { id: string; name: string };
 
 export type ChatProposal = TemplateProposal & { savedId?: string; saving?: boolean; error?: string };
+export type ChatProjectPlan = ProjectPlanProposal & { savedId?: number; saving?: boolean; error?: string };
 
 type Message = {
   id: number;
@@ -21,6 +24,7 @@ type Message = {
   content: string;
   templates: SavedTemplate[];
   proposals: ChatProposal[];
+  projectPlans?: ChatProjectPlan[];
   // Projects offered as buttons when Flawiusz asks which project a template is for.
   projectChoices: ProjectChoice[];
   // On a user message sent with one of those buttons: the project id, or null for all projects.
@@ -47,6 +51,10 @@ function historyContent(message: Message) {
     const scope = proposal.projectId === null ? "all projects" : `project ${proposal.projectId}`;
     notes.push(`\n[Proposed template "${proposal.name}"${target} for ${scope}, not saved yet. Sections: ${sections.join("; ")}]`);
   }
+  for (const draft of message.projectPlans ?? []) {
+    if (draft.savedId) notes.push(`\n[Created project "${draft.plan.name}" (${draft.savedId})]`);
+    else notes.push(`\n[Draft project plan for review: ${JSON.stringify(draft.plan)}]`);
+  }
   return message.content + notes.join("");
 }
 
@@ -59,6 +67,7 @@ export function useFlawiuszChat() {
   const [status, setStatus] = useState<string | null>(null);
   const nextId = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const pendingPlans = useRef(new Set<string>());
 
   const busy = status !== null;
 
@@ -90,6 +99,7 @@ export function useFlawiuszChat() {
     const keep = (message: Message) =>
       message.templates.length > 0 ||
       message.proposals.length > 0 ||
+      Boolean(message.projectPlans?.length) ||
       message.projectChoices.length > 0 ||
       (message.content && message.content !== stoppedText && !message.error);
     const history = [...messages.filter(keep), question].map(
@@ -120,6 +130,9 @@ export function useFlawiuszChat() {
           break;
         case "proposal":
           update((message) => ({ ...message, proposals: [...message.proposals, event.proposal] }));
+          break;
+        case "project-plan":
+          update((message) => ({ ...message, projectPlans: [...(message.projectPlans ?? []), event.proposal] }));
           break;
         case "error":
           update((message) => ({ ...message, error: event.message }));
@@ -194,12 +207,37 @@ export function useFlawiuszChat() {
     abortRef.current?.abort();
   }
 
+  async function createProject(messageId: number, index: number) {
+    const draft = messages.find((message) => message.id === messageId)?.projectPlans?.[index];
+    const key = `${messageId}:${index}`;
+    if (!draft || draft.savedId || pendingPlans.current.has(key)) return;
+    pendingPlans.current.add(key);
+    const change = (patch: Partial<ChatProjectPlan>) => setMessages((current) => current.map((message) =>
+      message.id === messageId ? {
+        ...message,
+        projectPlans: message.projectPlans?.map((item, position) => position === index ? { ...item, ...patch } : item),
+      } : message,
+    ));
+    change({ saving: true, error: undefined });
+    try {
+      const result = await applyProjectPlan(draft.plan);
+      if (result.ok) {
+        change({ saving: false, savedId: result.project.id });
+        router.refresh();
+      } else change({ saving: false, error: result.error });
+    } catch {
+      change({ saving: false, error: "The project could not be created. Try again." });
+    } finally {
+      pendingPlans.current.delete(key);
+    }
+  }
+
   function reset() {
     stop();
     setMessages([]);
   }
 
-  return { messages, status, busy, send, saveProposal, stop, reset };
+  return { messages, status, busy, send, saveProposal, createProject, stop, reset };
 }
 
 export type FlawiuszChat = ReturnType<typeof useFlawiuszChat>;

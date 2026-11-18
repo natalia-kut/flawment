@@ -2,6 +2,7 @@ import { z } from "zod";
 import { llmConfig, streamCompletion, type ChatMessage, type ToolSpec } from "./llm";
 import { randomBusyPhrase, stuckMessage, unavailableMessage } from "./phrases";
 import { systemPrompt } from "./prompt";
+import type { ProjectPlanProposal } from "./project-plan-schema";
 import { flawiuszTools, runTool, type ProjectChoice, type TemplateProposal, type ToolContext } from "./tools/tool-list";
 
 // The chat loop: ask the model, run the tools it calls, feed the results back,
@@ -15,6 +16,7 @@ export type AgentEvent =
   | { type: "template"; id: string; name: string }
   | { type: "proposal"; proposal: TemplateProposal }
   | { type: "projects"; projects: ProjectChoice[] }
+  | { type: "project-plan"; proposal: ProjectPlanProposal }
   | { type: "error"; message: string };
 
 // Failsafe: ends the turn if the model keeps repeating the same tool call.
