@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ChatLog } from "@/components/flawiusz/chat-log";
 import { Composer } from "@/components/flawiusz/composer";
+import { FullChat } from "@/components/flawiusz/full-chat";
 import type { FlawiuszChat } from "@/components/flawiusz/use-flawiusz-chat";
 import PageHeader from "@/components/page-header";
 import TaskCalendar from "@/components/dashboard/task-calendar";
@@ -97,6 +98,7 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
 }) {
   const { projects, userId, today, timeOff = [], myTeam = null, admin = null } = workspace;
   const started = chat.messages.length > 0;
+  const [chatExpanded, setChatExpanded] = useState(false);
   // Clicking a task previews it here, so a quick look never leaves the dashboard.
   const [previewId, setPreviewId] = useState<number | null>(null);
 
@@ -162,14 +164,17 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
             )}
           </div>
           {started && (
-            <button className="secondary-button" type="button" onClick={chat.reset}>
-              New chat
-            </button>
+            <button className="secondary-button" type="button" onClick={chat.reset}>New chat</button>
           )}
+          <button className="secondary-button" type="button" aria-haspopup="dialog" onClick={() => setChatExpanded(true)}>Expand chat</button>
         </div>
-        {started && <ChatLog chat={chat} className="in-hero" onOpenTemplate={onOpenTemplate} />}
+        {started && !chatExpanded && <ChatLog chat={chat} className="in-hero" onOpenTemplate={onOpenTemplate} />}
         <Composer chat={chat} placeholder="e.g. What should I focus on this week?" />
       </section>
+      {chatExpanded && <FullChat chat={chat} onClose={() => setChatExpanded(false)} onOpenTemplate={(id) => {
+        setChatExpanded(false);
+        onOpenTemplate(id);
+      }} />}
 
       {admin && needs ? <>
         <div className={styles.stats}>

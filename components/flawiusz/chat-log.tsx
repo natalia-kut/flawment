@@ -4,23 +4,27 @@ import { useEffect, useRef, useState } from "react";
 import TemplatePreviewDialog from "@/components/documents/template-preview-dialog";
 import { DocumentProposalCard, proposalTemplate } from "./document-proposal-card";
 import { Markdown } from "./markdown";
+import { ProjectPlanCard } from "./project-plan-card";
 import type { FlawiuszChat } from "./use-flawiusz-chat";
 import "./flawiusz.css";
 
 export function ChatLog({
   chat,
   onOpenTemplate,
+  onOpenProject,
   className,
 }: {
   chat: FlawiuszChat;
   onOpenTemplate: (templateId: string) => void;
+  onOpenProject?: () => void;
   className: string;
 }) {
   const logRef = useRef<HTMLDivElement>(null);
+  const followLatest = useRef(true);
   const [previewing, setPreviewing] = useState<{ messageId: number; index: number } | null>(null);
 
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
+    if (followLatest.current) logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [chat.messages, chat.status]);
 
   const previewed = previewing
@@ -31,7 +35,11 @@ export function ChatLog({
   const workingId = chat.busy ? chat.messages.at(-1)?.id : undefined;
 
   return (
-    <div className={`flawiusz-log ${className}`} ref={logRef} aria-live="polite">
+    <div className={`flawiusz-log ${className}`} ref={logRef} role="log" aria-label="Chat messages" tabIndex={0}
+      onScroll={(event) => {
+        const log = event.currentTarget;
+        followLatest.current = log.scrollHeight - log.scrollTop - log.clientHeight < 48;
+      }}>
       {chat.messages.map((message) => (
         <div className={`flawiusz-message ${message.role}`} key={message.id}>
           {message.role === "user" ? (
@@ -62,6 +70,9 @@ export function ChatLog({
                   onSave={() => void chat.saveProposal(message.id, index)}
                   proposal={proposal}
                 />
+              ))}
+              {message.projectPlans?.map((draft, index) => (
+                <ProjectPlanCard key={index} draft={draft} onOpen={onOpenProject} onCreate={() => void chat.createProject(message.id, index)} />
               ))}
               {message.templates.map((template) => (
                 <div className="flawiusz-template" key={template.id}>

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { localDay } from "@/lib/documents/engine";
+import { workspaceToday } from "@/lib/time-off/dates";
 import { defineTool } from "./define";
 
 export const getCurrentDate = defineTool({
@@ -8,6 +8,6 @@ export const getCurrentDate = defineTool({
   status: "Checking the calendar…",
   input: z.object({}),
   async run() {
-    return { ok: true, value: localDay() };
+    return { ok: true, value: workspaceToday() };
   },
 });
