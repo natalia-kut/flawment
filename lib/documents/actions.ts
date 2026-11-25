@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth/session";
 import { visibleProjects, type Actor } from "@/lib/rbac";
 import type { Prisma } from "@/src/generated/prisma/client";
 import { getDocumentProjects, toCustomTemplate } from "./data";
-import { localDay } from "./engine";
+import { workspaceToday } from "@/lib/time-off/dates";
 import { parseTemplateInput, type DocumentTemplate } from "./template-schema";
 import type { DocumentProject } from "./types";
 
@@ -99,5 +99,5 @@ export async function deleteTemplate(templateId: string): Promise<ActionResult<n
 }
 
 export async function getPreviewData(): Promise<{ projects: DocumentProject[]; today: string }> {
-  return { projects: await getDocumentProjects(), today: localDay() };
+  return { projects: await getDocumentProjects(), today: workspaceToday() };
 }
