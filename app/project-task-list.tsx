@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { formatTaskDeadline, taskPriorityLabels, taskStatusLabels } from "@/lib/tasks/labels";
 import { isTaskOverdue } from "@/lib/tasks/board";
+import { plainText } from "@/lib/rich-text/markdown";
 import DeleteTaskForm from "./delete-task-form";
 import styles from "./project-task-list.module.css";
 
@@ -42,13 +43,13 @@ export default function ProjectTaskList({ project, today, onCreate, onEdit }: {
               <span className={styles.priority} data-priority={task.priority} title={taskPriorityLabels[task.priority] + " priority"} />
               <span className="visually-hidden">{taskPriorityLabels[task.priority]} priority: </span>{task.title}
             </span>
-            <span className={styles.detail}>{[task.stageName, task.description].filter(Boolean).join(" · ")}</span>
+            <span className={styles.detail}>{[task.stageName, plainText(task.description).replace(/\s+/g, " ")].filter(Boolean).join(" · ")}</span>
           </>;
           return <div key={task.id} className={styles.row} role="row">
-            {/* The row opens the task, for whoever may edit it. */}
+            {/* The row opens the editor for whoever may edit the task, and its page for everyone else. */}
             <span role="cell" className={styles.main}>{task.canEdit
               ? <button type="button" className={styles.open} aria-label={"Edit task: " + task.title} onClick={() => onEdit(task.id)}>{info}</button>
-              : info}</span>
+              : <Link href={"/?task=" + task.id} className={styles.open} aria-label={"Open task: " + task.title}>{info}</Link>}</span>
             <span role="cell"><span className={styles.status} data-status={task.status}>{taskStatusLabels[task.status]}</span></span>
             <span role="cell" className={styles.assignee} data-empty={task.assignedTo === null || undefined}>{task.assigneeName}</span>
             <span role="cell" className={styles.due} data-late={late || undefined} title={formatTaskDeadline(task.deadline)}>

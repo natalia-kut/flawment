@@ -1,3 +1,5 @@
+import { plainText } from "@/lib/rich-text/markdown";
+
 export type TaskFilters = {
   query: string;
   status: string;
@@ -29,7 +31,7 @@ export function filterTasks<T extends FilterableTask>(tasks: readonly T[], filte
   const query = filters.query.trim().toLowerCase();
   return tasks.filter((task) =>
     (!query || task.title.toLowerCase().includes(query) ||
-      (task.description ?? "").toLowerCase().includes(query)) &&
+      plainText(task.description).toLowerCase().includes(query)) &&
     (!filters.status || task.status === filters.status) &&
     (!filters.priority || task.priority === filters.priority) &&
     (!filters.assignee || taskAssigneeKey(task) === filters.assignee) &&

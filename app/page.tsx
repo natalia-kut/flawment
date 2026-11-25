@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/auth/session";
 import { getWorkspaceProjects } from "@/lib/projects/data";
 import ProjectsView from "./projects-view";
 import TasksOverview from "./tasks-overview";
+import TaskSection from "./task-section";
 import ProfileSection from "./profile-section";
 import TeamSection from "./team-section";
 import TimeOffSection from "./time-off-section";
@@ -20,7 +21,8 @@ import { getCalendarTimeOff } from "@/lib/time-off/calendar";
 import { getTeamsOverview } from "@/lib/teams/data";
 import { getLeadTitleRequests, getPendingTitleRequests } from "@/lib/job-title-requests/data";
 
-async function Workspace() {
+async function Workspace({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
+  const { task: taskId } = await searchParams;
   const user = await requireUser();
   const projects = await getWorkspaceProjects();
   // Read on the server, so a collapsed sidebar is already narrow on first paint.
@@ -50,6 +52,7 @@ async function Workspace() {
       workspace={{ projects, userId: user.id, today, timeOff, myTeam, admin }}
       sidebarCollapsed={sidebarCollapsed}
       tasks={<TasksOverview projects={projects} currentUserId={user.id} today={today} />}
+      task={taskId !== undefined ? <TaskSection taskId={String(taskId)} projects={projects} user={user} today={today} /> : null}
       projects={<ProjectsView projects={projects} today={today} canCreateProjects={canCreateProjects} />}
       documents={
         <Suspense fallback={<DocumentsSkeleton />}>
@@ -60,6 +63,6 @@ async function Workspace() {
   );
 }
 
-export default function Home() {
-  return <Suspense fallback={<p className="documents-loading">Loading workspace…</p>}><Workspace /></Suspense>;
+export default function Home({ searchParams }: PageProps<"/">) {
+  return <Suspense fallback={<p className="documents-loading">Loading workspace…</p>}><Workspace searchParams={searchParams} /></Suspense>;
 }

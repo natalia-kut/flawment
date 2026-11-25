@@ -8,7 +8,7 @@
 .row { padding: .55rem .75rem; border-bottom: 1px solid var(--border); border-radius: .5rem; transition: background-color 120ms ease; }
 .row:hover { background: var(--background); }
 .main { min-width: 0; }
-.open { display: grid; width: 100%; padding: 0; font: inherit; color: inherit; text-align: left; background: none; border: 0; cursor: pointer; }
+.open { display: grid; width: 100%; padding: 0; font: inherit; color: inherit; text-align: left; text-decoration: none; background: none; border: 0; cursor: pointer; }
 .open:hover .title, .open:focus-visible .title { color: var(--accent-strong); }
 .title { display: flex; align-items: center; gap: .5rem; overflow: hidden; font-size: .95rem; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
 .detail { display: block; overflow: hidden; margin-left: 1rem; font-size: .8rem; color: var(--muted); white-space: nowrap; text-overflow: ellipsis; }

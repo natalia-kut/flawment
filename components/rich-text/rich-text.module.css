@@ -1,0 +1,67 @@
+/* Formatted text, the same to read and to edit. `div.content` outranks the cards' own paragraph and heading styles. */
+div.content { font-size: .95rem; line-height: 1.6; color: var(--foreground); overflow-wrap: anywhere; }
+div.content > :first-child { margin-top: 0; }
+div.content > :last-child { margin-bottom: 0; }
+div.content p { margin: 0 0 .75rem; line-height: inherit; color: inherit; }
+div.content :is(h1, h2, h3.large) { margin: 1.4rem 0 .5rem; font-size: 1.1rem; font-weight: 700; line-height: 1.35; }
+div.content :is(h3:not(.large), h4) { margin: 1.1rem 0 .4rem; font-size: .95rem; font-weight: 700; line-height: 1.35; }
+div.content :is(ul, ol) { margin: 0 0 .75rem; padding-left: 1.5rem; }
+div.content ul { list-style: disc; }
+div.content ul ul { list-style: circle; }
+div.content ol { list-style: decimal; }
+div.content li { margin: .15rem 0; }
+div.content li :is(p, ul, ol) { margin-bottom: 0; }
+div.content li > p + p { margin-top: .5rem; }
+div.content li::marker { color: var(--muted); }
+div.content blockquote { margin: 0 0 .75rem; padding: .1rem 0 .1rem .9rem; color: var(--text-secondary); border-left: 3px solid var(--accent-border); }
+div.content blockquote > :last-child { margin-bottom: 0; }
+div.content code { padding: .1rem .35rem; font-family: var(--font-geist-mono), monospace; font-size: .85em; background: var(--surface-sunken); border-radius: .3rem; }
+div.content pre { margin: 0 0 .75rem; padding: .8rem 1rem; overflow-x: auto; background: var(--surface-sunken); border-radius: .6rem; }
+div.content pre code { padding: 0; background: none; white-space: pre; }
+div.content a { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 2px; }
+div.content hr { margin: 1.1rem 0; border: 0; border-top: 1px solid var(--border-strong); }
+
+/* Checklists: the reader's own markup, and the editor's. */
+div.content ul:is(.tasks, [data-type=taskList]) { padding-left: 0; list-style: none; }
+div.content :is(.task, ul[data-type=taskList] > li) { display: flex; align-items: flex-start; gap: .55rem; list-style: none; }
+div.content :is(.task > div, ul[data-type=taskList] > li > div) { flex: 1; min-width: 0; }
+div.content input[type=checkbox] { flex: none; width: 1rem; height: 1rem; margin: .27rem 0 0; accent-color: var(--accent); cursor: pointer; }
+div.content input[type=checkbox]:disabled { cursor: default; }
+div.content li[data-checked=true] > div { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--border-hover); }
+/* A nested item keeps its own state. */
+div.content li[data-checked=true] li[data-checked=false] > div { color: var(--foreground); }
+
+/* Text that turns into the editor. */
+.readable { position: relative; margin: -.4rem -.6rem; padding: .4rem 2.6rem .4rem .6rem; border: 1px solid transparent; border-radius: .6rem; cursor: text; transition: border-color 140ms ease; }
+.readable:hover { border-color: var(--border); }
+.readable div.content { max-width: 80ch; }
+.editButton { position: absolute; top: .25rem; right: .25rem; width: 30px; height: 30px; opacity: 0; transition: opacity 120ms ease; }
+.readable:hover .editButton, .editButton:focus-visible { opacity: 1; }
+@media (hover: none) { .editButton { opacity: 1; } }
+.placeholder { display: block; width: calc(100% + 1.2rem); margin: -.4rem -.6rem; padding: .4rem .6rem 1.2rem; font: inherit; font-size: .95rem; font-style: italic; text-align: left; color: var(--text-subtle); background: none; border: 1px solid transparent; border-radius: .6rem; cursor: text; }
+.placeholder:hover { border-color: var(--border); }
+
+.readable, .placeholder { box-sizing: border-box; }
+
+/* ---- Editor ---- */
+/* Grows with its container, and the whole of it is the text field. */
+.editor { display: flex; flex-direction: column; min-height: 10rem; background: #fff; border: 1px solid var(--border-strong); border-radius: .7rem; }
+.editor:focus-within { border-color: var(--accent-border); box-shadow: 0 0 0 2px var(--accent-soft); }
+.editor > div:last-child { display: flex; flex: 1; flex-direction: column; }
+.editor div.content { flex: 1; min-height: 7rem; padding: .8rem 1rem 1rem; outline: none; }
+.compact { min-height: 7rem; }
+.compact div.content { min-height: 4.5rem; padding: .65rem .8rem; }
+/* The toolbar stays in reach while a long text scrolls past. */
+.toolbar { position: sticky; top: var(--editor-top, 0); z-index: 2; background: var(--surface); border-bottom: 1px solid var(--border); border-radius: .7rem .7rem 0 0; }
+.tools { display: flex; flex-wrap: wrap; gap: .15rem .3rem; padding: .3rem; }
+.toolGroup { display: flex; gap: .1rem; padding-right: .3rem; border-right: 1px solid var(--border); }
+.toolGroup:last-child { padding-right: 0; border-right: 0; }
+.tool { display: grid; place-items: center; width: 1.75rem; height: 1.9rem; padding: 0; font-size: .85rem; line-height: 1; color: var(--text-secondary); background: none; border: 0; border-radius: .45rem; cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
+.tool:hover:not(:disabled) { color: var(--foreground); background: var(--surface-sunken); }
+.tool[aria-pressed=true] { color: var(--accent-strong); background: var(--accent-soft); }
+.tool:disabled { opacity: .35; cursor: default; }
+.linkRow { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem .7rem; padding: .3rem .5rem .5rem; }
+.linkRow input { flex: 1; min-width: 10rem; height: 2.1rem; padding: 0 .6rem; font: inherit; font-size: .85rem; color: var(--foreground); background: #fff; border: 1px solid var(--border-strong); border-radius: .45rem; }
+.editor :global(p.is-editor-empty:first-child)::before { float: left; height: 0; font-style: italic; color: var(--text-subtle); content: attr(data-placeholder); pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) { .readable, .editButton, .tool { transition: none; } }
