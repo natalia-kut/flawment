@@ -46,7 +46,7 @@ test("task files are stored, read and deleted within their permissions", async (
     await assert.rejects(addFile(owner, task.id, "a.png", note), /does not match/);
     await assert.rejects(addFile(owner, task.id, "a.png", image.slice(0, 60)), /damaged/);
     await assert.rejects(addFile(owner, task.id, "a.txt", new Uint8Array()), /empty/);
-    await assert.rejects(addFile(owner, task.id, "a.txt", new Uint8Array(MAX_FILE_BYTES + 1).fill(65)), /up to 10/);
+    await assert.rejects(addFile(owner, task.id, "a.txt", new Uint8Array(MAX_FILE_BYTES + 1).fill(65)), /up to 4 MB/);
 
     const stored = await readFile(other, text.id, false);
     assert.deepEqual([stored?.name, stored?.type, Buffer.from(stored!.data).toString()], ["notatka.txt", "text/plain", "zażółć"]);

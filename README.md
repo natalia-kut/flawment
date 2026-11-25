@@ -291,7 +291,7 @@ an open page does not overwrite what others changed meanwhile. **Discussion** ho
 the comments, formatted with the same editor, and their replies (one level deep: a reply
 to a reply joins the same thread). Deleting a comment that has replies leaves "Comment
 deleted" in its place. Super admins appear there as "Administrator" to standard users.
-**Files** holds up to 10 files of up to 10 MB (PNG, JPEG, WebP, PDF, DOCX, XLSX, PPTX, TXT,
+**Files** holds up to 10 files of up to 4 MB (PNG, JPEG, WebP, PDF, DOCX, XLSX, PPTX, TXT,
 CSV): picked, dropped anywhere on the page, or pasted as a screenshot. They are stored in
 PostgreSQL (`TaskFile`) like profile photos, so they go with their task and its backups.
 The type is recognised from the content and must match the name; documents with macros,

@@ -33,7 +33,7 @@ async function makeThumbnail(data: Uint8Array) {
 
 const unavailable = "This task is no longer available.";
 
-/** May this person add files to the task? Asked before a body of up to 10 MB is read. */
+/** May this person add files to the task? Asked before a body of up to 4 MB is read. */
 export async function canAddFiles(actor: Actor, taskId: number) {
   return await prisma.task.count({ where: { id: taskId, project: visibleProjects(actor) } }) === 1;
 }

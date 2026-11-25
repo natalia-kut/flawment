@@ -71,9 +71,9 @@ test("file names are cleaned of paths, control characters and tricks", () => {
 });
 
 test("sizes and problems are told in plain words", () => {
-  assert.deepEqual([formatSize(900), formatSize(2048), formatSize(MAX_FILE_BYTES)], ["900 B", "2 KB", "10 MB"]);
+  assert.deepEqual([formatSize(900), formatSize(2048), formatSize(MAX_FILE_BYTES)], ["900 B", "2 KB", "4 MB"]);
   assert.equal(fileProblem({ name: "a.pdf", size: MAX_FILE_BYTES }), null);
-  assert.match(fileProblem({ name: "a.pdf", size: MAX_FILE_BYTES + 1 })!, /up to 10/);
+  assert.match(fileProblem({ name: "a.pdf", size: MAX_FILE_BYTES + 1 })!, /up to 4 MB/);
   assert.match(fileProblem({ name: "a.pdf", size: 0 })!, /empty/);
   assert.match(fileProblem({ name: "a.svg", size: 1 })!, /Choose a/);
 });
