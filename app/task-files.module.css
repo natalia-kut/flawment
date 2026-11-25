@@ -1,0 +1,43 @@
+/* The files on a task's page, as tiles. */
+.card { outline: 2px dashed transparent; outline-offset: -8px; transition: outline-color 140ms ease, background-color 140ms ease; }
+.card[data-dropping] { background: var(--accent-soft); outline-color: var(--accent-border); }
+.heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .8rem; }
+.heading h2 { margin: 0; }
+.heading :global(.secondary-button) { min-height: 36px; }
+
+.files { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5rem), 1fr)); gap: .8rem; margin: 0 0 .9rem; padding: 0; list-style: none; }
+.file { display: flex; flex-direction: column; min-width: 0; overflow: hidden; background: #fff; border: 1px solid var(--border); border-radius: .75rem; transition: border-color 140ms ease, box-shadow 140ms ease; }
+.file:hover, .file:focus-within { border-color: var(--accent-border); box-shadow: 0 8px 18px -10px #39220f40; }
+.file[aria-busy=true] { opacity: .5; }
+.open { display: block; color: inherit; text-decoration: none; }
+.open:focus-visible { outline-offset: -3px; border-radius: .75rem; }
+.thumbnail, .badge { display: grid; place-items: center; width: 100%; height: 6.5rem; background: var(--surface-sunken); }
+.thumbnail { object-fit: cover; }
+.badge { font-family: var(--font-geist-mono), monospace; font-size: .95rem; font-weight: 600; letter-spacing: .08em; color: var(--muted); }
+.badge[data-kind=pdf] { color: var(--critical); background: var(--critical-soft); }
+.badge[data-kind=docx] { color: var(--absence-business-trip); background: color-mix(in srgb, var(--absence-business-trip) 11%, #fff); }
+.badge[data-kind=xlsx], .badge[data-kind=csv] { color: var(--success-strong); background: var(--success-soft); }
+.badge[data-kind=pptx] { color: var(--warning-strong); background: var(--warning-soft); }
+.name { display: block; overflow: hidden; padding: .55rem .75rem 0; font-size: .88rem; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.open:hover .name { color: var(--accent-strong); text-decoration: underline; }
+.meta { display: flex; align-items: center; justify-content: space-between; gap: .3rem; min-height: 2.6rem; padding: 0 .35rem .3rem .75rem; font-size: .74rem; line-height: 1.35; color: var(--muted); }
+.meta > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.actions { display: flex; flex: none; opacity: 0; transition: opacity 120ms ease; }
+.actions :global(.icon-button) { width: 28px; height: 28px; }
+.file:hover .actions, .file:focus-within .actions { opacity: 1; }
+@media (hover: none) { .actions { opacity: 1; } }
+.file > :global(.form-error) { margin: 0; padding: 0 .75rem .6rem; font-size: .8rem; color: var(--critical); }
+
+.uploads { display: grid; gap: .45rem; margin: 0 0 .9rem; padding: 0; list-style: none; }
+.uploads li { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem .8rem; padding: .5rem .75rem; font-size: .85rem; background: var(--background); border-radius: .6rem; }
+.uploads li[data-failed] { background: var(--critical-soft); }
+.uploadName { min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.uploads progress { flex: 1; min-width: 6rem; height: .4rem; overflow: hidden; appearance: none; background: var(--border); border: 0; border-radius: 1rem; }
+.uploads progress::-webkit-progress-bar { background: var(--border); }
+.uploads progress::-webkit-progress-value { background: var(--accent); transition: width 160ms ease; }
+.uploads progress::-moz-progress-bar { background: var(--accent); }
+.uploads button { margin-left: auto; }
+.card > p.hint { margin: 0; font-size: .8rem; color: var(--text-subtle); }
+.card[data-dropping] > p.hint { font-weight: 600; color: var(--accent-strong); }
+
+@media (prefers-reduced-motion: reduce) { .card, .file, .actions { transition: none; } }

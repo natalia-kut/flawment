@@ -155,9 +155,9 @@ admins can start a project; the creator becomes its **Owner**.
 | Edit or delete tasks | Those they added | All | All | All |
 | Change task status | Tasks they added or are assigned | All | All | All |
 | Assign tasks | Only to themselves | Any member | Any member | Any member |
-| Comment on tasks | Yes | Yes | Yes | Yes |
+| Comment on tasks and add files | Yes | Yes | Yes | Yes |
 | Edit comments | Their own | Their own | Their own | Their own |
-| Delete comments | Their own | All | All | All |
+| Delete comments and files | Their own | All | All | All |
 | Edit project details and stages | — | Yes | Yes | Yes |
 | Add or remove members | — | Contributors only | Yes | Yes |
 | Make someone a Coordinator | — | — | Yes | Yes |
@@ -206,7 +206,7 @@ Unit tests cover password hashing, permissions, project and task filters, overdu
 dates, progress, workspace task aggregation, time off, birthdays, anniversaries and
 statuses. Integration tests check account and project access (who may start a
 project and name coordinators), task creation/editing/deletion by each role, status
-changes, the task page and its comments, stages, profiles, teams, job titles, time off and who may see what. They require the migrated PostgreSQL
+changes, the task page, its comments and files, stages, profiles, teams, job titles, time off and who may see what. They require the migrated PostgreSQL
 database, create temporary records and remove them afterward. They run
 sequentially to avoid interfering transactions on the shared database. Run them
 against a local development database. To check the UI manually, sign in as a sample
@@ -291,13 +291,27 @@ an open page does not overwrite what others changed meanwhile. **Discussion** ho
 the comments, formatted with the same editor, and their replies (one level deep: a reply
 to a reply joins the same thread). Deleting a comment that has replies leaves "Comment
 deleted" in its place. Super admins appear there as "Administrator" to standard users.
+**Files** holds up to 10 files of up to 10 MB (PNG, JPEG, WebP, PDF, DOCX, XLSX, PPTX, TXT,
+CSV): picked, dropped anywhere on the page, or pasted as a screenshot. They are stored in
+PostgreSQL (`TaskFile`) like profile photos, so they go with their task and its backups.
+The type is recognised from the content and must match the name; documents with macros,
+SVG and HTML are refused. Uploads use `POST /api/tasks/ID/files`, outside the Server
+Action size limit. `GET /api/files/ID` checks access to the project every time: images can
+be viewed, everything else is only downloaded.
+A click shows a file in the app: images, PDF, text, CSV and Excel (as tables) and Word.
+Everything is read in the browser, with `mammoth` and `read-excel-file` loaded only when
+needed; a Word document appears in a sandboxed frame without scripts. PowerPoint files are
+downloaded.
+
 **Copy link** copies the address. **Delete task** returns to the project.
 
-The `task_comments` and `comment_replies` migrations add `TaskComment`; after applying them, run
+The `task_comments`, `comment_replies` and `task_files` migrations add `TaskComment` and
+`TaskFile`; after applying them, run
 `npm run db:generate` and restart `npm run dev`.
 
 Manual check: open a task's page, change its priority and deadline, refresh, and
-confirm they stayed. Post, edit, answer and delete a comment. Sign in as a contributor who is
+confirm they stayed. Post, edit, answer and delete a comment.
+Add an image and a PDF, open both, delete one. Sign in as a contributor who is
 assigned a task someone else added: only its status can be changed.
 
 ### Deleting project tasks

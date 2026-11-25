@@ -30,7 +30,7 @@ export function parseMarkdown(text: string): Token[] {
 /** The editor writes <, > and & in plain text as entities; code is kept as it is. */
 export function decodeEntities(text: string) {
   return text.replace(/&(lt|gt|quot|nbsp|amp);/g, (_, name: string) =>
-    ({ lt: "<", gt: ">", quot: '"', nbsp: " ", amp: "&" })[name]!);
+    ({ lt: "<", gt: ">", quot: '"', nbsp: "\u00a0", amp: "&" })[name]!);
 }
 
 const children = (token: Token) => (token as Tokens.Generic).tokens as Token[] | undefined;
@@ -53,7 +53,7 @@ function tokenText(token: Token): string {
 
 /** Without the formatting: for searching, one-line summaries and generated documents. */
 export function plainText(text: string | null) {
-  return text ? parseMarkdown(text).map(tokenText).join("").replace(/ /g, " ").trim() : "";
+  return text ? parseMarkdown(text).map(tokenText).join("").replace(/\u00a0/g, " ").trim() : "";
 }
 
 function countTasks(tokens: Token[]): number {
