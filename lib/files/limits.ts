@@ -1,5 +1,6 @@
 /** Shared with the browser, which must not import the sharp-based service. */
-export const MAX_FILE_BYTES = 10 * 1024 * 1024;
+// Vercel rejects request bodies over 4.5 MB.
+export const MAX_FILE_BYTES = 4 * 1024 * 1024;
 export const MAX_FILES_PER_TASK = 10;
 
 /** Extension to type. SVG and HTML are left out on purpose: they can carry scripts. */
