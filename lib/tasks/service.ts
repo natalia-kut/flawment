@@ -49,6 +49,12 @@ function completeForm(data: FormData, task: Task) {
   return whole;
 }
 
+/** When a task is finished or reopened, its completion date follows; otherwise it stays as it was. */
+function completion(status: TaskStatus, previous?: TaskStatus) {
+  if (status === previous) return {};
+  return { completed_at: status === "COMPLETED" ? new Date() : null };
+}
+
 function readFields(data: FormData, editing: boolean) {
   // A new task starts in the board column it was created from, or "To do".
   const status = (text(data, "status") || (editing ? "" : "TO_DO")) as TaskStatus;
@@ -111,6 +117,7 @@ async function saveTask(actor: Actor, data: FormData, editing: boolean, partial 
       throw new TaskError("Choose a stage from this project.");
     }
     const values = {
+      ...completion(status, existing?.status),
       stage_id: stageId,
       title, description: description || null, priority,
       deadline: deadline ? new Date(deadline) : null,
@@ -174,7 +181,7 @@ export async function changeTaskStatus(actor: Actor, data: FormData) {
     if (!allowed) throw new TaskError("You do not have permission to change this task status.");
     const changed = await tx.task.updateMany({
       where: { id: taskId, project_id: projectId, status: expected },
-      data: { status },
+      data: { status, ...completion(status, expected) },
     });
     if (changed.count !== 1) throw new TaskError("Someone changed this task in the meantime. Check its status and try again.");
   }, { isolationLevel: "Serializable" });

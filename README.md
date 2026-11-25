@@ -186,11 +186,17 @@ their own custom templates; super admins can manage all, including legacy
 templates without an owner. Built-in templates remain available to signed-in users.
 Documents are written from a project's live data. Besides figures and tables they have an
 **attention list** (late and unowned work, deadlines during someone's time off, stages at
-risk, each with its reason), a **stage roadmap** and a **team plan**: two weeks, a day per
+risk, each with its reason), a list of **what happened** lately (completed, added, discussed
+and new files; comments are counted, never quoted), a **pace chart** with a forecast, a
+**stage roadmap** and a **team plan**: two weeks, a day per
 column, with deadlines against days away. The plan shows colleagues' time off no further
 than the rest of the app (14 days ahead) and never the reason, which is not even read.
 Charts removed since (open work per person, progress vs. time, the priority matrix) turn
 into these when a saved template is loaded.
+
+`Task.completed_at` is set when a task becomes Completed and cleared when it is reopened.
+Tasks completed before it existed have no date: they count as done, but the pace chart
+starts only where the dates do, and nothing is guessed.
 In documents, the "Coordinators" fact and "Owner and coordinators" signatures list
 a project's coordinators.
 

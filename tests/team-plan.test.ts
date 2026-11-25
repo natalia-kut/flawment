@@ -17,7 +17,8 @@ function project(tasks: Partial<DocumentTask>[], absences: DocumentAbsence[] = [
     ],
     tasks: tasks.map((task, index) => ({
       id: index + 1, title: `Task ${index + 1}`, description: null, status: "TO_DO", priority: "MEDIUM",
-      deadline: null, assignee: jan, creator: anna, stage: null, ...task,
+      deadline: null, assignee: jan, creator: anna, stage: null,
+      createdOn: "2026-11-01", completedOn: null, commentDays: [], files: [], ...task,
     })),
   };
 }

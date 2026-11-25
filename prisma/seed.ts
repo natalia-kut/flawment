@@ -72,6 +72,9 @@ const projects: ProjectSeed[] = [
       ["Design the database schema", "michal.zielinski", -30, "COMPLETED", "HIGH"],
       ["Design order flow wireframes", "zofia.wisniewska", -20, "COMPLETED", "MEDIUM"],
       ["Set up the CI/CD pipeline", "michal.zielinski", -18, "COMPLETED", "LOW"],
+      ["Customer accounts and permissions", "aleksandra.lewandowska", -13, "COMPLETED", "HIGH"],
+      ["Invoice PDF downloads", "michal.zielinski", -8, "COMPLETED", "MEDIUM"],
+      ["Support ticket form", "zofia.wisniewska", -4, "COMPLETED", "MEDIUM"],
       ["Build order history and invoice view", "michal.zielinski", -4, "IN_PROGRESS", "URGENT", "Filters by date, status and invoice number."],
       ["Implement the order approval workflow", "aleksandra.lewandowska", -2, "IN_PROGRESS", "HIGH"],
       ["Visual design of the product catalogue", "zofia.wisniewska", 3, "IN_REVIEW", "MEDIUM"],
@@ -83,7 +86,7 @@ const projects: ProjectSeed[] = [
       ["Load testing for the end-of-quarter peak", null, null, "TO_DO", "HIGH"],
       ["CSV export of orders to the ERP", "zofia.wisniewska", -10, "CANCELLED", "LOW", "Replaced by the direct ERP integration."],
     ],
-    stages: [["Discovery and design", -20, 4], ["Build", 8, 6], ["Integration and testing", 28, 4]],
+    stages: [["Discovery and design", -20, 4], ["Build", 8, 9], ["Integration and testing", 28, 4]],
   },
   {
     name: "Corporate website redesign",
@@ -364,6 +367,9 @@ async function main() {
             deadline: deadline === null ? null : day(deadline),
             status,
             priority,
+            // Added a few at a time, and finished around their deadlines.
+            created_at: day(Math.min(project.start + index * 3, (deadline ?? 0) - 5, -1)),
+            completed_at: status === "COMPLETED" ? day(Math.min((deadline ?? 0) + (index % 3) - 1, -1)) : null,
           })),
         },
       },

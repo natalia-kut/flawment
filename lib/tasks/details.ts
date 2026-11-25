@@ -24,7 +24,7 @@ export async function getTaskDetails(viewer: Actor, taskId: number) {
   const task = await prisma.task.findFirst({
     where: { id: taskId, project: visibleProjects(viewer) },
     select: {
-      created_at: true, updated_at: true, creator: { select: personSelect },
+      created_at: true, updated_at: true, completed_at: true, creator: { select: personSelect },
       files: {
         orderBy: [{ created_at: "asc" }, { id: "asc" }],
         select: { id: true, name: true, type: true, size: true, created_at: true, uploader_id: true, uploader: { select: personSelect } },
@@ -48,6 +48,7 @@ export async function getTaskDetails(viewer: Actor, taskId: number) {
   return {
     createdOn: day.format(task.created_at),
     updatedAt: moment.format(task.updated_at),
+    completedOn: task.completed_at && day.format(task.completed_at),
     creator: person(task.creator, viewer),
     files: task.files.map((file) => ({
       id: file.id, name: file.name, size: file.size, isImage: file.type.startsWith("image/"),

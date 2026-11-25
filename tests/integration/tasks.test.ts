@@ -46,6 +46,27 @@ test("task creation, editing and deletion enforce permissions and project bounda
     const unassigned = await createTask(actor(1), input());
     assert.equal((await prisma.task.findUniqueOrThrow({ where: { id: unassigned.id } })).assigned_to, null);
 
+    // Finishing a task dates it; editing it later keeps the date, reopening clears it.
+    const completedAt = async () => (await prisma.task.findUniqueOrThrow({ where: { id: unassigned.id } })).completed_at;
+    const move = (expected: string, status: string) => changeTaskStatus(actor(1), form({ project_id: project.id, task_id: unassigned.id, expected_status: expected, status }));
+    assert.equal(await completedAt(), null);
+    await move("TO_DO", "COMPLETED");
+    const finished = await completedAt();
+    assert.ok(finished);
+    await updateTask(actor(1), input({ task_id: unassigned.id, status: "COMPLETED", title: "Renamed" }));
+    assert.deepEqual(await completedAt(), finished);
+    await move("COMPLETED", "COMPLETED");
+    assert.deepEqual(await completedAt(), finished);
+    await move("COMPLETED", "TO_DO");
+    assert.equal(await completedAt(), null);
+    await updateTask(actor(1), input({ task_id: unassigned.id, status: "COMPLETED" }));
+    assert.ok(await completedAt());
+    await updateTask(actor(1), input({ task_id: unassigned.id, status: "TO_DO" }));
+    assert.equal(await completedAt(), null);
+    const createdDone = await createTask(actor(1), input({ status: "COMPLETED" }));
+    assert.ok((await prisma.task.findUniqueOrThrow({ where: { id: createdDone.id } })).completed_at);
+    await deleteTask(actor(1), form({ project_id: project.id, task_id: createdDone.id }));
+
     const editInput = (extra: Record<string, string | number> = {}) =>
       input({ task_id: created.id, status: "IN_PROGRESS", ...extra });
     await updateTask(actor(1), editInput({

@@ -66,7 +66,7 @@ export function isHighPriority(task: DocumentTask) {
 }
 
 export function describeTiming(task: DocumentTask, today: string) {
-  if (task.status === "COMPLETED") return "Done";
+  if (task.status === "COMPLETED") return task.completedOn ? `Done ${formatShortDay(task.completedOn)}` : "Done";
   if (task.status === "CANCELLED") return "Cancelled";
   if (!task.deadline) return "No deadline";
 
@@ -146,6 +146,7 @@ export function buildVariables(project: DocumentProject, today: string): Record<
     scheduleHealth: scheduleHealth(project, today, progress, elapsed, overdue),
     totalTasks: String(tasks.length),
     completedTasks: String(completed),
+    completedWeek: String(tasks.filter((task) => task.completedOn !== null && task.completedOn > addDays(today, -7) && task.completedOn <= today).length),
     openTasks: String(open.length),
     overdueTasks: String(overdue),
     dueSoon: String(tasks.filter((task) => isDueSoon(task, today)).length),

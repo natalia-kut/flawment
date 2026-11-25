@@ -249,6 +249,7 @@ export default function TaskPage({ project, task, details, viewer, today }: {
 
         <div className={styles.history}>
           <p>Added by {`${details.creator.firstName} ${details.creator.lastName}`.trim()} on {details.createdOn}</p>
+          {details.completedOn && <p>Completed on {details.completedOn}</p>}
           <p>Last changed {details.updatedAt}</p>
           {task.canEdit && <DeleteTaskForm label="Delete task" projectId={project.id} taskId={task.id} title={task.title}
             onDeleted={() => router.replace("/?project=" + project.id)} />}

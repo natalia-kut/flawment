@@ -18,6 +18,8 @@ export type DocumentPerson = {
 
 export type DocumentStage = { id: number; name: string; deadline: string | null };
 
+export type DocumentFile = { id: number; name: string; addedOn: string };
+
 export type DocumentTask = {
   id: number;
   title: string;
@@ -28,6 +30,12 @@ export type DocumentTask = {
   assignee: DocumentPerson | null;
   creator: DocumentPerson;
   stage: DocumentStage | null;
+  createdOn: string;
+  /** Null while open, and for tasks completed before the date was recorded. */
+  completedOn: string | null;
+  /** The days of its recent comments, one per comment: how much it is discussed, not what is said. */
+  commentDays: string[];
+  files: DocumentFile[];
 };
 
 /** Days someone is away: never why. */

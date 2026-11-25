@@ -16,7 +16,8 @@ function project(tasks: Partial<DocumentTask>[], fields: Partial<DocumentProject
     members: [{ person: anna, role: "OWNER", joinedAt: "2026-11-01", absences: [] }],
     tasks: tasks.map((task, index) => ({
       id: index + 1, title: `Task ${index + 1}`, description: null, status: "TO_DO", priority: "MEDIUM",
-      deadline: "2027-01-10", assignee: anna, creator: anna, stage: null, ...task,
+      deadline: "2027-01-10", assignee: anna, creator: anna, stage: null,
+      createdOn: "2026-11-01", completedOn: null, commentDays: [], files: [], ...task,
     })),
     ...fields,
   };
@@ -82,8 +83,8 @@ test("charts that were removed turn into what replaced them", () => {
   ]);
   assert.deepEqual(blocks, [
     { id: "a", type: "chart", kind: "teamPlan", title: "Team plan (next two weeks)" },
-    // The same findings twice would only repeat themselves.
-    { id: "b", type: "insights", title: "What needs attention" },
+    { id: "b", type: "chart", kind: "pace", title: "Pace and forecast" },
+    { id: "c", type: "insights", title: "Our own title" },
     { id: "d", type: "chart", kind: "timeline", title: "Deadline timeline" },
   ]);
 });
