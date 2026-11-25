@@ -184,6 +184,13 @@ for confirmation in an in-app dialog.
 Document templates belong to their creator. Standard users can only read or change
 their own custom templates; super admins can manage all, including legacy
 templates without an owner. Built-in templates remain available to signed-in users.
+Documents are written from a project's live data. Besides figures and tables they have an
+**attention list** (late and unowned work, deadlines during someone's time off, stages at
+risk, each with its reason), a **stage roadmap** and a **team plan**: two weeks, a day per
+column, with deadlines against days away. The plan shows colleagues' time off no further
+than the rest of the app (14 days ahead) and never the reason, which is not even read.
+Charts removed since (open work per person, progress vs. time, the priority matrix) turn
+into these when a saved template is loaded.
 In documents, the "Coordinators" fact and "Owner and coordinators" signatures list
 a project's coordinators.
 

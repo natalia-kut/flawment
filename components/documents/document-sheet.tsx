@@ -12,6 +12,7 @@ import {
   selectTasks,
   type MemberRow,
 } from "@/lib/documents/engine";
+import { projectInsights } from "@/lib/documents/insights";
 import {
   memberColumnOptions,
   taskColumnOptions,
@@ -29,6 +30,7 @@ import {
   type DocumentTask,
 } from "@/lib/documents/types";
 import DocumentChart from "./document-charts";
+import DocumentNotes from "./document-notes";
 
 export type BlockFrame = HTMLAttributes<HTMLElement> & { controls?: ReactNode };
 
@@ -70,6 +72,8 @@ function taskCell(column: TaskColumn, task: DocumentTask, today: string) {
       return task.assignee ? <Person person={task.assignee} /> : <span className="document-muted">Unassigned</span>;
     case "status":
       return taskStatusLabels[task.status];
+    case "stage":
+      return task.stage?.name ?? <span className="document-muted">No stage</span>;
     case "priority":
       return <span className={`priority-tag ${task.priority.toLowerCase()}`}>{taskPriorityLabels[task.priority]}</span>;
     case "deadline":
@@ -159,6 +163,14 @@ function renderBlock(block: TemplateBlock, project: DocumentProject, today: stri
             </div>
           ))}
         </div>
+      );
+
+    case "insights":
+      return (
+        <>
+          <SectionTitle title={block.title} variables={variables} />
+          <DocumentNotes insights={projectInsights(project, today)} empty="Nothing needs attention right now." />
+        </>
       );
 
     case "chart":

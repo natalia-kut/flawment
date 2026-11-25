@@ -16,6 +16,8 @@ export type DocumentPerson = {
   username: string;
 };
 
+export type DocumentStage = { id: number; name: string; deadline: string | null };
+
 export type DocumentTask = {
   id: number;
   title: string;
@@ -25,12 +27,18 @@ export type DocumentTask = {
   deadline: string | null;
   assignee: DocumentPerson | null;
   creator: DocumentPerson;
+  stage: DocumentStage | null;
 };
+
+/** Days someone is away: never why. */
+export type DocumentAbsence = { start: string; end: string };
 
 export type DocumentMember = {
   person: DocumentPerson;
   role: ProjectRole;
   joinedAt: string;
+  /** As much as any colleague may know: the time off that touches the next 14 days. */
+  absences: DocumentAbsence[];
 };
 
 export type DocumentProject = {
@@ -42,6 +50,7 @@ export type DocumentProject = {
   endDate: string | null;
   owner: DocumentPerson;
   members: DocumentMember[];
+  stages: DocumentStage[];
   tasks: DocumentTask[];
 };
 

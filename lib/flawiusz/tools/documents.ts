@@ -43,6 +43,7 @@ const blockSchema = z.discriminatedUnion("type", [
   }),
   z.object({ id: blockId, type: z.literal("facts"), title, facts: z.array(variable).min(1) }),
   z.object({ id: blockId, type: z.literal("metrics"), metrics: z.array(variable).min(1).max(6) }),
+  z.object({ id: blockId, type: z.literal("insights"), title }).describe("What needs attention and why, written by the app."),
   z.object({ id: blockId, type: z.literal("chart"), kind: z.enum(keys(chartKindOptions)), title }),
   z.object({
     id: blockId,
