@@ -3,7 +3,8 @@ import { plainText } from "@/lib/rich-text/markdown";
 import { requireUser } from "@/lib/auth/session";
 import { visibleProjects } from "@/lib/rbac";
 import { mergeRanges, relevantAbsences, toRanges } from "@/lib/time-off/availability";
-import { workspaceToday } from "@/lib/time-off/dates";
+import { addDays, workspaceDay, workspaceToday } from "@/lib/time-off/dates";
+import { MAX_ACTIVITY_DAYS } from "./activity";
 import { builtInTemplates } from "./built-in-templates";
 import { parseBlocks, type DocumentTemplate } from "./template-schema";
 import type { DocumentPerson, DocumentProject } from "./types";
@@ -44,7 +45,10 @@ export async function getDocumentProjects(): Promise<DocumentProject[]> {
         absences: { where: relevantAbsences(today), select: { start_date: true, end_date: true } },
       } } }, orderBy: { joined_at: "asc" } },
       tasks: {
-        include: { assignee: { select: personSelect }, creator: { select: personSelect }, stage: { select: { id: true, name: true, deadline: true } } },
+        include: { assignee: { select: personSelect }, creator: { select: personSelect }, stage: { select: { id: true, name: true, deadline: true } },
+          comments: { where: { deleted_at: null, created_at: { gte: new Date(addDays(today, -MAX_ACTIVITY_DAYS)) } }, select: { created_at: true } },
+          // Never the contents: they can be large.
+          files: { select: { id: true, name: true, created_at: true } } },
         orderBy: { id: "asc" },
       },
       stages: { select: { id: true, name: true, deadline: true }, orderBy: { id: "asc" } },
@@ -79,6 +83,10 @@ export async function getDocumentProjects(): Promise<DocumentProject[]> {
       assignee: task.assignee ? visiblePerson(task.assignee) : null,
       creator: visiblePerson(task.creator),
       stage: task.stage ? toStage(task.stage) : null,
+      createdOn: workspaceDay(task.created_at),
+      completedOn: task.completed_at ? workspaceDay(task.completed_at) : null,
+      commentDays: task.comments.map((comment) => workspaceDay(comment.created_at)),
+      files: task.files.map((file) => ({ id: file.id, name: file.name, addedOn: workspaceDay(file.created_at) })),
     })),
   }));
 }

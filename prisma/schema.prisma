@@ -218,6 +218,8 @@ model Task {
   deadline DateTime?    @db.Date
   status   TaskStatus   @default(TO_DO)
   priority TaskPriority @default(MEDIUM)
+  // When it became COMPLETED; cleared when it is reopened. Null for tasks completed before this was recorded.
+  completed_at DateTime?
 
   comments TaskComment[]
   files    TaskFile[]

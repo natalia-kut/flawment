@@ -12,6 +12,7 @@ import {
   selectTasks,
   type MemberRow,
 } from "@/lib/documents/engine";
+import { projectFiles } from "@/lib/documents/activity";
 import { projectInsights } from "@/lib/documents/insights";
 import {
   memberColumnOptions,
@@ -29,6 +30,7 @@ import {
   type DocumentProject,
   type DocumentTask,
 } from "@/lib/documents/types";
+import ActivityList from "./activity-list";
 import DocumentChart from "./document-charts";
 import DocumentNotes from "./document-notes";
 
@@ -82,6 +84,8 @@ function taskCell(column: TaskColumn, task: DocumentTask, today: string) {
       return (
         <span className={isOverdue(task, today) ? "document-late" : undefined}>{describeTiming(task, today)}</span>
       );
+    case "completed":
+      return task.completedOn ? formatDay(task.completedOn) : "—";
     case "creator":
       return <Person person={task.creator} />;
     case "description":
@@ -172,6 +176,37 @@ function renderBlock(block: TemplateBlock, project: DocumentProject, today: stri
           <DocumentNotes insights={projectInsights(project, today)} empty="Nothing needs attention right now." />
         </>
       );
+
+    case "activity":
+      return (
+        <>
+          <SectionTitle title={block.title} variables={variables} />
+          <ActivityList days={block.days} project={project} today={today} />
+        </>
+      );
+
+    case "fileTable": {
+      const files = projectFiles(project);
+      return (
+        <>
+          <SectionTitle title={block.title} variables={variables} />
+          {files.length === 0 ? (
+            <p className="document-muted">No files are attached to this project&apos;s tasks.</p>
+          ) : (
+            <div className="table-scroll">
+              <table className="document-table">
+                <thead><tr><th>File</th><th>Task</th><th>Added</th></tr></thead>
+                <tbody>
+                  {files.map((file) => (
+                    <tr key={file.id}><td className="column-email">{file.name}</td><td>{file.task.title}</td><td className="column-deadline">{formatDay(file.addedOn)}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      );
+    }
 
     case "chart":
       return (

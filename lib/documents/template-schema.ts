@@ -25,6 +25,7 @@ export const variableOptions = [
   { key: "scheduleHealth", label: "Schedule health" },
   { key: "totalTasks", label: "All tasks" },
   { key: "completedTasks", label: "Completed tasks" },
+  { key: "completedWeek", label: "Completed in 7 days" },
   { key: "openTasks", label: "Open tasks" },
   { key: "overdueTasks", label: "Overdue tasks" },
   { key: "dueSoon", label: "Due in 14 days" },
@@ -45,6 +46,7 @@ export const taskColumnOptions = [
   { key: "priority", label: "Priority" },
   { key: "deadline", label: "Deadline" },
   { key: "timing", label: "Timing" },
+  { key: "completed", label: "Completed on" },
   { key: "creator", label: "Created by" },
   { key: "description", label: "Description" },
 ] as const;
@@ -94,11 +96,14 @@ export const memberSortOptions = [
 
 export const chartKindOptions = [
   { key: "status", label: "Task status breakdown" },
+  { key: "pace", label: "Pace and forecast" },
   { key: "stageRoadmap", label: "Stage roadmap" },
   { key: "timeline", label: "Deadline timeline" },
   { key: "teamPlan", label: "Team plan (next two weeks)" },
   { key: "deadlineWeeks", label: "Deadlines per week" },
 ] as const;
+
+export const activityPeriods = [7, 14, 30] as const;
 
 export const signerOptions = [
   { key: "owner", label: "Project owner" },
@@ -118,6 +123,7 @@ export type TaskFilter = {
 export type TaskSort = OptionKey<typeof taskSortOptions>;
 export type MemberSort = OptionKey<typeof memberSortOptions>;
 export type Signers = OptionKey<typeof signerOptions>;
+export type ActivityPeriod = (typeof activityPeriods)[number];
 export type ChartKind = OptionKey<typeof chartKindOptions>;
 
 export type TemplateBlock =
@@ -126,6 +132,8 @@ export type TemplateBlock =
   | { id: string; type: "facts"; title: string; facts: VariableKey[] }
   | { id: string; type: "metrics"; metrics: VariableKey[] }
   | { id: string; type: "insights"; title: string }
+  | { id: string; type: "activity"; title: string; days: ActivityPeriod }
+  | { id: string; type: "fileTable"; title: string }
   | { id: string; type: "chart"; kind: ChartKind; title: string }
   | {
       id: string;
@@ -149,9 +157,11 @@ export const blockTypeOptions: { type: BlockType; label: string; hint: string }[
   { type: "facts", label: "Fact sheet", hint: "Label / value table" },
   { type: "metrics", label: "Key figures", hint: "Highlighted numbers" },
   { type: "insights", label: "Attention list", hint: "What is wrong and why, in sentences" },
-  { type: "chart", label: "Chart", hint: "Stages, team plan, timeline…" },
+  { type: "activity", label: "What happened", hint: "Done, added, discussed, new files" },
+  { type: "chart", label: "Chart", hint: "Stages, team plan, pace…" },
   { type: "taskTable", label: "Task table", hint: "Filtered list of tasks" },
   { type: "memberTable", label: "Team table", hint: "Members and workload" },
+  { type: "fileTable", label: "File list", hint: "Files attached to tasks" },
   { type: "signatures", label: "Signatures", hint: "Sign-off lines" },
   { type: "pageBreak", label: "Page break", hint: "Start a new PDF page" },
 ];
@@ -196,6 +206,10 @@ export function createBlock(type: BlockType): TemplateBlock {
       return { id, type, metrics: ["progress", "openTasks", "overdueTasks"] };
     case "insights":
       return { id, type, title: insightsTitle };
+    case "activity":
+      return { id, type, title: "What happened this week", days: 7 };
+    case "fileTable":
+      return { id, type, title: "Files" };
     case "chart":
       return { id, type, kind: "stageRoadmap", title: "Stage roadmap" };
     case "taskTable":
@@ -251,7 +265,10 @@ const removedCharts = {
     replacement: (id: string) => ({ id, type: "chart" as const, kind: "teamPlan" as const, title: "Team plan (next two weeks)" }),
     titles: ["Open work per person"],
   },
-  progressVsTime: { replacement: attention, titles: ["Progress vs. time elapsed", "Progress against the schedule"] },
+  progressVsTime: {
+    replacement: (id: string) => ({ id, type: "chart" as const, kind: "pace" as const, title: "Pace and forecast" }),
+    titles: ["Progress vs. time elapsed", "Progress against the schedule"],
+  },
   priorityMatrix: { replacement: attention, titles: ["Priority × status matrix", "Where the risk sits"] },
 };
 
@@ -275,6 +292,10 @@ function parseBlock(raw: unknown): TemplateBlock | null {
       return { id, type: "metrics", metrics: pickList<VariableKey>(raw.metrics, keysOf(variableOptions)).slice(0, 6) };
     case "insights":
       return { id, type: "insights", title };
+    case "activity":
+      return { id, type: "activity", title, days: activityPeriods.find((days) => days === raw.days) ?? 7 };
+    case "fileTable":
+      return { id, type: "fileTable", title };
     case "chart":
       if (isRemovedChart(raw.kind)) {
         const { replacement, titles } = removedCharts[raw.kind];

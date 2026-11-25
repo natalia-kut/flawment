@@ -1,3 +1,4 @@
+import PaceChart from "./pace-chart";
 import StageRoadmap from "./stage-roadmap";
 import TeamPlanChart from "./team-plan-chart";
 import {
@@ -314,6 +315,8 @@ export default function DocumentChart({ kind, project, today }: ChartProps & { k
       return <StatusBreakdown project={project} today={today} />;
     case "timeline":
       return <Timeline project={project} today={today} />;
+    case "pace":
+      return <PaceChart project={project} today={today} />;
     case "stageRoadmap":
       return <StageRoadmap project={project} today={today} />;
     case "teamPlan":

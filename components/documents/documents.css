@@ -729,7 +729,7 @@ p.document-muted {
 }
 
 /* Short values stay on one line; names and titles wrap between words. */
-.document-table td:is(.column-status, .column-priority, .column-deadline, .column-timing, .column-joined, .column-open, .column-completed, .column-overdue, .column-highPriority) {
+.document-table td:is(.column-status, .column-priority, .column-deadline, .column-timing, .column-completed, .column-joined, .column-open, .column-completed, .column-overdue, .column-highPriority) {
   white-space: nowrap;
 }
 
@@ -934,6 +934,29 @@ p.document-muted {
 
 .document-notes li[data-tone="good"] { border-left-color: var(--tone-good); }
 .document-notes li[data-tone="critical"] { border-left-color: var(--tone-critical); background: var(--critical-soft); }
+
+/* Pace: all the work against the work done */
+.pace-grid { stroke: var(--border); }
+.pace-area { fill: var(--status-completed); opacity: 0.14; }
+.pace-done { fill: none; stroke: var(--status-completed); stroke-width: 2.5; }
+.pace-now { fill: var(--status-completed); }
+.pace-scope { fill: none; stroke: #5c4636; stroke-width: 1.5; }
+.pace-forecast { stroke: var(--status-completed); stroke-width: 2; stroke-dasharray: 2 5; stroke-linecap: round; }
+.pace-forecast-end { fill: var(--surface); stroke: var(--status-completed); stroke-width: 2; }
+.pace-end { stroke: var(--border-hover); stroke-width: 1.5; }
+.swatch-pace-scope { height: 3px; background: #5c4636; }
+.swatch-pace-forecast { height: 3px; background: repeating-linear-gradient(90deg, var(--status-completed) 0 3px, transparent 3px 5px); }
+
+/* What happened: two columns of short lists */
+.activity { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 28px; font-size: 12.5px; }
+.activity-group { break-inside: avoid; }
+.activity-group h4 { margin: 0 0 6px; padding-bottom: 5px; border-bottom: 1px solid var(--border); font-size: 12.5px; font-weight: 700; }
+.activity-group h4 span { margin-left: 2px; color: var(--muted); font-weight: 500; }
+.activity-group ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.activity-group li { display: grid; overflow-wrap: anywhere; }
+.activity-group li strong { font-weight: 600; }
+.activity-group li span { color: var(--muted); font-size: 11.5px; }
+@media (max-width: 560px) { .activity { grid-template-columns: minmax(0, 1fr); } }
 
 /* Stage roadmap: what is done, and where it falls on the calendar */
 .roadmap { font-size: 12px; }

@@ -22,6 +22,8 @@ export function blockDetail(block: TemplateBlock) {
       return block.metrics.map((key) => variableLabels[key] ?? key).join(", ");
     case "facts":
     case "insights":
+    case "activity":
+    case "fileTable":
     case "taskTable":
     case "memberTable":
     case "signatures":

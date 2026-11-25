@@ -11,13 +11,14 @@ function filter(overrides: Partial<TaskFilter>): TaskFilter {
 export const builtInTemplates: DocumentTemplate[] = [
   {
     id: "builtin-status-report",
-    name: "Status report",
-    description: "How the project is doing, what needs attention and why, and what is coming up next.",
+    name: "Weekly update",
+    description: "What happened this week, what needs attention and why, and where the pace leads.",
     ...builtIn,
     blocks: [
-      { id: "kpi", type: "metrics", metrics: ["progress", "overdueTasks", "dueSoon", "daysRemaining"] },
+      { id: "kpi", type: "metrics", metrics: ["progress", "completedWeek", "overdueTasks", "daysRemaining"] },
       { id: "attention", type: "insights", title: "What needs attention" },
-      { id: "chart", type: "chart", kind: "status", title: "Task status" },
+      { id: "week", type: "activity", title: "What happened this week", days: 7 },
+      { id: "pace", type: "chart", kind: "pace", title: "Pace and forecast" },
       {
         id: "upcoming",
         type: "taskTable",
@@ -79,7 +80,7 @@ export const builtInTemplates: DocumentTemplate[] = [
   {
     id: "builtin-handover-protocol",
     name: "Handover protocol",
-    description: "Formal acceptance record: delivered scope, open items and sign-off.",
+    description: "Formal acceptance record: delivered scope, open items, files and sign-off.",
     ...builtIn,
     blocks: [
       { id: "heading", type: "heading", text: "Acceptance protocol — {{project}}" },
@@ -93,7 +94,7 @@ export const builtInTemplates: DocumentTemplate[] = [
         id: "delivered",
         type: "taskTable",
         title: "Delivered scope",
-        columns: ["title", "stage", "assignee", "deadline"],
+        columns: ["title", "stage", "assignee", "completed"],
         filter: filter({ statuses: ["COMPLETED"] }),
         sort: "stage",
         limit: null,
@@ -109,6 +110,7 @@ export const builtInTemplates: DocumentTemplate[] = [
         limit: null,
         emptyText: "No outstanding items — full scope delivered.",
       },
+      { id: "files", type: "fileTable", title: "Files handed over" },
       { id: "team", type: "memberTable", title: "Project team", columns: ["name", "role", "email", "joined"], sort: "role" },
       { id: "sign", type: "signatures", title: "Signatures", signers: "ownerAndManagers" },
     ],
