@@ -2,15 +2,21 @@
 
 Flawment is an early-stage project management application built with Next.js 16
 (App Router), React 19, TypeScript, Tailwind CSS 4, Prisma 7, and PostgreSQL 17.
+Try it at [flawment.vercel.app](https://flawment.vercel.app).
 
-It includes **Flawiusz**, an AI assistant on the dashboard and in a side panel on
-every page. It answers questions about projects, deadlines and the team, and
-creates document templates. It runs on a free model from OpenRouter, so it needs
-no paid API; see [Set up Flawiusz](#set-up-flawiusz).
+- **Projects and tasks:** stages, a board across projects, task pages with
+  comments and files.
+- **Documents:** written from a project's live data, with a pace forecast, a stage
+  roadmap and a team plan.
+- **People and teams:** profiles, statuses, job titles and time off.
+- **Flawiusz:** an AI assistant that answers questions about projects, deadlines and
+  the team, and creates document templates.
 
-## First-time setup (Windows and macOS)
+How it all works is in the **[Wiki](https://github.com/natalia-kut/flawment/wiki)**.
 
-Install these prerequisites yourself:
+## Quick start
+
+Works on Windows and macOS. Install first:
 
 - [Node.js](https://nodejs.org/) **24 LTS**, including npm. Prisma also supports
   Node.js 20.19+ and 22.12+ on their respective release lines.
@@ -22,74 +28,22 @@ Clone the repository, open a terminal in its root directory, then run:
 
 ```sh
 npm run bootstrap
-```
-
-This same command works in Windows PowerShell, Command Prompt, and macOS shells.
-It checks Node.js and Docker, copies `.env.example` to `.env` if missing, installs
-exact dependencies from `package-lock.json` using `npm ci`, starts PostgreSQL in
-Docker Compose, waits up to 120 seconds for its health check, applies committed
-migrations, generates Prisma Client, and seeds the super admin. No separate `npm install` is needed.
-It exits on failure; fix the reported problem and rerun it.
-
-Start the web application afterward:
-
-```sh
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Stop the development server
-with Ctrl+C; PostgreSQL continues running in Docker.
+Bootstrap installs dependencies, creates `.env`, starts PostgreSQL in Docker, applies
+migrations and adds a super admin; it is safe to rerun. Open
+[http://localhost:3000](http://localhost:3000) and register, or sign in as the local
+super admin: `admin@flawment.local` / `FlawmentAdmin123!`.
 
-Bootstrap is safe to rerun: it keeps your existing `.env` and database data and
-applies only pending migrations. `npm ci` replaces `node_modules`; commit changes
-to both dependency files together. Bootstrap does not create new migrations or
-seed sample data. It is intended for local development and uses the database
-selected by your existing `DATABASE_URL`.
+For sample projects and people, run `npm run db:seed` before anyone registers (it skips
+a database that already has users); the sample
+people sign in with `flawment123`.
 
-## Environment configuration
+Something not working? See
+[Setup and configuration](https://github.com/natalia-kut/flawment/wiki/Setup-and-configuration).
 
-`.env.example` is the committed template. `.env` is your local configuration and
-is ignored by Git. Bootstrap creates it automatically, with:
-
-```dotenv
-DATABASE_URL="postgresql://app_user:test@localhost:5432/flawment?schema=public"
-POSTGRES_PORT=5432
-```
-
-Next.js loads the root `.env` automatically. Prisma CLI and the seed script load
-it using the explicitly installed `dotenv` dependency. Docker Compose reads
-`POSTGRES_PORT` from the same file. Keep shared local configuration here; avoid
-overriding `DATABASE_URL` in `.env.local`, since Prisma uses `.env`.
-Variables already exported in your shell take precedence over `.env`.
-Restart the development server after changing configuration.
-
-The Compose database, user, and password are `flawment`, `app_user`, and `test`.
-These credentials are for local development only. PostgreSQL is exposed only on
-the host's loopback interface. If port 5432 is occupied, change `POSTGRES_PORT`
-and the port in `DATABASE_URL` to the same free port, then rerun bootstrap.
-If you change database credentials in Compose, also update `DATABASE_URL`.
-PostgreSQL initialization settings only apply to a new volume; changing them
-does not change credentials in an existing database.
-
-### Why PowerShell set DATABASE_URL=... failed
-
-`set NAME=value` is Command Prompt syntax. PowerShell uses `$env:NAME = "value"`;
-macOS shells use `export NAME="value"`. Using `.env` avoids this difference.
-You do not need a shell assignment for normal project commands.
-
-To remove a stale override before rerunning commands:
-
-```powershell
-# Windows PowerShell
-Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
-```
-
-```sh
-# macOS
-unset DATABASE_URL
-```
-
-## Daily development
+## Commands
 
 | Command | Purpose |
 | --- | --- |
@@ -101,139 +55,17 @@ unset DATABASE_URL
 | `npm run db:deploy` | Apply committed migrations without prompts |
 | `npm run db:generate` | Regenerate Prisma Client after schema changes |
 | `npm run db:seed` | Add optional sample data to an empty database |
-| `npm run db:demo` | Bring the sample projects up to date with today (see below) |
+| `npm run db:seed:admin` | Add the super admin to an existing installation |
+| `npm run db:demo` | Bring the sample projects up to date with today |
+| `npm test` | Run unit tests |
+| `npm run test:integration` | Run integration tests against the local database |
+| `npm run lint` | Run ESLint |
 | `npm run build` | Create a production build |
 | `npm run start` | Serve the production build |
-| `npm run lint` | Run ESLint |
 
 After pulling dependency or migration changes, rerun bootstrap. After editing
 `prisma/schema.prisma`, run `db:migrate` and then `db:generate`, and commit the
-resulting migration. Prisma 7 does not automatically generate the client when
-running migrations. The sample-data seed skips when standard users already exist.
-
-The sample projects live in `prisma/demo/story.ts`, with dates in working days from today.
-`npm run db:demo` puts them into a database that already has the sample people, or moves
-them to the present when they have aged. It resets the status, dates, people and priority
-of its own tasks and the teams of the sample people (and sets two statuses and a few days
-off), keeps descriptions that were written, and leaves everything else alone. Like the seed, it is not for production data.
-
-## Accounts and project roles
-
-Open `/register` to create a standard account (username, name, email and a password
-of 10–128 characters). Registration signs you in automatically. Returning users
-sign in at `/login` with their email and password; use **Sign out** in the account
-menu (your name at the foot of the sidebar) to end the session. Email and username uniqueness is case-insensitive.
-
-Bootstrap creates the local super admin with:
-
-- Email: `admin@flawment.local`
-- Password: `FlawmentAdmin123!`
-
-To seed it into an existing installation after applying migrations and generating
-the client, run `npm run db:seed:admin`. Set `SUPER_ADMIN_EMAIL` and
-`SUPER_ADMIN_PASSWORD` in `.env` before the first seed to choose other credentials.
-Rerunning the seed preserves the existing account and password and refuses to
-promote a colliding standard account. Production seeding requires explicit
-credentials. Sample users/projects remain optional via `npm run db:seed`; sample
-users use `flawment123` as their local-only password.
-
-Permissions come in three independent layers: the **account** (company-wide),
-the **team** (people) and the **project** (work).
-
-**Account.** A **super admin** acts as the company's IT department: they see every
-project and may do everything in it without being a member, and they alone manage
-accounts, job titles and teams (the **People** and **Teams** pages). Super admins
-never join teams or projects and are never assigned tasks; their accounts and
-photos stay hidden from standard users. Everyone else has a **standard** account.
-
-**Team.** A super admin places people in teams and may make someone with a
-managerial job title the team's **lead**. A lead sees *why* their own people are
-away (vacation, sick leave, business trip, other) and their team's time off in the
-dashboard calendar. Everyone else sees only that a colleague is out of office, and
-the reason for their own time off. Team membership is visible to everyone.
-
-**Project.** Only **managers** (people whose job title can lead a team) and super
-admins can start a project; the creator becomes its **Owner**.
-
-| Capability | Contributor | Coordinator | Owner | Super admin |
-| --- | --- | --- | --- | --- |
-| View the project, its people, stages and tasks | Yes | Yes | Yes | Every project |
-| Add tasks | Yes, for themselves or unassigned | Yes | Yes | Yes |
-| Edit or delete tasks | Those they added | All | All | All |
-| Change task status | Tasks they added or are assigned | All | All | All |
-| Assign tasks | Only to themselves | Any member | Any member | Any member |
-| Comment on tasks and add files | Yes | Yes | Yes | Yes |
-| Edit comments | Their own | Their own | Their own | Their own |
-| Delete comments and files | Their own | All | All | All |
-| Edit project details and stages | — | Yes | Yes | Yes |
-| Add or remove members | — | Contributors only | Yes | Yes |
-| Make someone a Coordinator | — | — | Yes | Yes |
-| Delete the project | — | — | Yes | Yes |
-
-There is exactly one Owner, who cannot be removed or demoted. Coordinators run the
-work: the project, its stages, every task and its contributors. Contributors often
-spot work themselves, so they add tasks too, but hand them only to themselves.
-Removing a member clears their task assignments in that project. Deleting a
-project also deletes its tasks, stages, memberships and project-specific document
-templates. Standard users only see projects they belong to. Project permissions
-live in `lib/rbac.ts`; every server action rechecks them.
-
-Projects opens as a table. Clicking a project name shows its dedicated view; use
-the **Projects → project name** breadcrumb to return to the list. The selected
-project is stored in the URL, so refresh and browser back/forward preserve
-navigation. A project's page shows its description and key facts, then one tab at a time:
-**Tasks** (open work by deadline, finished work folded underneath), **Stages** and
-**People**; the open tab is in the URL too (`?tab=`). **New project**, **Edit project** and **Add member** open dialogs with
-Cancel, Escape and backdrop dismissal. **Working on this project** shows the
-members as tiles; **⋯** on a tile opens a small menu (role and **Remove from
-project**) that closes when you click elsewhere. Deleting the project lives at the
-foot of **Edit project**, for whoever may delete it. Deletions and removals ask
-for confirmation in an in-app dialog.
-
-Document templates belong to their creator. Standard users can only read or change
-their own custom templates; super admins can manage all, including legacy
-templates without an owner. Built-in templates remain available to signed-in users.
-Documents are written from a project's live data. Besides figures and tables they have an
-**attention list** (late and unowned work, deadlines during someone's time off, stages at
-risk, each with its reason), a list of **what happened** lately (completed, added, discussed
-and new files; comments are counted, never quoted), a **pace chart** with a forecast, a
-**stage roadmap** and a **team plan**: two weeks, a day per
-column, with deadlines against days away. The plan shows colleagues' time off no further
-than the rest of the app (14 days ahead) and never the reason, which is not even read.
-Charts removed since (open work per person, progress vs. time, the priority matrix) turn
-into these when a saved template is loaded.
-
-`Task.completed_at` is set when a task becomes Completed and cleared when it is reopened.
-Tasks completed before it existed have no date: they count as done, but the pace chart
-starts only where the dates do, and nothing is guessed.
-In documents, the "Coordinators" fact and "Owner and coordinators" signatures list
-a project's coordinators.
-
-Sessions use random opaque cookies (`HttpOnly`, `SameSite=Lax`, `Secure` in
-production) and hashed tokens in PostgreSQL, expire after seven days, and are
-revoked on logout. Passwords use salted scrypt hashes, compatible with the
-existing seed. Login allows ten attempts per email per 15-minute window. Production
-must use HTTPS for the secure session cookie. Email invitations and password
-recovery are not implemented yet.
-
-### Verification
-
-```sh
-npm test
-npm run test:integration
-npm run lint
-```
-
-Unit tests cover password hashing, permissions, project and task filters, overdue
-dates, progress, workspace task aggregation, time off, birthdays, anniversaries and
-statuses. Integration tests check account and project access (who may start a
-project and name coordinators), task creation/editing/deletion by each role, status
-changes, the task page, its comments and files, stages, profiles, teams, job titles, time off and who may see what. They require the migrated PostgreSQL
-database, create temporary records and remove them afterward. They run
-sequentially to avoid interfering transactions on the shared database. Run them
-against a local development database. To check the UI manually, sign in as a sample
-manager (for example `aleksandra.lewandowska@flawment.dev`) and a contributor
-(`michal.zielinski@flawment.dev`, password `flawment123`) and compare what each can do.
+resulting migration.
 
 ## Set up Flawiusz
 
@@ -252,279 +84,3 @@ the chat then shows that the assistant is not set up.
    ```
 
 3. Restart `npm run dev`.
-
-## Troubleshooting
-
-- **Docker unavailable:** start Docker Desktop, wait for its engine to be ready,
-  and check `docker info`. On Windows, ensure Linux containers are selected.
-- **Database startup failure:** run `docker compose ps` and `docker compose logs db`.
-  Check for port conflicts and available Docker resources.
-- **Migration authentication/connection errors:** check `.env`, shell overrides,
-  and the credentials originally used to initialize the database volume.
-- **PowerShell blocks npm.ps1:** use `npm.cmd run bootstrap` (and `npm.cmd run dev`)
-  instead of changing the execution policy.
-- **npm missing:** reinstall Node.js with npm and open a new terminal; verify
-  `node --version` and `npm --version`.
-
-`npm run db:down` preserves the named `postgres_data` volume. To deliberately
-delete all local database data, use `docker compose down --volumes`, then rerun
-bootstrap. This deletion cannot be undone.
-
-### Project task management
-
-Open a project in **Projects** to see its tasks as a compact table: a priority dot
-and the title over its stage and description, then status, assignee and due date
-(red once overdue). Every member can use **New task**. Click a task you may edit
-(see the table above) to open the edit dialog: title, description, priority,
-deadline, assignment and these statuses: TO DO, IN PROGRESS, IN REVIEW, COMPLETED
-and CANCELLED. **Open on the Tasks board** shows the project there, to search and
-filter its tasks.
-
-Tasks can only be assigned to active standard users who belong to the project.
-Contributors assign tasks only to themselves (or leave them unassigned), edit and
-delete the tasks they added, and change the status of tasks they added or are
-assigned, by dragging a card or using **Move to** in task details.
-Failed validation in the task form keeps its values for correction.
-Apply the committed migrations before using task and stage features.
-
-To check editing manually, create a task, click it, change its status and
-priority, save and refresh the project. Confirm the changes remain visible.
-Run the database integration coverage with `npm run test:integration`.
-
-### Task page
-
-Every task has its own page at `/?task=ID`, for everyone who sees its project. Get
-there with **Open task page** in the task dialog (Tasks board, project or dashboard);
-someone who may not edit a task opens the page straight from the project's task list.
-The dialog stays for a quick look or change without leaving the board; its link to
-the page is hidden while there are unsaved changes.
-
-The description is formatted text: headings, bold, italics, lists, checklists, quotes,
-code and links, from the toolbar, with shortcuts, by typing Markdown (`- `, `## `,
-`[ ] `) or by pasting from a document. It is stored as Markdown in the same column, so
-older plain descriptions keep working; tables, images and HTML stay plain text. Reading
-uses a small renderer of React elements (`components/rich-text`); the editor (Tiptap)
-loads only when someone starts editing. Whoever may edit the task can tick its
-checklists without opening the editor. Search and generated documents use the plain text.
-
-The details on the right save as soon as they change, the title on Enter or when you
-leave it, and the description with its own button (or Ctrl+Enter). Only the changed field is sent, so
-an open page does not overwrite what others changed meanwhile. **Discussion** holds
-the comments, formatted with the same editor, and their replies (one level deep: a reply
-to a reply joins the same thread). Deleting a comment that has replies leaves "Comment
-deleted" in its place. Super admins appear there as "Administrator" to standard users.
-**Files** holds up to 10 files of up to 4 MB (PNG, JPEG, WebP, PDF, DOCX, XLSX, PPTX, TXT,
-CSV): picked, dropped anywhere on the page, or pasted as a screenshot. They are stored in
-PostgreSQL (`TaskFile`) like profile photos, so they go with their task and its backups.
-The type is recognised from the content and must match the name; documents with macros,
-SVG and HTML are refused. Uploads use `POST /api/tasks/ID/files`, outside the Server
-Action size limit. `GET /api/files/ID` checks access to the project every time: images can
-be viewed, everything else is only downloaded.
-A click shows a file in the app: images, PDF, text, CSV and Excel (as tables) and Word.
-Everything is read in the browser, with `mammoth` and `read-excel-file` loaded only when
-needed; a Word document appears in a sandboxed frame without scripts. PowerPoint files are
-downloaded.
-
-**Copy link** copies the address. **Delete task** returns to the project.
-
-The `task_comments`, `comment_replies` and `task_files` migrations add `TaskComment` and
-`TaskFile`; after applying them, run
-`npm run db:generate` and restart `npm run dev`.
-
-Manual check: open a task's page, change its priority and deadline, refresh, and
-confirm they stayed. Post, edit, answer and delete a comment.
-Add an image and a PDF, open both, delete one. Sign in as a contributor who is
-assigned a task someone else added: only its status can be changed.
-
-### Deleting project tasks
-
-Owners, coordinators and super admins can delete any task in a project's task
-list with the bin that appears on hover, or on its page; contributors the tasks they added.
-Confirming the browser prompt permanently removes that task; Cancel keeps it.
-Permissions and project ownership of the task are checked again on the server.
-Deleting a task does not delete its project or other tasks.
-
-For a manual check, create a disposable task, click its bin, cancel once, then
-confirm on a second attempt. Refresh and confirm the task stays removed.
-
-### Workspace Tasks page
-
-The sidebar **Tasks** page displays an interactive board across projects returned
-by the authorized workspace loader. Standard users see their projects; super
-admins see all projects. Search titles and descriptions, or filter by project,
-assignee, stage, priority, **Overdue** and **Only my tasks**. Grouped by project,
-hovering a column shows **+ Create new**, which adds a task to that project in that column's status;
-grouped by person, **New task** in the header lets you pick the project.
-Click a card to open task details, then use the project name or **Open task page** to
-go further. Existing project permissions apply. No tasks are fetched from a separate
-unrestricted endpoint.
-
-Sidebar selection is now stored in the view query parameter (for example,
-`/?view=tasks`), so refresh and browser back/forward retain the selected page.
-The per-project task lists and their management actions remain available.
-
-Manual check: open Tasks, combine filters, clear them, then open a task and its page.
-Refresh the Tasks page and check browser back/forward. Sign in as a user belonging
-to fewer projects to confirm that only their project tasks are visible.
-
-### Interactive task board
-
-The workspace Tasks page groups cards by project or person. Drag a card
-between status columns within the same group to save a status change. Click a
-card to open its details. The **Move to** selector in task details provides
-keyboard and touch access. Only the status changes: drag does not reassign a task
-or move it to a different project.
-
-Owners, coordinators and super admins can move any project task. Contributors can
-move the tasks they added or are assigned while they remain members. The server rechecks access,
-project boundaries and the previous status; stale changes are rejected with an
-error. Cards remain in their saved column if the request fails.
-
-Search and filter by project, assignee, stage, priority, **Overdue** or
-**Only my tasks**.
-Overdue means a deadline before today's Warsaw date, excluding completed and
-cancelled tasks. Progress counts completed tasks out of non-cancelled tasks and
-is calculated for the complete group, independently of filters.
-The Cancelled column appears for groups that contain cancelled tasks.
-
-Manual check: move a disposable task from TO DO to IN PROGRESS, refresh and
-confirm the saved status. Check By person, Only my tasks and Overdue.
-Use the Move to select as a keyboard alternative and check a contributor account.
-
-### Project stages
-
-Project details now include **Stages**. Owners, coordinators and super admins
-can create, edit and delete a stage with a name, description and optional deadline.
-Contributors can read stages. Names are checked for duplicates within the project.
-Stage cards show the number of completed tasks and total tasks assigned.
-
-The task create/edit dialog includes **Stage**. A task can belong to one stage
-from the same project, or **No stage**. Filter tasks by stage in both project task
-lists and the workspace board. Task details show the stage without enlarging
-board cards. Deleting a stage preserves its tasks and clears their stage link.
-
-After pulling schema changes into an installed environment, start Docker Desktop,
-stop the development server and run:
-
-```sh
-npm run db:up
-npm run db:deploy
-npm run db:generate
-npm run dev
-```
-
-Alternatively, run `npm run bootstrap` and then `npm run dev`.
-The stage migration adds `ProjectStage` and a nullable task-stage reference;
-existing tasks start without a stage. Do not reset the database.
-
-Manual check: create Planning, assign a task to it, filter by Planning, rename
-the stage, then delete it. The task must remain visible with No stage.
-Tests cover permissions, project boundaries, validation, assignment and deletion.
-
-### Project browser
-
-Projects are displayed as cards: name and description, a progress ring with
-the share of tasks done, status, deadline ("Due in 5 days" when close, red once
-past), overdue tasks (a link to them on the Tasks board) and the people. Search
-names and descriptions, combine with a status filter, or
-enable Show archived. Selecting the Archived status also reveals archived
-projects. Clear filters restores the default view, which excludes archived items.
-
-Completion is calculated from task statuses: completed tasks divided by all
-non-cancelled tasks. A project without active tasks shows 0%. Project status
-remains an independently managed value. Click anywhere on a card to open the
-project. The displayed **Planned** status corresponds to `TO_DO` in the database.
-
-### Profiles, statuses and celebrations
-
-Click your name/photo at the foot of the sidebar to open the account menu
-(**Set a status**, **Edit profile**, **Time off**, **Sign out**). **My profile**
-saves everything where you edit it, with no Save button: click a contact detail
-(phone, location, working hours, birthday, pronouns) to change it, add or remove
-skills as chips, and upload or remove your photo. Click a colleague's name or face
-(a project's people, comments, a task's assignee, the dashboard, Teams) to see their
-profile. Colleagues see the birthday as
-day and month only; the year never leaves the server. Your job title and team
-are read-only, because a super admin sets them; **Reports to** lists your team's
-leads. Skills replace the earlier free-text description, which has been removed.
-
-A **status** ("🍽️ Lunch", "🚗 Commuting") is a short note with one emoji that
-clears itself after 30 minutes, 1 or 4 hours, at the end of the day or week, or
-never. Expiry times are worked out on the server in Europe/Warsaw time. Statuses
-show on the profile, in the account menu, on team pages and in project People
-lists. Work anniversaries count from the day the account was created. On your
-birthday or anniversary the Dashboard greets you with a banner; on the day,
-colleagues see a "🎂 Birthday today" or "🎉 3 years today" badge on team pages.
-
-Profile photos accept non-animated JPEG, PNG or WebP, up to 2 MB and 16
-megapixels. The server decodes the image, removes metadata, crops/resizes it to a
-square of at most 512 pixels, and encodes WebP. The result is stored in
-`User.photo`, a PostgreSQL `BYTEA` column (Prisma `Bytes`). Photo bytes are never
-included in workspace JSON or session data. The authenticated photo endpoint
-serves any standard user's photo to signed-in users (the company directory is
-open) with private, non-cached responses; super admins' photos stay hidden.
-
-### Teams, people and job titles
-
-**Teams** shows every team as a tile, your own first and marked **Your team**.
-Open a tile to see its people: availability, lead, job title and up to two
-skills; click a person for their contact details, birthday, start date, status
-and all skills. The Dashboard shows your own team as rings with each person's
-open and late tasks (counted from projects you share) and who is away or
-celebrating today. **This month** on the Teams page greets everyone who joined
-this month (a super admin sees **New hires** to finish setting up above it). Empty teams are visible only to super admins.
-
-A super admin also creates, renames and deletes teams, adds people to a team
-(moving someone from another team asks for confirmation first), picks its lead
-and sees warnings when a team has no lead. **New hires** on the Teams page is one
-line of accounts still missing a job title or a team; click one to finish it.
-
-**Job title requests.** A team lead opens someone in their team and chooses
-**Suggest a new job title** (from the list or a new name, with an optional
-reason). One request waits per person; a new one replaces it, and the lead can
-withdraw it. A super admin approves or declines it on the dashboard: approving
-sets the title (adding it to the list when new) and, if it cannot lead, ends a
-lead role, which the request card warns about first. The lead sees the outcome
-on that person's card, and **Promoted this month** on the Teams page lets
-everyone congratulate them in the same card.
-
-**A super admin's dashboard** is about people rather than tasks: **Needs you**
-(requests to decide, who still needs a job title or a team, teams without a
-lead).
-**People** (super admins only) lists every account to edit name, email, job title,
-team and lead. Job titles come from a shared list: type to pick one, or type a new
-name to add it. A new title is managerial when its name says so (manager, lead,
-head, director, chief, CTO…, or kierownik, dyrektor, lider, szef); **Job titles**
-on the same page lists every title with a switch to correct that guess. Only people
-with a managerial job title can lead a team or start a project, and a team has one
-lead: making someone its lead replaces the previous one (the form names them first).
-Losing that title, its managerial switch, moving team or deleting the team ends a
-lead role. Deleting a team leaves its people without a team.
-
-### Time off
-
-**Time off** (account menu) lets you add or remove your own time off: vacation,
-sick leave, business trip or other, with an optional note. Ranges cannot overlap
-and can reach back at most 30 days. Colleagues only ever see that you are away
-("Out of office until 20 Nov", or "Away 24 – 28 Nov" within the next 14 days).
-The type (sick leave is health data) is added only for your team's lead, not
-even for super admins; the server leaves it out for everyone else. The note is visible to
-you alone. Away badges appear on team pages, in project People lists, when adding
-a project member and when assigning a task; back-to-back ranges read as one
-absence. The dashboard calendar stripes your own days off, and shows a team lead
-how many of their team are away each day.
-
-For existing installations, stop the dev server, run `npm install`,
-`npm run db:deploy` and `npm run db:generate`, then restart `npm run dev`.
-`npm run bootstrap` includes the migrations and generation for fresh installations.
-The migrations preserve existing data: free-text job titles become list entries
-(titles with a managerial word such as "manager" or "lead" are marked managerial,
-and leads whose title is not lose the role), project
-specializations and the profile description are removed, and project roles become Owner (the project's
-creator), Coordinator (former admins and managers) and Contributor (former
-participants). `npm run db:seed` adds sample teams, job titles, birthdays, time
-off and a sample super admin profile and photo, filling in only what is empty.
-
-Verification: run `npm test`, `npm run test:integration` and `npm run lint`.
-For the UI, compare a manager and a contributor (see above): starting a project,
-adding and editing tasks, naming a coordinator, and what each sees about time off.
