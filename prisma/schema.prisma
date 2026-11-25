@@ -96,6 +96,7 @@ model User {
   assigned_tasks Task[]              @relation("TaskAssignee")
   created_tasks  Task[]              @relation("TaskCreator")
   task_comments  TaskComment[]
+  task_files     TaskFile[]
 
   @@index([team_id])
   @@index([job_title_id])
@@ -219,6 +220,7 @@ model Task {
   priority TaskPriority @default(MEDIUM)
 
   comments TaskComment[]
+  files    TaskFile[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -246,6 +248,26 @@ model TaskComment {
   @@index([task_id, created_at])
   @@index([parent_id])
   @@index([author_id])
+}
+
+// A file attached to a task. `data` can be large: always select the columns you need.
+model TaskFile {
+  id          Int      @id @default(autoincrement())
+  task_id     Int
+  task        Task     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  uploader_id Int?
+  uploader    User?    @relation(fields: [uploader_id], references: [id], onDelete: SetNull)
+  name        String
+  // Recognised from the content, never taken from the browser.
+  type        String
+  size        Int
+  data        Bytes    @db.ByteA
+  // Images only.
+  thumbnail   Bytes?   @db.ByteA
+  created_at  DateTime @default(now())
+
+  @@index([task_id, created_at])
+  @@index([uploader_id])
 }
 
 model ProjectMembership {

@@ -19,12 +19,16 @@ function person(row: PersonRow | null, viewer: Actor) {
   return { id: row.id, firstName: row.first_name, lastName: row.last_name, photoVersion: row.photo_updated_at?.toISOString() ?? null };
 }
 
-/** What only the task's own page shows: who added it, when, and the discussion. */
+/** What only the task's own page shows: who added it, when, its files and the discussion. */
 export async function getTaskDetails(viewer: Actor, taskId: number) {
   const task = await prisma.task.findFirst({
     where: { id: taskId, project: visibleProjects(viewer) },
     select: {
       created_at: true, updated_at: true, creator: { select: personSelect },
+      files: {
+        orderBy: [{ created_at: "asc" }, { id: "asc" }],
+        select: { id: true, name: true, type: true, size: true, created_at: true, uploader_id: true, uploader: { select: personSelect } },
+      },
       comments: {
         orderBy: [{ created_at: "asc" }, { id: "asc" }],
         select: { id: true, author_id: true, parent_id: true, body: true, created_at: true, edited_at: true, deleted_at: true, author: { select: personSelect } },
@@ -45,6 +49,10 @@ export async function getTaskDetails(viewer: Actor, taskId: number) {
     createdOn: day.format(task.created_at),
     updatedAt: moment.format(task.updated_at),
     creator: person(task.creator, viewer),
+    files: task.files.map((file) => ({
+      id: file.id, name: file.name, size: file.size, isImage: file.type.startsWith("image/"),
+      uploader: person(file.uploader, viewer), mine: file.uploader_id === viewer.id, addedOn: day.format(file.created_at),
+    })),
     comments: comments.filter((comment) => !comment.isReply)
       .map((comment) => ({ ...comment, replies: comments.filter((reply) => reply.parentId === comment.id) })),
   };

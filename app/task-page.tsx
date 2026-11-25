@@ -17,6 +17,7 @@ import { celebrate } from "@/components/ui/confetti";
 import AvailabilityBadge from "./availability-badge";
 import DeleteTaskForm from "./delete-task-form";
 import TaskComments, { type CommentViewer } from "./task-comments";
+import TaskFiles from "./task-files";
 import UserAvatar from "./user-avatar";
 import styles from "./task-page.module.css";
 
@@ -271,6 +272,7 @@ export default function TaskPage({ project, task, details, viewer, today }: {
                 onEdit={() => setDescriptionDraft(values.description)} onToggleTask={toggleChecklist} />
               : values.description ? <RichText text={values.description} /> : <p className={styles.empty}>No description yet.</p>}
         </section>
+        <TaskFiles taskId={task.id} files={details.files} canModerate={project.canManageTasks} />
         <TaskComments taskId={task.id} comments={details.comments} canModerate={project.canManageTasks} viewer={viewer} />
       </div>
     </div>
