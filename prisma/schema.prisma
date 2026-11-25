@@ -95,6 +95,7 @@ model User {
   memberships    ProjectMembership[]
   assigned_tasks Task[]              @relation("TaskAssignee")
   created_tasks  Task[]              @relation("TaskCreator")
+  task_comments  TaskComment[]
 
   @@index([team_id])
   @@index([job_title_id])
@@ -217,10 +218,34 @@ model Task {
   status   TaskStatus   @default(TO_DO)
   priority TaskPriority @default(MEDIUM)
 
+  comments TaskComment[]
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   @@index([stage_id])
+}
+
+// The discussion on a task's page. A comment outlives its author's account.
+model TaskComment {
+  id         Int           @id @default(autoincrement())
+  task_id    Int
+  task       Task          @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  author_id  Int?
+  author     User?         @relation(fields: [author_id], references: [id], onDelete: SetNull)
+  // Set on a reply. Threads are one level deep: a parent is never a reply itself.
+  parent_id  Int?
+  parent     TaskComment?  @relation("CommentReplies", fields: [parent_id], references: [id], onDelete: Cascade)
+  replies    TaskComment[] @relation("CommentReplies")
+  body       String
+  created_at DateTime      @default(now())
+  edited_at  DateTime?
+  // A deleted comment with replies stays, emptied, to hold its thread together.
+  deleted_at DateTime?
+
+  @@index([task_id, created_at])
+  @@index([parent_id])
+  @@index([author_id])
 }
 
 model ProjectMembership {

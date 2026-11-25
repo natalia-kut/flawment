@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { plainText } from "@/lib/rich-text/markdown";
 import { requireUser } from "@/lib/auth/session";
 import { visibleProjects } from "@/lib/rbac";
 import { builtInTemplates } from "./built-in-templates";
@@ -58,7 +59,8 @@ export async function getDocumentProjects(): Promise<DocumentProject[]> {
     tasks: project.tasks.map((task) => ({
       id: task.id,
       title: task.title,
-      description: task.description,
+      // Documents show text in table cells, without the formatting.
+      description: plainText(task.description) || null,
       status: task.status,
       priority: task.priority,
       deadline: task.deadline ? toDay(task.deadline) : null,

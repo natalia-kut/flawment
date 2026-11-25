@@ -155,6 +155,9 @@ admins can start a project; the creator becomes its **Owner**.
 | Edit or delete tasks | Those they added | All | All | All |
 | Change task status | Tasks they added or are assigned | All | All | All |
 | Assign tasks | Only to themselves | Any member | Any member | Any member |
+| Comment on tasks | Yes | Yes | Yes | Yes |
+| Edit comments | Their own | Their own | Their own | Their own |
+| Delete comments | Their own | All | All | All |
 | Edit project details and stages | — | Yes | Yes | Yes |
 | Add or remove members | — | Contributors only | Yes | Yes |
 | Make someone a Coordinator | — | — | Yes | Yes |
@@ -203,7 +206,7 @@ Unit tests cover password hashing, permissions, project and task filters, overdu
 dates, progress, workspace task aggregation, time off, birthdays, anniversaries and
 statuses. Integration tests check account and project access (who may start a
 project and name coordinators), task creation/editing/deletion by each role, status
-changes, stages, profiles, teams, job titles, time off and who may see what. They require the migrated PostgreSQL
+changes, the task page and its comments, stages, profiles, teams, job titles, time off and who may see what. They require the migrated PostgreSQL
 database, create temporary records and remove them afterward. They run
 sequentially to avoid interfering transactions on the shared database. Run them
 against a local development database. To check the UI manually, sign in as a sample
@@ -266,10 +269,41 @@ To check editing manually, create a task, click it, change its status and
 priority, save and refresh the project. Confirm the changes remain visible.
 Run the database integration coverage with `npm run test:integration`.
 
+### Task page
+
+Every task has its own page at `/?task=ID`, for everyone who sees its project. Get
+there with **Open task page** in the task dialog (Tasks board, project or dashboard);
+someone who may not edit a task opens the page straight from the project's task list.
+The dialog stays for a quick look or change without leaving the board; its link to
+the page is hidden while there are unsaved changes.
+
+The description is formatted text: headings, bold, italics, lists, checklists, quotes,
+code and links, from the toolbar, with shortcuts, by typing Markdown (`- `, `## `,
+`[ ] `) or by pasting from a document. It is stored as Markdown in the same column, so
+older plain descriptions keep working; tables, images and HTML stay plain text. Reading
+uses a small renderer of React elements (`components/rich-text`); the editor (Tiptap)
+loads only when someone starts editing. Whoever may edit the task can tick its
+checklists without opening the editor. Search and generated documents use the plain text.
+
+The details on the right save as soon as they change, the title on Enter or when you
+leave it, and the description with its own button (or Ctrl+Enter). Only the changed field is sent, so
+an open page does not overwrite what others changed meanwhile. **Discussion** holds
+the comments, formatted with the same editor, and their replies (one level deep: a reply
+to a reply joins the same thread). Deleting a comment that has replies leaves "Comment
+deleted" in its place. Super admins appear there as "Administrator" to standard users.
+**Copy link** copies the address. **Delete task** returns to the project.
+
+The `task_comments` and `comment_replies` migrations add `TaskComment`; after applying them, run
+`npm run db:generate` and restart `npm run dev`.
+
+Manual check: open a task's page, change its priority and deadline, refresh, and
+confirm they stayed. Post, edit, answer and delete a comment. Sign in as a contributor who is
+assigned a task someone else added: only its status can be changed.
+
 ### Deleting project tasks
 
 Owners, coordinators and super admins can delete any task in a project's task
-list with the bin that appears on hover; contributors the tasks they added.
+list with the bin that appears on hover, or on its page; contributors the tasks they added.
 Confirming the browser prompt permanently removes that task; Cancel keeps it.
 Permissions and project ownership of the task are checked again on the server.
 Deleting a task does not delete its project or other tasks.
@@ -285,15 +319,15 @@ admins see all projects. Search titles and descriptions, or filter by project,
 assignee, stage, priority, **Overdue** and **Only my tasks**. Grouped by project,
 hovering a column shows **+ Create new**, which adds a task to that project in that column's status;
 grouped by person, **New task** in the header lets you pick the project.
-Click a card to open task details, then use **Open project** to navigate to its
-project. Existing project permissions apply. No tasks are fetched from a separate
+Click a card to open task details, then use the project name or **Open task page** to
+go further. Existing project permissions apply. No tasks are fetched from a separate
 unrestricted endpoint.
 
 Sidebar selection is now stored in the view query parameter (for example,
 `/?view=tasks`), so refresh and browser back/forward retain the selected page.
 The per-project task lists and their management actions remain available.
 
-Manual check: open Tasks, combine filters, clear them, then use Open project.
+Manual check: open Tasks, combine filters, clear them, then open a task and its page.
 Refresh the Tasks page and check browser back/forward. Sign in as a user belonging
 to fewer projects to confirm that only their project tasks are visible.
 

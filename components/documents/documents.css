@@ -72,25 +72,6 @@
   gap: 9px;
 }
 
-.danger-button {
-  display: inline-flex;
-  min-height: 42px;
-  align-items: center;
-  padding: 0 15px;
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  background: var(--accent);
-  color: #fff;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.danger-button:disabled {
-  cursor: wait;
-  opacity: 0.6;
-}
-
 .documents-layout {
   display: grid;
   grid-template-columns: minmax(245px, 0.85fr) minmax(0, 1.8fr);

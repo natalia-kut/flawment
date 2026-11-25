@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import TaskDetailsDialog from "./task-details-dialog";
+import TaskDetailsDialog, { TaskDialogColumns } from "./task-details-dialog";
 import TaskDetailsForm from "./task-details-form";
 import { formatTaskDeadline, taskPriorityLabels, taskStatusLabels } from "@/lib/tasks/labels";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -15,6 +15,7 @@ import { changeTaskStatusAction } from "@/lib/tasks/actions";
 import styles from "./tasks-board.module.css";
 import details from "@/components/ui/details-dialog.module.css";
 import controls from "@/components/ui/filter-bar.module.css";
+import RichText from "@/components/rich-text/rich-text";
 import ProgressBar from "@/components/ui/progress-bar";
 import PageHeader from "@/components/page-header";
 import { celebrate } from "@/components/ui/confetti";
@@ -398,11 +399,8 @@ export default function TasksOverview({ projects, currentUserId, today }: {
         overdue={isTaskOverdue(detailsTask, today)} onClose={closeDetails}
         onSaved={() => { setMessage('Saved "' + detailsSource.title + '".'); closeDetails(); router.refresh(); }} />
       : <TaskDetailsDialog title={detailsTask.title} onClose={closeDetails}>
-        <p className={details.detailsContext}>{detailsTask.projectName} · {detailsTask.stageName}</p>
-        <p className={detailsTask.description ? details.detailsDescription : details.detailsEmpty}>
-          {detailsTask.description || "No description yet."}
-        </p>
-        <dl className={details.detailsFacts}>
+        <p className={details.detailsContext}><Link href={"/?project=" + detailsTask.projectId}>{detailsTask.projectName}</Link> · {detailsTask.stageName}</p>
+        <TaskDialogColumns side={<dl className={details.detailsFacts}>
           <div><dt>Status</dt><dd>{detailsTask.canChangeStatus
             ? <select className={details.detailsStatus} aria-label={"Status for " + detailsTask.title} value={detailsTask.status}
               disabled={saving !== null} onChange={(event) => {
@@ -417,10 +415,12 @@ export default function TasksOverview({ projects, currentUserId, today }: {
           <div><dt>Deadline</dt><dd className={isTaskOverdue(detailsTask, today) ? styles.lateText : undefined}>
             {formatTaskDeadline(detailsTask.deadline)}{isTaskOverdue(detailsTask, today) ? " · overdue" : ""}
           </dd></div>
-        </dl>
+        </dl>}>
+          {detailsTask.description ? <RichText text={detailsTask.description} /> : <p className={details.detailsEmpty}>No description yet.</p>}
+        </TaskDialogColumns>
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="dialog-actions">
-          <Link className="secondary-button" href={"/?project=" + detailsTask.projectId}>Open project</Link>
+          <Link className={"secondary-button " + details.detailsOpen} href={"/?task=" + detailsTask.id}>Open task page</Link>
         </div>
       </TaskDetailsDialog>)}
   </div>;

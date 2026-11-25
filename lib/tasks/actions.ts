@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/session";
-import { createTask, updateTask, deleteTask, changeTaskStatus, TaskError } from "./service";
+import { createTask, updateTask, patchTask, deleteTask, changeTaskStatus, TaskError } from "./service";
+import { addComment, editComment, deleteComment } from "./comments";
 
 export type TaskState = { error?: string; success?: boolean };
 
@@ -25,6 +26,31 @@ export async function updateTaskAction(_state: TaskState, data: FormData): Promi
     return { success: true };
   } catch (error) {
     return { error: error instanceof TaskError ? error.message : "Could not update the task. Please try again." };
+  }
+}
+
+export async function patchTaskAction(data: FormData): Promise<TaskState> {
+  const actor = await requireUser();
+  try {
+    await patchTask(actor, data);
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof TaskError ? error.message : "Could not save the change. Please try again." };
+  }
+}
+
+const commentOperations = { add: addComment, edit: editComment, delete: deleteComment };
+
+export async function commentAction(operation: keyof typeof commentOperations, data: FormData): Promise<TaskState> {
+  const actor = await requireUser();
+  try {
+    if (!Object.hasOwn(commentOperations, operation)) throw new TaskError("Unknown comment operation.");
+    await commentOperations[operation](actor, data);
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof TaskError ? error.message : "Could not save the comment. Please try again." };
   }
 }
 
