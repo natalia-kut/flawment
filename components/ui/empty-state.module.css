@@ -1,0 +1,28 @@
+/* What a page shows before it has any content: a small picture of what will be here, and the way to start. */
+.panel { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 472px; padding: 44px 24px 52px; text-align: center; background: var(--card); border: 1px solid var(--border); border-radius: 16px; }
+.art { width: min(360px, 100%); height: auto; margin-bottom: 22px; overflow: visible; }
+.panel h2 { margin: 0 0 8px; font-size: 24px; font-weight: 700; letter-spacing: -.5px; line-height: 1.25; text-wrap: balance; }
+.panel p { max-width: 430px; margin: 0; font-size: 15px; line-height: 1.6; color: var(--muted); text-wrap: balance; }
+.action { margin-top: 24px; }
+
+/* ---- The picture ---- */
+.glow { fill: var(--accent-soft); }
+.card { fill: #fff; stroke: var(--border-strong); stroke-width: 1.5; filter: drop-shadow(0 5px 8px #39220f17); }
+.back { fill: var(--surface); stroke: var(--border-strong); stroke-width: 1.5; }
+.ink { fill: var(--text-secondary); }
+.line { fill: var(--border); }
+.accent { fill: var(--accent); }
+.accentLight { fill: var(--accent-border); }
+.warm { fill: var(--absence-vacation); }
+.warmSoft { fill: var(--warning-soft); }
+.olive { fill: var(--success); }
+.oliveSoft { fill: var(--success-soft); }
+.violet { fill: var(--absence-sick-leave); }
+.white { fill: #fff; }
+.ringTrack { fill: none; stroke: var(--surface-sunken); stroke-width: 7; }
+.ringFill { fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round; }
+.tick { fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.slot { fill: none; stroke: var(--accent-border); stroke-width: 1.6; stroke-dasharray: 5 5; }
+.plus { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; }
+
+@media (max-width: 560px) { .panel { min-height: 0; padding: 30px 20px 36px; } .panel h2 { font-size: 21px; } }

@@ -18,6 +18,7 @@ import { projectRoleLabels } from "@/lib/projects/labels";
 import type { ProjectRole } from "@/src/generated/prisma/enums";
 import PageHeader from "@/components/page-header";
 import { useConfirmSubmit } from "@/components/ui/confirm";
+import EmptyState from "@/components/ui/empty-state";
 import people from "./project-people.module.css";
 
 function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, className = "workspace-form", id }: {
@@ -117,10 +118,14 @@ export default function ProjectsView({ projects, today, canCreateProjects }: {
 
   return <div className="projects-workspace">
     {!selected ? <>
+      {/* With no projects yet, the empty page has the button instead. */}
       <PageHeader title="Projects"
-        actions={canCreateProjects && <button className="primary-button" onClick={() => setModal("create")}><span aria-hidden="true">+</span> New project</button>} />
-      {projects.length === 0 ? <section className="project-empty-state"><span aria-hidden="true">↗</span>{canCreateProjects ? <><h2>Make room for your next idea</h2><p>Create a project and bring your team together.</p><button className="primary-button" onClick={() => setModal("create")}>Create your first project</button></>
-        : <><h2>No projects yet</h2><p>When a manager adds you to a project, it will show up here.</p></>}</section> :
+        actions={canCreateProjects && projects.length > 0 && <button className="primary-button" onClick={() => setModal("create")}><span aria-hidden="true">+</span> New project</button>} />
+      {projects.length === 0 ? (canCreateProjects
+        ? <EmptyState art="projects" title="Make room for your next idea"
+          action={<button className="primary-button" onClick={() => setModal("create")}><span aria-hidden="true">+</span> Create your first project</button>}>
+          Create a project and bring your team together.</EmptyState>
+        : <EmptyState art="projects" title="No projects yet">When a manager adds you to a project, it will show up here.</EmptyState>) :
         <ProjectBrowser projects={projects} today={today} />}
     </> : !project ? <>{breadcrumbs}<section className="project-empty-state"><h1>Project unavailable</h1><p>This project was deleted or you no longer have access.</p><Link href="/?view=projects" className="secondary-button">Back to projects</Link></section></> : <>
       <PageHeader breadcrumbs={breadcrumbs} title={project.name}

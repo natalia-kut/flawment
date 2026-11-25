@@ -18,6 +18,7 @@ import controls from "@/components/ui/filter-bar.module.css";
 import RichText from "@/components/rich-text/rich-text";
 import ProgressBar from "@/components/ui/progress-bar";
 import PageHeader from "@/components/page-header";
+import EmptyState from "@/components/ui/empty-state";
 import { celebrate } from "@/components/ui/confetti";
 
 const PROJECT_STORAGE_KEY = "flawment.tasks.project";
@@ -202,6 +203,22 @@ export default function TasksOverview({ projects, currentUserId, today }: {
       setSaving(null);
     }
   }
+  const createForm = creatingIn !== null && <TaskDetailsForm
+    project={creatable.find((p) => creatingIn === "choose" ? String(p.id) === chosenProjectId : p.id === creatingIn.projectId) ?? creatable[0]}
+    initialStatus={creatingIn === "choose" ? undefined : creatingIn.status}
+    projectChoices={creatingIn === "choose" ? creatable : undefined} showOpenProject={false} onClose={() => setCreatingIn(null)}
+    onSaved={() => { setMessage("Task added."); setCreatingIn(null); router.refresh(); }} />;
+  // No tasks anywhere: search and filters would have nothing to work on, so only the way to start is shown.
+  if (allTasks.length === 0) return <div className={styles.page}>
+    <PageHeader title="Tasks" />
+    {creatable.length > 0
+      ? <EmptyState art="tasks" title="No tasks yet"
+        action={<button className="primary-button" onClick={() => setCreatingIn("choose")}><span aria-hidden="true">+</span> Create your first task</button>}>
+        Add a task, give it to someone and follow it across the board.</EmptyState>
+      : <EmptyState art="tasks" title="No tasks yet" action={<Link className="primary-button" href="/?view=projects">Go to projects</Link>}>
+        {projects.length > 0 ? "Tasks from your projects will show up here." : "Tasks belong to projects. Once you have a project, its tasks will show up here."}</EmptyState>}
+    {createForm}
+  </div>;
   return <div className={styles.page}>
     {/* Grouped by project, each project adds its own tasks; otherwise a project is picked in the form. */}
     <PageHeader title="Tasks" actions={creatable.length > 0 && (grouping === "person" || tasks.length === 0) &&
@@ -295,8 +312,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
       {singleProject && <ProgressBar label={selectedProject?.name ?? "Project"} percent={scopeProgress.percent} caption={scopeProgress.done + "/" + scopeProgress.total + " done"} />}
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}
-    {allTasks.length === 0 ? <section className="workspace-card"><h2>No tasks yet</h2><p>Create tasks inside a project to get started.</p><Link href="/?view=projects">Open projects</Link></section>
-      : tasks.length === 0
+    {tasks.length === 0
         // Nothing matches: keep the board's shape, with every status column empty.
         ? <section className={styles.group} aria-label="No tasks match your filters">
           <div className={styles.columns}>
@@ -388,11 +404,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
           </div>}
         </section>;
       })}
-    {creatingIn !== null && <TaskDetailsForm
-      project={creatable.find((p) => creatingIn === "choose" ? String(p.id) === chosenProjectId : p.id === creatingIn.projectId) ?? creatable[0]}
-      initialStatus={creatingIn === "choose" ? undefined : creatingIn.status}
-      projectChoices={creatingIn === "choose" ? creatable : undefined} showOpenProject={false} onClose={() => setCreatingIn(null)}
-      onSaved={() => { setMessage("Task added."); setCreatingIn(null); router.refresh(); }} />}
+    {createForm}
     {detailsTask && (detailsProject && detailsSource?.canEdit
       // Whoever may edit the task (its coordinators, or the contributor who added it) edits it right here.
       ? <TaskDetailsForm key={detailsSource.id} project={detailsProject} task={detailsSource}
