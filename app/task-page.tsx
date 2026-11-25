@@ -19,6 +19,7 @@ import DeleteTaskForm from "./delete-task-form";
 import TaskComments, { type CommentViewer } from "./task-comments";
 import TaskFiles from "./task-files";
 import UserAvatar from "./user-avatar";
+import { PersonButton } from "./people-context";
 import styles from "./task-page.module.css";
 
 type Task = WorkspaceProject["tasks"][number];
@@ -213,7 +214,7 @@ export default function TaskPage({ project, task, details, viewer, today }: {
 
         <div>
           <Fact label="Assigned to" editable={task.canEdit}>
-            <span className={styles.person}>
+            <PersonButton id={task.canEdit ? null : assignee?.id} name={task.assigneeName} className={styles.person}>
               {assignee && <UserAvatar id={assignee.id} firstName={assignee.first_name} lastName={assignee.last_name} photoVersion={assignee.photoVersion} size={34} />}
               {task.canEdit
                 ? <select value={values.assigned_to} onChange={(event) => save("assigned_to", event.target.value)}>
@@ -221,10 +222,14 @@ export default function TaskPage({ project, task, details, viewer, today }: {
                   {project.members.filter((member) => project.canManageTasks || member.id === project.viewerId || String(member.id) === saved.assigned_to)
                     .map((member) => <option key={member.id} value={member.id}>{member.first_name} {member.last_name}</option>)}
                 </select>
-                : task.assigneeName}
-            </span>
+                : <strong>{task.assigneeName}</strong>}
+            </PersonButton>
           </Fact>
-          {assignee?.availability && <div className={styles.away}><AvailabilityBadge availability={assignee.availability} /></div>}
+          {/* Beside a field the profile needs a button of its own, outside the field's label. */}
+          {assignee && (task.canEdit || assignee.availability) && <div className={styles.away}>
+            {task.canEdit && <PersonButton id={assignee.id} name={assignee.first_name + " " + assignee.last_name} className={styles.profileLink}>View profile</PersonButton>}
+            {assignee.availability && <AvailabilityBadge availability={assignee.availability} />}
+          </div>}
         </div>
 
         <Fact label="Deadline" editable={task.canEdit} note={late && <em className={styles.late}> · overdue</em>}>

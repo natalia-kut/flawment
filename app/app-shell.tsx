@@ -14,6 +14,7 @@ import { RequestedTemplateContext } from "@/components/documents/requested-templ
 import { SIDEBAR_COOKIE } from "@/lib/ui/sidebar";
 import PageHeader from "@/components/page-header";
 import { ConfirmProvider } from "@/components/ui/confirm";
+import { PeopleProvider } from "./people-context";
 
 const navigation = [
   "Dashboard",
@@ -42,8 +43,10 @@ const navIcons: Record<NavigationItem, ReactNode> = {
 /** Pages only a super admin sees. */
 const adminOnly: readonly NavigationItem[] = ["People"];
 
-export default function AppShell({ documents, projects, tasks, task, profile, team, timeOff, people, user, workspace, sidebarCollapsed = false }: {
+export default function AppShell({ documents, projects, tasks, task, profile, team, timeOff, people, directory, user, workspace, sidebarCollapsed = false }: {
   documents: ReactNode; projects: ReactNode; tasks: ReactNode; /** The task a link opened, if any. */ task: ReactNode; profile: ReactNode; team: ReactNode; timeOff: ReactNode; people: ReactNode; sidebarCollapsed?: boolean;
+  /** Everyone whose profile can be opened, and the teams they are in. */
+  directory: Pick<ComponentProps<typeof PeopleProvider>, "people" | "teams">;
   /** What the dashboard summarises: the projects (with tasks) this user can see. */
   workspace: ComponentProps<typeof Dashboard>["workspace"];
   user: { id: number; first_name: string; last_name: string; role: string; photoVersion: string | null; availability: Availability; status: Status | null; celebrations: Celebration[] };
@@ -87,6 +90,7 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
 
   return (
     <ConfirmProvider>
+    <PeopleProvider people={directory.people} teams={directory.teams} currentUserId={user.id}>
     <div className="app-shell" data-sidebar={collapsed ? "collapsed" : "expanded"}>
       <aside className="sidebar">
         <div className="sidebar-top">
@@ -151,6 +155,7 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
         <FlawiuszPanel chat={chat} onOpenChange={setChatOpen} onOpenTemplate={openTemplate} open={chatOpen} />
       )}
     </div>
+    </PeopleProvider>
     </ConfirmProvider>
   );
 }

@@ -49,6 +49,7 @@ async function Workspace({ searchParams }: Pick<PageProps<"/">, "searchParams">)
       team={<TeamSection overview={teams} titleRequests={leadRequests.byPerson} />}
       timeOff={<TimeOffSection />}
       people={<PeopleSection />}
+      directory={{ people: teams.people, teams: teams.teams.map(({ id, name }) => ({ id, name })) }}
       workspace={{ projects, userId: user.id, today, timeOff, myTeam, admin }}
       sidebarCollapsed={sidebarCollapsed}
       tasks={<TasksOverview projects={projects} currentUserId={user.id} today={today} />}

@@ -18,6 +18,7 @@ import controls from "@/components/ui/filter-bar.module.css";
 import RichText from "@/components/rich-text/rich-text";
 import ProgressBar from "@/components/ui/progress-bar";
 import PageHeader from "@/components/page-header";
+import { PersonButton } from "./people-context";
 import EmptyState from "@/components/ui/empty-state";
 import { celebrate } from "@/components/ui/confetti";
 
@@ -423,7 +424,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
             </select>
             : taskStatusLabels[detailsTask.status]}</dd></div>
           <div><dt>Priority</dt><dd><span className={styles.badge} data-priority={detailsTask.priority}>{taskPriorityLabels[detailsTask.priority]}</span></dd></div>
-          <div><dt>Assigned to</dt><dd>{detailsTask.assigneeName}</dd></div>
+          <div><dt>Assigned to</dt><dd><PersonButton id={detailsTask.assignedTo} name={detailsTask.assigneeName}><strong>{detailsTask.assigneeName}</strong></PersonButton></dd></div>
           <div><dt>Deadline</dt><dd className={isTaskOverdue(detailsTask, today) ? styles.lateText : undefined}>
             {formatTaskDeadline(detailsTask.deadline)}{isTaskOverdue(detailsTask, today) ? " · overdue" : ""}
           </dd></div>

@@ -33,7 +33,11 @@
 .facts select { cursor: pointer; }
 .late { font-style: normal; letter-spacing: 0; text-transform: none; font-weight: 600; color: var(--critical); }
 .person { display: flex; align-items: center; gap: .6rem; min-width: 0; }
-.away { margin-top: .5rem; }
+.person strong { font-weight: inherit; }
+.away { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .75rem; margin-top: .5rem; }
+span.profileLink { display: none; }
+button.profileLink { font-size: .8rem; font-weight: 600; color: var(--accent-strong); }
+button.profileLink:hover { text-decoration: underline; }
 
 /* Same colours as the board and a project's task list. */
 .priority { display: inline-block; width: .5rem; height: .5rem; margin-left: .45rem; background: var(--warning); border-radius: 50%; }
