@@ -11,6 +11,7 @@ import { absenceTypeLabels } from "@/lib/time-off/labels";
 import { daySpan, formatBirthday, formatRange } from "@/lib/time-off/dates";
 import type { AbsenceType } from "@/src/generated/prisma/enums";
 import UserAvatar from "./user-avatar";
+import { PersonButton } from "./people-context";
 import AvailabilityBadge from "./availability-badge";
 import StatusDialog, { StatusText } from "./status-dialog";
 import PageHeader from "@/components/page-header";
@@ -138,12 +139,14 @@ export default function ProfileView({ user, today }: { today: string; user: {
             : <dl className="profile-facts">
               <div><dt>Team</dt><dd>{user.team.name}</dd></div>
               <div><dt>Reports to</dt><dd>{user.team.leads.length
-                ? <ul className="mini-people">{user.team.leads.map((lead) => <li key={lead.id}><UserAvatar id={lead.id} firstName={lead.first_name} lastName={lead.last_name} photoVersion={lead.photoVersion} size={24} />{lead.first_name} {lead.last_name}</li>)}</ul>
+                ? <ul className="mini-people">{user.team.leads.map((lead) => <li key={lead.id}><PersonButton id={lead.id} name={lead.first_name + " " + lead.last_name} className="mini-person"><UserAvatar id={lead.id} firstName={lead.first_name} lastName={lead.last_name} photoVersion={lead.photoVersion} size={24} /><strong>{lead.first_name} {lead.last_name}</strong></PersonButton></li>)}</ul>
                 : <span className="muted-value">{user.teamLead ? "You lead this team" : "No team lead yet"}</span>}</dd></div>
               <div><dt>Teammates</dt><dd>
                 <ul className="avatar-stack" aria-label="Teammates">{user.team.members.slice(0, 6).map((m) => <li key={m.id} title={`${m.first_name} ${m.last_name}`}>
-                  <UserAvatar id={m.id} firstName={m.first_name} lastName={m.last_name} photoVersion={m.photoVersion} size={26} />
-                  <span className="visually-hidden">{m.first_name} {m.last_name}</span></li>)}</ul>
+                  <PersonButton id={m.id} name={m.first_name + " " + m.last_name}>
+                    <UserAvatar id={m.id} firstName={m.first_name} lastName={m.last_name} photoVersion={m.photoVersion} size={26} />
+                    <span className="visually-hidden">{m.first_name} {m.last_name}</span>
+                  </PersonButton></li>)}</ul>
                 {user.team.members.length > 6 && <span className="muted-value">+{user.team.members.length - 6}</span>}
               </dd></div>
             </dl>}

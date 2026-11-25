@@ -8,6 +8,11 @@
 .info { display: grid; flex: 1; justify-items: start; gap: 2px; min-width: 0; text-align: left; }
 .info p { margin: 0; }
 .name { overflow: hidden; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
+/* The name covers the whole tile (its ::after), as on the project cards; the ⋯ menu sits above it. */
+button.nameLink { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+button.nameLink::after { content: ""; position: absolute; inset: 0; border-radius: 14px; }
+button.nameLink:focus-visible { outline: none; }
+button.nameLink:focus-visible::after { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Project roles above the default, in colour: the owner in the accent, a coordinator in green. */
 .role { margin: 2px 0; padding: 1px 8px; font-size: 11px; font-weight: 700; border-radius: 999px; }
 .role[data-role=OWNER] { color: var(--accent-strong); background: var(--accent-soft); }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import styles from "./dashboard-widgets.module.css";
+import { PersonButton } from "@/app/people-context";
 import type { Availability } from "@/lib/time-off/availability";
 import { formatShortDay } from "@/lib/time-off/dates";
 
@@ -57,6 +58,7 @@ export default function TeamRings({ tasks, currentUserKey, people: details = new
         const note = [away && `out of office until ${formatShortDay(away.until)}`, festive === "birthday" && "birthday today", festive === "anniversary" && "work anniversary today"].filter(Boolean).join(", ");
         return <li key={person.key} className={styles.member} data-away={away ? true : undefined} data-festive={festive ?? undefined}
           aria-label={`${person.name}: ${person.open} open, ${person.done} of ${person.total} done${person.overdue ? `, ${person.overdue} overdue` : ""}${note ? `; ${note}` : ""}`}>
+          <PersonButton id={Number(person.key)} name={person.name} className={styles.memberLink}>
           <span className={styles.ringWrap}>
           <svg viewBox="0 0 72 72" className={styles.ring} aria-hidden="true">
             {festive && <circle cx="36" cy="36" r="34" className={styles.festiveRing} data-kind={festive} />}
@@ -76,6 +78,7 @@ export default function TeamRings({ tasks, currentUserKey, people: details = new
           <span className={styles.memberName} title={person.name}>
             {person.key === currentUserKey ? "You" : person.name.split(" ")[0]}
           </span>
+          </PersonButton>
           <span className={styles.memberMeta}>
             {members && person.total === 0 ? "No shared tasks" : <>{person.open} open{person.overdue > 0 && <b> · {person.overdue} late</b>}</>}
           </span>

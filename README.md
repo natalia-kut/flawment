@@ -419,7 +419,9 @@ Click your name/photo at the foot of the sidebar to open the account menu
 (**Set a status**, **Edit profile**, **Time off**, **Sign out**). **My profile**
 saves everything where you edit it, with no Save button: click a contact detail
 (phone, location, working hours, birthday, pronouns) to change it, add or remove
-skills as chips, and upload or remove your photo. Colleagues see the birthday as
+skills as chips, and upload or remove your photo. Click a colleague's name or face
+(a project's people, comments, a task's assignee, the dashboard, Teams) to see their
+profile. Colleagues see the birthday as
 day and month only; the year never leaves the server. Your job title and team
 are read-only, because a super admin sets them; **Reports to** lists your team's
 leads. Skills replace the earlier free-text description, which has been removed.

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { TeamPerson } from "@/lib/teams/data";
 import UserAvatar from "./user-avatar";
+import { PersonButton } from "./people-context";
 import styles from "./this-month.module.css";
 
 const joinedDay = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
@@ -38,11 +39,11 @@ export default function ThisMonth({ newPeople, promotions, teamName }: {
     <p className={styles.eyebrow}>This month</p>
     <h2 id="this-month-title">{summary}</h2>
     <ul className={styles.rows}>{shown.map((e) => <li key={e.key} data-kind={e.kind}>
-      <span className={styles.face}>
+      <PersonButton id={e.person.id} name={e.person.first_name} className={styles.face} decorative>
         <UserAvatar id={e.person.id} firstName={e.person.first_name} lastName={e.person.last_name} photoVersion={e.person.photoVersion} size={36} />
         <span className={styles.emoji} aria-hidden="true">{e.emoji}</span>
-      </span>
-      <span className={styles.text}><strong>{e.person.first_name} {e.person.last_name}</strong><small>{e.line}</small></span>
+      </PersonButton>
+      <span className={styles.text}><PersonButton id={e.person.id} name={e.person.first_name + " " + e.person.last_name}><strong>{e.person.first_name} {e.person.last_name}</strong></PersonButton><small>{e.line}</small></span>
       <a className="secondary-button" href={`mailto:${e.person.email}`} aria-label={`${e.action} to ${e.person.first_name}`}>{e.action}</a>
     </li>)}</ul>
     {entries.length > PREVIEW && <button type="button" className="text-button" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>

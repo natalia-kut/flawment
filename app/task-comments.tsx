@@ -9,6 +9,7 @@ import { BinIcon, PencilIcon } from "@/components/ui/icons";
 import RichText from "@/components/rich-text/rich-text";
 import { LazyRichTextEditor } from "@/components/rich-text/rich-text-field";
 import UserAvatar from "./user-avatar";
+import { PersonButton } from "./people-context";
 import styles from "./task-page.module.css";
 
 type Thread = TaskDetails["comments"][number];
@@ -76,10 +77,12 @@ function CommentItem({ comment, canDelete, onReply }: { comment: Comment; canDel
     if (ok) run("delete", { comment_id: comment.id });
   }
   return <article className={styles.comment} aria-label={"Comment by " + name} aria-busy={pending}>
-    <UserAvatar id={author.id ?? 0} firstName={author.firstName} lastName={author.lastName} photoVersion={author.photoVersion} size={comment.isReply ? 30 : 36} />
+    <PersonButton id={author.id} name={name} decorative>
+      <UserAvatar id={author.id ?? 0} firstName={author.firstName} lastName={author.lastName} photoVersion={author.photoVersion} size={comment.isReply ? 30 : 36} />
+    </PersonButton>
     <div className={styles.commentBody}>
       <div className={styles.commentHeading}>
-        <strong>{name}</strong>
+        <PersonButton id={author.id} name={name}><strong>{name}</strong></PersonButton>
         <time dateTime={comment.postedIso}>{comment.postedAt}</time>
         {comment.editedAt && <span title={"Edited " + comment.editedAt}>· edited</span>}
         {!editing && canDelete && <span className={styles.commentActions}>

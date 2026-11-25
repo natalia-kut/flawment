@@ -8,6 +8,7 @@ import ProjectTaskList from "./project-task-list";
 import ProjectStages from "./project-stages";
 import ProjectBrowser from "./project-browser";
 import UserAvatar from "./user-avatar";
+import { PersonButton } from "./people-context";
 import AvailabilityBadge from "./availability-badge";
 import { StatusText } from "./status-dialog";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -141,7 +142,7 @@ export default function ProjectsView({ projects, today, canCreateProjects }: {
           <ul className={people.grid}>{project.members.map((member) => <li key={member.id} className={people.member} title={member.email}>
             <UserAvatar id={member.id} firstName={member.first_name} lastName={member.last_name} photoVersion={member.photoVersion} size={40} />
             <div className={people.info}>
-              <p className={people.name}><strong>{member.first_name} {member.last_name}</strong></p>
+              <p className={people.name}><PersonButton id={member.id} name={member.first_name + " " + member.last_name} className={people.nameLink}><strong>{member.first_name} {member.last_name}</strong></PersonButton></p>
               {/* A line each: the project role (when above contributor), then the job title. */}
               {member.role !== "CONTRIBUTOR" && <span className={people.role} data-role={member.role}>{projectRoleLabels[member.role]}</span>}
               <p className={people.title}>{member.jobTitle ?? "No job title"}</p>
