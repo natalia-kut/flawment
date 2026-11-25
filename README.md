@@ -174,7 +174,9 @@ live in `lib/rbac.ts`; every server action rechecks them.
 Projects opens as a table. Clicking a project name shows its dedicated view; use
 the **Projects → project name** breadcrumb to return to the list. The selected
 project is stored in the URL, so refresh and browser back/forward preserve
-navigation. **New project**, **Edit project** and **Add member** open dialogs with
+navigation. A project's page shows its description and key facts, then one tab at a time:
+**Tasks** (open work by deadline, finished work folded underneath), **Stages** and
+**People**; the open tab is in the URL too (`?tab=`). **New project**, **Edit project** and **Add member** open dialogs with
 Cancel, Escape and backdrop dismissal. **Working on this project** shows the
 members as tiles; **⋯** on a tile opens a small menu (role and **Remove from
 project**) that closes when you click elsewhere. Deleting the project lives at the

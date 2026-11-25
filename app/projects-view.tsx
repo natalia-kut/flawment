@@ -7,6 +7,7 @@ import { isTaskOverdue } from "@/lib/tasks/board";
 import ProjectTaskList from "./project-task-list";
 import ProjectStages from "./project-stages";
 import ProjectBrowser from "./project-browser";
+import ProjectSummary from "./project-summary";
 import UserAvatar from "./user-avatar";
 import { PersonButton } from "./people-context";
 import AvailabilityBadge from "./availability-badge";
@@ -18,6 +19,7 @@ import { projectAction } from "@/lib/projects/actions";
 import { projectRoleLabels } from "@/lib/projects/labels";
 import type { ProjectRole } from "@/src/generated/prisma/enums";
 import PageHeader from "@/components/page-header";
+import Tabs from "@/components/ui/tabs";
 import { useConfirmSubmit } from "@/components/ui/confirm";
 import EmptyState from "@/components/ui/empty-state";
 import people from "./project-people.module.css";
@@ -129,36 +131,40 @@ export default function ProjectsView({ projects, today, canCreateProjects }: {
         : <EmptyState art="projects" title="No projects yet">When a manager adds you to a project, it will show up here.</EmptyState>) :
         <ProjectBrowser projects={projects} today={today} />}
     </> : !project ? <>{breadcrumbs}<section className="project-empty-state"><h1>Project unavailable</h1><p>This project was deleted or you no longer have access.</p><Link href="/?view=projects" className="secondary-button">Back to projects</Link></section></> : <>
-      <PageHeader breadcrumbs={breadcrumbs} title={project.name}
+      <PageHeader breadcrumbs={breadcrumbs} title={project.name} description={project.description}
         actions={project.canEdit && <button className="secondary-button" onClick={() => setModal("edit")}>Edit project</button>} />
-      <ProjectStages key={"stages-" + project.id} project={project} />
-      <ProjectTaskList key={project.id} project={project} today={today}
-        onCreate={() => { setEditingTaskId(null); setModal("task"); }}
-        onEdit={(id) => { setModal(null); setEditingTaskId(id); }} />
-      <section className="workspace-card project-team" key={"people-" + project.id}>
-          <div className="section-heading"><div><h2>Working on this project <span className="role-badge">{project.members.length}</span></h2></div>{project.canManage && <button className="primary-button" onClick={() => setModal("add")}><span aria-hidden="true">+</span> Add member</button>}</div>
-          {project.members.length === 0 && <p>No team members yet.</p>}
-          {/* A tile each: face, name and project role, job title, then whether they are away or busy. */}
-          <ul className={people.grid}>{project.members.map((member) => <li key={member.id} className={people.member} title={member.email}>
-            <UserAvatar id={member.id} firstName={member.first_name} lastName={member.last_name} photoVersion={member.photoVersion} size={40} />
-            <div className={people.info}>
-              <p className={people.name}><PersonButton id={member.id} name={member.first_name + " " + member.last_name} className={people.nameLink}><strong>{member.first_name} {member.last_name}</strong></PersonButton></p>
-              {/* A line each: the project role (when above contributor), then the job title. */}
-              {member.role !== "CONTRIBUTOR" && <span className={people.role} data-role={member.role}>{projectRoleLabels[member.role]}</span>}
-              <p className={people.title}>{member.jobTitle ?? "No job title"}</p>
-              {(member.availability || member.status) && <div className={people.extra}>
-                {member.availability && <AvailabilityBadge availability={member.availability} />}
-                {member.status && <StatusText status={member.status} />}
-              </div>}
-            </div>
-            {project.canManage && member.id !== project.owner_id && (project.canAssignRoles || member.role === "CONTRIBUTOR") && <ManageMenu><div className="member-controls">
-              {project.canAssignRoles && <ChangeForm operation="role" projectId={project.id} className="compact-form"><input type="hidden" name="user_id" value={member.id} /><RoleSelect canNameCoordinators value={member.role} saveOnChange /></ChangeForm>}
-              <ChangeForm operation="remove" projectId={project.id} className="compact-form" onSubmit={confirmSubmit({ title: `Remove ${member.first_name} from this project?`, message: "They lose access to this project.", confirm: "Remove" })}>
-                <input type="hidden" name="user_id" value={member.id} /><button className="text-button danger">Remove from project</button>
-              </ChangeForm>
-            </div></ManageMenu>}
-          </li>)}</ul>
-      </section>
+      <ProjectSummary project={project} today={today} />
+      {/* One part at a time, so the page never becomes one long list. */}
+      <Tabs key={project.id} label={project.name} tabs={[
+        { key: "tasks", label: "Tasks", count: project.tasks.length, content: <ProjectTaskList project={project} today={today}
+          onCreate={() => { setEditingTaskId(null); setModal("task"); }}
+          onEdit={(id) => { setModal(null); setEditingTaskId(id); }} /> },
+        { key: "stages", label: "Stages", count: project.stages.length, content: <ProjectStages project={project} /> },
+        { key: "people", label: "People", count: project.members.length, content: <section className="workspace-card project-team" aria-labelledby="project-people-heading">
+            <div className="section-heading"><h2 id="project-people-heading">Working on this project</h2>{project.canManage && <button className="primary-button" onClick={() => setModal("add")}><span aria-hidden="true">+</span> Add member</button>}</div>
+            {project.members.length === 0 && <p>No team members yet.</p>}
+            {/* A tile each: face, name and project role, job title, then whether they are away or busy. */}
+            <ul className={people.grid}>{project.members.map((member) => <li key={member.id} className={people.member} title={member.email}>
+              <UserAvatar id={member.id} firstName={member.first_name} lastName={member.last_name} photoVersion={member.photoVersion} size={40} />
+              <div className={people.info}>
+                <p className={people.name}><PersonButton id={member.id} name={member.first_name + " " + member.last_name} className={people.nameLink}><strong>{member.first_name} {member.last_name}</strong></PersonButton></p>
+                {/* A line each: the project role (when above contributor), then the job title. */}
+                {member.role !== "CONTRIBUTOR" && <span className={people.role} data-role={member.role}>{projectRoleLabels[member.role]}</span>}
+                <p className={people.title}>{member.jobTitle ?? "No job title"}</p>
+                {(member.availability || member.status) && <div className={people.extra}>
+                  {member.availability && <AvailabilityBadge availability={member.availability} />}
+                  {member.status && <StatusText status={member.status} />}
+                </div>}
+              </div>
+              {project.canManage && member.id !== project.owner_id && (project.canAssignRoles || member.role === "CONTRIBUTOR") && <ManageMenu><div className="member-controls">
+                {project.canAssignRoles && <ChangeForm operation="role" projectId={project.id} className="compact-form"><input type="hidden" name="user_id" value={member.id} /><RoleSelect canNameCoordinators value={member.role} saveOnChange /></ChangeForm>}
+                <ChangeForm operation="remove" projectId={project.id} className="compact-form" onSubmit={confirmSubmit({ title: `Remove ${member.first_name} from this project?`, message: "They lose access to this project.", confirm: "Remove" })}>
+                  <input type="hidden" name="user_id" value={member.id} /><button className="text-button danger">Remove from project</button>
+                </ChangeForm>
+              </div></ManageMenu>}
+            </li>)}</ul>
+          </section> },
+      ]} />
     </>}
 
     {/* The same in-place editor as a card on the Tasks board. */}
