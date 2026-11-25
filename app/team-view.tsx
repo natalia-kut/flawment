@@ -18,6 +18,7 @@ import styles from "./team-view.module.css";
 import ThisMonth from "./this-month";
 import type { LeadTitleRequests, Promotion } from "@/lib/job-title-requests/data";
 import { useConfirmSubmit } from "@/components/ui/confirm";
+import EmptyState from "@/components/ui/empty-state";
 
 /** For a team lead: their job title requests by person, and the titles to pick from. */
 type Lead = { requests: LeadTitleRequests["byPerson"]; jobTitles: { id: number; name: string }[] };
@@ -58,18 +59,21 @@ function TeamsIndex({ overview, directory, month, promotions }: { overview: Team
   const teamName = (id: number | null) => overview.teams.find((t) => t.id === id)?.name;
   const [creating, setCreating] = useState(false);
   const admin = overview.canManage;
+  const noTeams = overview.teams.length === 0;
   return <>
-    <PageHeader title="Teams" actions={admin && <button className="primary-button" onClick={() => setCreating(true)}><span aria-hidden="true">+</span> New team</button>} />
-    {!admin && overview.myTeamId === null && <p className="not-in-team-note">You are not in a team yet. Your administrator will add you to one.</p>}
+    {/* With no teams yet, the empty page has the button instead. */}
+    <PageHeader title="Teams" actions={admin && !noTeams && <button className="primary-button" onClick={() => setCreating(true)}><span aria-hidden="true">+</span> New team</button>} />
+    {!admin && !noTeams && overview.myTeamId === null && <p className="not-in-team-note">You are not in a team yet. Your administrator will add you to one.</p>}
     {creating && <CreateTeam onDone={() => setCreating(false)} />}
     {/* A super admin finishes setting new people up; everyone else just meets them. */}
     {/* A super admin's work comes first; then the month's good news, for everyone. */}
     {directory && <NewHires directory={directory} />}
     <ThisMonth newPeople={overview.people.filter((p) => p.joinedOn.startsWith(month))} teamName={teamName}
       promotions={promotions.flatMap((r) => overview.people.filter((p) => p.id === r.personId).map((person) => ({ person, title: r.title })))} />
-    {overview.teams.length === 0 && !creating
-      ? <section className="project-empty-state"><span aria-hidden="true">◎</span><h2>No teams yet</h2>
-        <p>{admin ? "Create teams that mirror your company, then open one to add people." : "Your administrator has not set up any teams yet."}</p></section>
+    {noTeams && !creating
+      ? <EmptyState art="teams" title="No teams yet"
+        action={admin && <button className="primary-button" onClick={() => setCreating(true)}><span aria-hidden="true">+</span> Create your first team</button>}>
+        {admin ? "Create teams that mirror your company, then open one to add people." : "Your administrator has not set up any teams yet."}</EmptyState>
       : <ul className="team-grid">{overview.teams.map((team) => <TeamTile key={team.id} team={team} own={team.id === overview.myTeamId} admin={admin} />)}</ul>}
   </>;
 }

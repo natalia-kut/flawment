@@ -302,19 +302,6 @@ h1 {
   text-align: center;
 }
 
-.placeholder-mark {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  margin-bottom: 16px;
-  border-radius: 14px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 21px;
-  font-weight: 700;
-}
-
 .placeholder-panel h2 {
   margin: 0 0 8px;
   font-size: 20px;
@@ -500,7 +487,6 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { background-color: va
 .breadcrumb-separator { color: var(--text-faint); }
 
 .project-empty-state { padding: 70px 24px; text-align: center; border: 1px dashed var(--border-hover); border-radius: 16px; }
-.project-empty-state > span { font-size: 44px; color: var(--accent); }
 .project-empty-state h2 { margin: 16px 0 10px; font-size: 26px; }
 .project-empty-state p { margin-bottom: 24px; color: var(--muted); }
 .member-identity { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }

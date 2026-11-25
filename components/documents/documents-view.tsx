@@ -9,7 +9,9 @@ import DocumentSheet from "./document-sheet";
 import TemplateBuilder from "./template-builder";
 import { RequestedTemplateContext } from "./requested-template-context";
 import "./documents.css";
+import Link from "next/link";
 import PageHeader from "@/components/page-header";
+import EmptyState from "@/components/ui/empty-state";
 
 type DocumentsViewProps = {
   projects: DocumentProject[];
@@ -237,11 +239,10 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
       {notice && <p className="storage-notice success" role="status">{notice}</p>}
 
       {!selectedProject ? (
-        <section className="placeholder-panel">
-          <div className="placeholder-mark" aria-hidden="true">D</div>
-          <h2>No projects yet</h2>
-          <p>Documents are generated from project data. Create a project to get started.</p>
-        </section>
+        <EmptyState art="documents" title="Documents start with a project"
+          action={<Link className="primary-button" href="/?view=projects">Go to projects</Link>}>
+          They are generated from project data. Once you have a project, you can create them here.
+        </EmptyState>
       ) : (
         <div className="documents-layout">
           <aside className="template-sidebar" aria-label="Document templates">
