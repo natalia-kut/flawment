@@ -41,6 +41,7 @@ export const taskColumnOptions = [
   { key: "title", label: "Task" },
   { key: "assignee", label: "Assigned to" },
   { key: "status", label: "Status" },
+  { key: "stage", label: "Stage" },
   { key: "priority", label: "Priority" },
   { key: "deadline", label: "Deadline" },
   { key: "timing", label: "Timing" },
@@ -81,6 +82,7 @@ export const taskSortOptions = [
   { key: "priority", label: "Priority (highest first)" },
   { key: "status", label: "Status" },
   { key: "title", label: "Title" },
+  { key: "stage", label: "Stage" },
 ] as const;
 
 export const memberSortOptions = [
@@ -92,11 +94,10 @@ export const memberSortOptions = [
 
 export const chartKindOptions = [
   { key: "status", label: "Task status breakdown" },
-  { key: "progressVsTime", label: "Progress vs. time elapsed" },
+  { key: "stageRoadmap", label: "Stage roadmap" },
   { key: "timeline", label: "Deadline timeline" },
-  { key: "workload", label: "Open work per person" },
+  { key: "teamPlan", label: "Team plan (next two weeks)" },
   { key: "deadlineWeeks", label: "Deadlines per week" },
-  { key: "priorityMatrix", label: "Priority × status matrix" },
 ] as const;
 
 export const signerOptions = [
@@ -124,6 +125,7 @@ export type TemplateBlock =
   | { id: string; type: "text"; text: string }
   | { id: string; type: "facts"; title: string; facts: VariableKey[] }
   | { id: string; type: "metrics"; metrics: VariableKey[] }
+  | { id: string; type: "insights"; title: string }
   | { id: string; type: "chart"; kind: ChartKind; title: string }
   | {
       id: string;
@@ -146,7 +148,8 @@ export const blockTypeOptions: { type: BlockType; label: string; hint: string }[
   { type: "text", label: "Text", hint: "Paragraphs with {{variables}}" },
   { type: "facts", label: "Fact sheet", hint: "Label / value table" },
   { type: "metrics", label: "Key figures", hint: "Highlighted numbers" },
-  { type: "chart", label: "Chart", hint: "Timeline, workload, deadlines…" },
+  { type: "insights", label: "Attention list", hint: "What is wrong and why, in sentences" },
+  { type: "chart", label: "Chart", hint: "Stages, team plan, timeline…" },
   { type: "taskTable", label: "Task table", hint: "Filtered list of tasks" },
   { type: "memberTable", label: "Team table", hint: "Members and workload" },
   { type: "signatures", label: "Signatures", hint: "Sign-off lines" },
@@ -174,6 +177,8 @@ export type TemplateInput = {
 
 export const templateLimits = { name: 60, description: 160, text: 2000, title: 80, blocks: 40 };
 
+const insightsTitle = "What needs attention";
+
 export function newBlockId() {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -189,8 +194,10 @@ export function createBlock(type: BlockType): TemplateBlock {
       return { id, type, title: "Project details", facts: ["project", "owner", "startDate", "endDate"] };
     case "metrics":
       return { id, type, metrics: ["progress", "openTasks", "overdueTasks"] };
+    case "insights":
+      return { id, type, title: insightsTitle };
     case "chart":
-      return { id, type, kind: "timeline", title: "Deadline timeline" };
+      return { id, type, kind: "stageRoadmap", title: "Stage roadmap" };
     case "taskTable":
       return {
         id,
@@ -237,6 +244,21 @@ function text(value: unknown, max: number) {
   return typeof value === "string" ? value.slice(0, max) : "";
 }
 
+// Charts that only repeated the tables next to them. Templates saved with one get what replaced it.
+const attention = (id: string) => ({ id, type: "insights" as const, title: insightsTitle });
+const removedCharts = {
+  workload: {
+    replacement: (id: string) => ({ id, type: "chart" as const, kind: "teamPlan" as const, title: "Team plan (next two weeks)" }),
+    titles: ["Open work per person"],
+  },
+  progressVsTime: { replacement: attention, titles: ["Progress vs. time elapsed", "Progress against the schedule"] },
+  priorityMatrix: { replacement: attention, titles: ["Priority × status matrix", "Where the risk sits"] },
+};
+
+function isRemovedChart(kind: unknown): kind is keyof typeof removedCharts {
+  return typeof kind === "string" && Object.hasOwn(removedCharts, kind);
+}
+
 function parseBlock(raw: unknown): TemplateBlock | null {
   if (!isRecord(raw)) return null;
   const id = typeof raw.id === "string" && /^[\w-]{1,40}$/.test(raw.id) ? raw.id : newBlockId();
@@ -251,7 +273,15 @@ function parseBlock(raw: unknown): TemplateBlock | null {
       return { id, type: "facts", title, facts: pickList(raw.facts, keysOf(variableOptions)) };
     case "metrics":
       return { id, type: "metrics", metrics: pickList<VariableKey>(raw.metrics, keysOf(variableOptions)).slice(0, 6) };
+    case "insights":
+      return { id, type: "insights", title };
     case "chart":
+      if (isRemovedChart(raw.kind)) {
+        const { replacement, titles } = removedCharts[raw.kind];
+        const block = replacement(id);
+        // A title the user wrote stays; the old chart's own name would no longer fit.
+        return titles.includes(title) ? block : { ...block, title };
+      }
       return { id, type: "chart", kind: pick(raw.kind, keysOf(chartKindOptions), "status"), title };
     // Templates saved before charts had kinds.
     case "statusChart":
@@ -296,8 +326,13 @@ export function parseBlocks(raw: unknown): TemplateBlock[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .slice(0, templateLimits.blocks)
-    .map(parseBlock)
-    .filter((block): block is TemplateBlock => block !== null);
+    .reduce<TemplateBlock[]>((blocks, item) => {
+      const block = parseBlock(item);
+      const converted = block?.type === "insights" && isRecord(item) && item.type === "chart";
+      // Two removed charts can both turn into the same list: once is enough.
+      if (block && !(converted && blocks.some((other) => other.type === "insights"))) blocks.push(block);
+      return blocks;
+    }, []);
 }
 
 export function parseTemplateInput(raw: unknown): Result<TemplateInput> {

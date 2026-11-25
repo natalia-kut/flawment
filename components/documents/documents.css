@@ -617,6 +617,7 @@
 }
 
 .block-chart,
+.block-memberTable,
 .block-metrics,
 .block-signatures {
   break-inside: avoid;
@@ -655,7 +656,7 @@ p.document-muted {
 }
 
 .document-late {
-  color: var(--accent);
+  color: var(--tone-critical);
   font-weight: 700;
 }
 
@@ -728,7 +729,7 @@ p.document-muted {
 }
 
 /* Short values stay on one line; names and titles wrap between words. */
-.document-table td:is(.column-status, .column-priority, .column-deadline, .column-joined, .column-open, .column-completed, .column-overdue, .column-highPriority) {
+.document-table td:is(.column-status, .column-priority, .column-deadline, .column-timing, .column-joined, .column-open, .column-completed, .column-overdue, .column-highPriority) {
   white-space: nowrap;
 }
 
@@ -751,12 +752,12 @@ p.document-muted {
 }
 
 .priority-tag.high {
-  background: var(--accent-border);
-  color: var(--accent-strong);
+  background: var(--warning-soft);
+  color: var(--warning-strong);
 }
 
 .priority-tag.urgent {
-  background: var(--accent);
+  background: var(--tone-critical);
   color: #fff;
 }
 
@@ -893,6 +894,83 @@ p.document-muted {
   font-size: 10px;
 }
 
+/* Team plan: a day per column, deadlines against the days people are away */
+.plan-line { stroke: var(--border); }
+.plan-weekend { fill: var(--surface-sunken); opacity: 0.6; }
+.plan-today { fill: var(--accent-soft); }
+.chart-tick.plan-today-label { fill: var(--accent-strong); font-weight: 700; }
+.plan-month { fill: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+.plan-weekday { fill: var(--text-faint); font-size: 8.5px; }
+.plan-away { fill: var(--warning-soft); }
+.plan-away-stripe { fill: #ecd2a2; }
+.plan-due { fill: #5c4636; }
+.plan-clash { fill: var(--tone-critical); }
+.plan-unassigned { fill: #fff; stroke: #5c4636; stroke-width: 1.5; stroke-dasharray: 3 2; }
+.plan-count { fill: #fff; font-size: 10px; font-weight: 700; }
+.plan-count.dark { fill: #5c4636; }
+.swatch-plan-due { border-radius: 50%; background: #5c4636; }
+.swatch-plan-clash { border-radius: 50%; background: var(--tone-critical); }
+.swatch-plan-away { background: repeating-linear-gradient(45deg, #ecd2a2 0 2px, var(--warning-soft) 2px 5px); }
+
+.document-notes {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  list-style: none;
+}
+
+.chart + .document-notes { margin-top: 14px; }
+
+.document-notes li {
+  break-inside: avoid;
+  padding: 8px 12px;
+  border-left: 3px solid var(--tone-warning);
+  border-radius: 4px;
+  background: var(--background);
+}
+
+.document-notes li[data-tone="good"] { border-left-color: var(--tone-good); }
+.document-notes li[data-tone="critical"] { border-left-color: var(--tone-critical); background: var(--critical-soft); }
+
+/* Stage roadmap: what is done, and where it falls on the calendar */
+.roadmap { font-size: 12px; }
+.roadmap-row { display: grid; grid-template-columns: minmax(0, 168px) 74px minmax(0, 1fr); gap: 16px; align-items: center; min-height: 46px; border-top: 1px solid var(--border); break-inside: avoid; }
+.roadmap-row:nth-last-child(2) { border-bottom: 1px solid var(--border); }
+.roadmap-head { min-height: 24px; border: 0; color: var(--ink-soft); font-family: var(--font-geist-mono), monospace; font-size: 9.5px; letter-spacing: 0.7px; text-transform: uppercase; }
+.roadmap-foot { min-height: 20px; border: 0; }
+.roadmap-name { display: grid; padding: 6px 0; overflow-wrap: anywhere; }
+.roadmap-name small { color: var(--muted); font-size: 11px; }
+.roadmap-row[data-state="late"] small { color: var(--tone-critical); font-weight: 700; }
+.roadmap-row[data-state="done"] small { color: var(--success-strong); }
+.roadmap-done { display: grid; gap: 4px; font-size: 11px; font-weight: 700; }
+.roadmap-bar { height: 5px; overflow: hidden; border-radius: 5px; background: var(--surface-sunken); }
+.roadmap-bar > span { display: block; height: 100%; background: var(--status-completed); }
+.roadmap-track { position: relative; align-self: stretch; min-height: 20px; }
+.roadmap-track > span { position: absolute; }
+.roadmap-month { top: 4px; color: var(--muted); font-family: var(--font-bricolage-grotesque), sans-serif; font-size: 10px; letter-spacing: 0; text-transform: none; transform: translateX(-50%); }
+.roadmap-month.today { color: var(--accent-strong); font-weight: 700; }
+.roadmap-grid { top: 0; bottom: 0; width: 1px; background: var(--border); opacity: 0.7; }
+.roadmap-today { top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--accent-border); }
+.roadmap-task { top: 70%; width: 9px; height: 9px; border: 1.5px solid var(--surface); border-radius: 50%; background: #5c4636; transform: translate(-50%, -50%); }
+.roadmap-task[data-state="done"] { background: var(--status-completed); }
+.roadmap-task[data-state="late"] { background: var(--tone-critical); }
+.roadmap-stage { top: 32%; width: 13px; height: 13px; border: 2px solid var(--accent); border-radius: 2px; background: var(--surface); transform: translate(-50%, -50%) rotate(45deg); }
+.roadmap-row[data-state="done"] .roadmap-stage { border-color: var(--status-completed); }
+.roadmap-row[data-state="late"] .roadmap-stage { border-color: var(--tone-critical); }
+@media (max-width: 560px) {
+  /* The calendar gets the full width, under the stage's name. */
+  .roadmap-row { grid-template-columns: minmax(0, 1fr) 74px; gap: 0 12px; padding-bottom: 6px; }
+  .roadmap-track { grid-column: 1 / -1; min-height: 34px; }
+  .roadmap-head .roadmap-track, .roadmap-foot .roadmap-track { min-height: 20px; }
+}
+.swatch-stage { border: 2px solid var(--accent); border-radius: 2px; transform: rotate(45deg) scale(0.85); }
+.swatch-task-open { border-radius: 50%; background: #5c4636; }
+.swatch-task-done { border-radius: 50%; background: var(--status-completed); }
+.swatch-task-late { border-radius: 50%; background: var(--tone-critical); }
+
 .chart-tick.late {
   fill: var(--tone-critical);
   font-weight: 700;
@@ -955,42 +1033,6 @@ p.document-muted {
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 12px;
-}
-
-.heatmap {
-  border-collapse: separate;
-  border-spacing: 3px;
-  font-size: 11.5px;
-}
-
-.heatmap th {
-  padding: 4px 8px;
-  color: var(--ink-soft);
-  font-weight: 600;
-  text-align: left;
-}
-
-.heatmap thead th {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 9.5px;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.heatmap td {
-  width: 76px;
-  height: 32px;
-  border-radius: 4px;
-  background: var(--background);
-  color: var(--foreground);
-  font-weight: 700;
-  text-align: center;
-}
-
-.heatmap td.dark {
-  color: #fff;
 }
 
 .signature-grid {

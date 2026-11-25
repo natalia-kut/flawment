@@ -34,6 +34,8 @@ type Username = (typeof users)[number][0];
 
 // [title, assignee, deadline offset in days, status, priority, description?]
 type TaskSeed = [string, Username | null, number | null, TaskStatus, TaskPriority, string?];
+// [name, deadline offset in days, how many of the tasks belong to it, in their order]
+type StageSeed = [string, number, number];
 
 type ProjectSeed = {
   name: string;
@@ -44,6 +46,8 @@ type ProjectSeed = {
   owner: Username;
   members: [Username, ProjectRole, number][];
   tasks: TaskSeed[];
+  /** Tasks after the last stage's stay outside any stage. */
+  stages?: StageSeed[];
 };
 
 const projects: ProjectSeed[] = [
@@ -79,6 +83,7 @@ const projects: ProjectSeed[] = [
       ["Load testing for the end-of-quarter peak", null, null, "TO_DO", "HIGH"],
       ["CSV export of orders to the ERP", "zofia.wisniewska", -10, "CANCELLED", "LOW", "Replaced by the direct ERP integration."],
     ],
+    stages: [["Discovery and design", -20, 4], ["Build", 8, 6], ["Integration and testing", 28, 4]],
   },
   {
     name: "Corporate website redesign",
@@ -104,6 +109,7 @@ const projects: ProjectSeed[] = [
       ["Case study gallery", null, 28, "TO_DO", "LOW"],
       ["Translate the site into Polish, English and German", "julia.dabrowska", 40, "TO_DO", "MEDIUM"],
     ],
+    stages: [["Content", -12, 2], ["Build", 14, 5], ["Launch", 45, 2]],
   },
   {
     name: "Field service mobile app",
@@ -127,6 +133,7 @@ const projects: ProjectSeed[] = [
       ["App store release", "aleksandra.lewandowska", -25, "COMPLETED", "URGENT"],
       ["Final acceptance with operations management", "aleksandra.lewandowska", -21, "COMPLETED", "MEDIUM"],
     ],
+    stages: [["Build", -60, 4], ["Pilot and release", -21, 3]],
   },
   {
     name: "Reporting platform cloud migration",
@@ -332,7 +339,8 @@ async function main() {
 
   for (const project of projects) {
     const manager = project.members.find(([, role]) => role === "COORDINATOR")?.[0] ?? project.owner;
-    await prisma.project.create({
+    const created = await prisma.project.create({
+      select: { id: true, tasks: { select: { id: true }, orderBy: { id: "asc" } } },
       data: {
         name: project.name,
         description: project.description,
@@ -360,6 +368,13 @@ async function main() {
         },
       },
     });
+    let first = 0;
+    for (const [name, deadline, count] of project.stages ?? []) {
+      const stage = await prisma.projectStage.create({ data: { project_id: created.id, name, deadline: day(deadline) } });
+      const tasks = created.tasks.slice(first, first + count).map((task) => task.id);
+      await prisma.task.updateMany({ where: { id: { in: tasks } }, data: { stage_id: stage.id } });
+      first += count;
+    }
   }
 
   console.log(`Seeded ${users.length} users and ${projects.length} projects.`);

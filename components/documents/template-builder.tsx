@@ -237,6 +237,13 @@ function BlockEditor({ block, onChange }: { block: TemplateBlock; onChange: (blo
           />
         </>
       );
+    case "insights":
+      return (
+        <>
+          <TitleField onChange={(title) => onChange({ ...block, title })} value={block.title} />
+          <p className="builder-hint">Late and unowned work, deadlines during someone&apos;s time off, stages at risk. Written from the project&apos;s data.</p>
+        </>
+      );
     case "chart":
       return (
         <>
