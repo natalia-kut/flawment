@@ -54,8 +54,8 @@ export default function ProjectStages({ project }: { project: WorkspaceProject }
   const [editing, setEditing] = useState<number | "new" | null>(null);
   const stage = project.stages.find((item) => item.id === editing);
   return <section className={"workspace-card " + styles.section} aria-labelledby="project-stages-heading">
-    <div className="section-heading"><div><h2 id="project-stages-heading">Stages <span className="role-badge">{project.stages.length}</span></h2></div>
-      {project.canEdit && <button className="primary-button" onClick={() => setEditing("new")}>+ New stage</button>}
+    <div className="section-heading"><div><h2 id="project-stages-heading">Stages</h2></div>
+      {project.canEdit && <button className="primary-button" onClick={() => setEditing("new")}><span aria-hidden="true">+</span> New stage</button>}
     </div>
     {project.stages.length === 0 ? <p>No stages yet. Group the project&apos;s work into stages, such as milestones or phases.</p> : <ul className={styles.list}>
       {project.stages.map((item) => <li className={styles.stage} key={item.id}>

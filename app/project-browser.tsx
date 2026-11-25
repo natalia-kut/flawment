@@ -15,7 +15,7 @@ const SHOWN_PEOPLE = 4;
 const DAY = 86_400_000;
 
 /** "Due 14 Mar 2027", "Due in 5 days", "Due today" or "Past due · 12 Nov 2026"; finished projects just name the date. */
-function dueLabel(end: string | null, status: string, today: string): { text: string; tone?: "soon" | "late" } {
+export function dueLabel(end: string | null, status: string, today: string): { text: string; tone?: "soon" | "late" } {
   if (!end) return { text: "No deadline" };
   const date = formatDate.format(new Date(end + "T00:00:00Z"));
   if (status === "COMPLETED" || status === "CANCELLED" || status === "ARCHIVED") return { text: date };
@@ -27,7 +27,7 @@ function dueLabel(end: string | null, status: string, today: string): { text: st
 }
 
 /** How much of the project's work is done, as a ring; green once it is all done. */
-function ProgressRing({ percent, done }: { percent: number; done: boolean }) {
+export function ProgressRing({ percent, done }: { percent: number; done: boolean }) {
   const r = 17, c = 2 * Math.PI * r;
   return <svg className={styles.ring} data-done={done || undefined} width="42" height="42" viewBox="0 0 42 42" aria-hidden="true">
     <circle cx="21" cy="21" r={r} className={styles.ringTrack} />
