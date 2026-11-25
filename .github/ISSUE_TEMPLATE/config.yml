@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a vulnerability
+    url: https://github.com/natalia-kut/flawment/security/advisories/new
+    about: Please report security problems privately, not in an issue.
+  - name: Wiki
+    url: https://github.com/natalia-kut/flawment/wiki
+    about: How Flawment works and how to set it up.
