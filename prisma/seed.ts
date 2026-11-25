@@ -2,15 +2,14 @@ import "dotenv/config";
 import { readFileSync } from "node:fs";
 import { hashPassword } from "../lib/auth/password";
 import { isManagerialTitle } from "../lib/people/job-titles";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../src/generated/prisma/client";
-import type { AbsenceType, ProjectRole, ProjectStatus, TaskPriority, TaskStatus } from "../src/generated/prisma/enums";
+import { prisma } from "../lib/prisma";
+import { applyDemo } from "./demo/apply";
+import type { AbsenceType } from "../src/generated/prisma/enums";
 
-// Sample workspace data. Dates are relative to the day the seed runs, so overdue
-// and upcoming sections in generated documents always have something to show.
-// Run with `npx prisma db seed`; it skips samples when standard users already exist.
-
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+// Sample workspace data: the people here, their projects in demo/story.ts. Dates are relative to the
+// day the seed runs, so overdue and upcoming work always has something to show.
+// Run with `npm run db:seed`; it skips samples when standard users already exist
+// (`npm run db:demo` brings the sample projects up to date there).
 
 function day(offset: number) {
   const date = new Date();
@@ -31,133 +30,6 @@ const users = [
 ] as const;
 
 type Username = (typeof users)[number][0];
-
-// [title, assignee, deadline offset in days, status, priority, description?]
-type TaskSeed = [string, Username | null, number | null, TaskStatus, TaskPriority, string?];
-// [name, deadline offset in days, how many of the tasks belong to it, in their order]
-type StageSeed = [string, number, number];
-
-type ProjectSeed = {
-  name: string;
-  description: string;
-  status: ProjectStatus;
-  start: number;
-  end: number | null;
-  owner: Username;
-  members: [Username, ProjectRole, number][];
-  tasks: TaskSeed[];
-  /** Tasks after the last stage's stay outside any stage. */
-  stages?: StageSeed[];
-};
-
-const projects: ProjectSeed[] = [
-  {
-    name: "Customer self-service portal",
-    description:
-      "B2B portal where customers place orders, download invoices and track support tickets, replacing ordering by email.",
-    status: "IN_PROGRESS",
-    start: -62,
-    end: 38,
-    owner: "natalia.kwiatek",
-    members: [
-      ["natalia.kwiatek", "OWNER", -62],
-      ["jakub.nowak", "COORDINATOR", -60],
-      ["zofia.wisniewska", "CONTRIBUTOR", -58],
-      ["michal.zielinski", "CONTRIBUTOR", -55],
-      ["aleksandra.lewandowska", "CONTRIBUTOR", -40],
-    ],
-    tasks: [
-      ["Run discovery workshops with key account managers", "natalia.kwiatek", -45, "COMPLETED", "MEDIUM", "Five workshops with sales and customer service."],
-      ["Define order approval and credit limit rules", "jakub.nowak", -35, "COMPLETED", "HIGH"],
-      ["Design the database schema", "michal.zielinski", -30, "COMPLETED", "HIGH"],
-      ["Design order flow wireframes", "zofia.wisniewska", -20, "COMPLETED", "MEDIUM"],
-      ["Set up the CI/CD pipeline", "michal.zielinski", -18, "COMPLETED", "LOW"],
-      ["Customer accounts and permissions", "aleksandra.lewandowska", -13, "COMPLETED", "HIGH"],
-      ["Invoice PDF downloads", "michal.zielinski", -8, "COMPLETED", "MEDIUM"],
-      ["Support ticket form", "zofia.wisniewska", -4, "COMPLETED", "MEDIUM"],
-      ["Build order history and invoice view", "michal.zielinski", -4, "IN_PROGRESS", "URGENT", "Filters by date, status and invoice number."],
-      ["Implement the order approval workflow", "aleksandra.lewandowska", -2, "IN_PROGRESS", "HIGH"],
-      ["Visual design of the product catalogue", "zofia.wisniewska", 3, "IN_REVIEW", "MEDIUM"],
-      ["Email notifications for shipped orders", "aleksandra.lewandowska", 6, "TO_DO", "MEDIUM"],
-      ["Product search and filters", "michal.zielinski", 9, "IN_REVIEW", "MEDIUM"],
-      ["Single sign-on with the corporate identity provider", null, 12, "TO_DO", "HIGH", "Waiting for access from the IT security team."],
-      ["WCAG 2.1 accessibility audit", null, 25, "TO_DO", "MEDIUM"],
-      ["Write the administrator handbook", "jakub.nowak", 30, "TO_DO", "LOW"],
-      ["Load testing for the end-of-quarter peak", null, null, "TO_DO", "HIGH"],
-      ["CSV export of orders to the ERP", "zofia.wisniewska", -10, "CANCELLED", "LOW", "Replaced by the direct ERP integration."],
-    ],
-    stages: [["Discovery and design", -20, 4], ["Build", 8, 9], ["Integration and testing", 28, 4]],
-  },
-  {
-    name: "Corporate website redesign",
-    description: "New corporate website with a careers section, case studies and a multilingual news hub.",
-    status: "IN_PROGRESS",
-    start: -30,
-    end: 53,
-    owner: "jakub.nowak",
-    members: [
-      ["jakub.nowak", "OWNER", -30],
-      ["julia.dabrowska", "COORDINATOR", -29],
-      ["piotr.kaminski", "CONTRIBUTOR", -27],
-      ["natalia.kwiatek", "CONTRIBUTOR", -20],
-    ],
-    tasks: [
-      ["Content audit with the marketing team", "julia.dabrowska", -22, "COMPLETED", "MEDIUM"],
-      ["Select a headless CMS", "piotr.kaminski", -15, "COMPLETED", "HIGH"],
-      ["Migrate the news archive", "natalia.kwiatek", -1, "TO_DO", "MEDIUM", "About 300 articles from the current site."],
-      ["Build the home page", "piotr.kaminski", 5, "IN_PROGRESS", "HIGH"],
-      ["Cookie consent and GDPR review", null, 8, "TO_DO", "URGENT"],
-      ["Newsletter sign-up form", "julia.dabrowska", 11, "IN_REVIEW", "MEDIUM"],
-      ["Careers section with job listings", "piotr.kaminski", 14, "TO_DO", "MEDIUM"],
-      ["Case study gallery", null, 28, "TO_DO", "LOW"],
-      ["Translate the site into Polish, English and German", "julia.dabrowska", 40, "TO_DO", "MEDIUM"],
-    ],
-    stages: [["Content", -12, 2], ["Build", 14, 5], ["Launch", 45, 2]],
-  },
-  {
-    name: "Field service mobile app",
-    description: "Mobile app for service technicians with daily job schedules, offline checklists and customer signatures.",
-    status: "COMPLETED",
-    start: -210,
-    end: -21,
-    owner: "aleksandra.lewandowska",
-    members: [
-      ["aleksandra.lewandowska", "OWNER", -210],
-      ["tomasz.wojcik", "COORDINATOR", -205],
-      ["zofia.wisniewska", "CONTRIBUTOR", -200],
-      ["piotr.kaminski", "CONTRIBUTOR", -200],
-    ],
-    tasks: [
-      ["Job schedule with map view", "piotr.kaminski", -150, "COMPLETED", "HIGH"],
-      ["Offline mode for checklists", "piotr.kaminski", -90, "COMPLETED", "MEDIUM"],
-      ["Customer signature capture", "zofia.wisniewska", -70, "COMPLETED", "HIGH"],
-      ["Push notifications for schedule changes", "tomasz.wojcik", -60, "CANCELLED", "LOW", "Dropped: the scheduling system has no event API."],
-      ["Pilot with ten technicians", "zofia.wisniewska", -45, "COMPLETED", "MEDIUM"],
-      ["App store release", "aleksandra.lewandowska", -25, "COMPLETED", "URGENT"],
-      ["Final acceptance with operations management", "aleksandra.lewandowska", -21, "COMPLETED", "MEDIUM"],
-    ],
-    stages: [["Build", -60, 4], ["Pilot and release", -21, 3]],
-  },
-  {
-    name: "Reporting platform cloud migration",
-    description: "Moving the on-premises reporting servers to the cloud before the hardware support contract ends.",
-    status: "TO_DO",
-    start: 20,
-    end: 140,
-    owner: "julia.dabrowska",
-    members: [
-      ["julia.dabrowska", "OWNER", -5],
-      ["tomasz.wojcik", "COORDINATOR", -4],
-      ["michal.zielinski", "CONTRIBUTOR", -2],
-    ],
-    tasks: [
-      ["Sign the cloud provider contract", "tomasz.wojcik", 30, "TO_DO", "HIGH"],
-      ["Inventory reports and data sources", "michal.zielinski", 45, "TO_DO", "MEDIUM"],
-      ["Approve the migration budget", "julia.dabrowska", 50, "TO_DO", "URGENT"],
-      ["Define the rollback plan", null, null, "TO_DO", "LOW"],
-    ],
-  },
-];
 
 // Teams, birthdays and time off. Kept apart from the projects so a workspace
 // seeded before these features existed can still receive them.
@@ -189,22 +61,21 @@ const joined: [Username, number, number][] = [
 const details: { username: Username; job_title: string; pronouns?: string; phone: string; location: string; working_hours: string; skills: string[]; lead?: true }[] = [
   { username: "natalia.kwiatek", job_title: "Product lead", pronouns: "she/her", phone: "+48 601 234 567", location: "Warsaw office", working_hours: "Mon–Fri, 9:00–17:00", skills: ["Product discovery", "Roadmapping", "Stakeholder management"], lead: true },
   { username: "jakub.nowak", job_title: "Engineering manager", pronouns: "he/him", phone: "+48 602 345 678", location: "Warsaw office", working_hours: "Mon–Fri, 8:30–16:30", skills: ["PostgreSQL", "Node.js", "Release planning"], lead: true },
-  { username: "zofia.wisniewska", job_title: "UX designer", pronouns: "she/her", phone: "+48 603 456 789", location: "Kraków · Hybrid", working_hours: "Mon–Fri, 10:00–18:00", skills: ["UX research", "Figma", "Accessibility", "Design systems"] },
+  { username: "zofia.wisniewska", job_title: "Design lead", pronouns: "she/her", phone: "+48 603 456 789", location: "Kraków · Hybrid", working_hours: "Mon–Fri, 10:00–18:00", skills: ["UX research", "Figma", "Accessibility", "Design systems"] },
   { username: "michal.zielinski", job_title: "Full-stack developer", phone: "+48 604 567 890", location: "Remote", working_hours: "Mon–Fri, 9:00–17:00", skills: ["TypeScript", "React", "Terraform"] },
-  { username: "aleksandra.lewandowska", job_title: "Operations manager", pronouns: "she/her", phone: "+48 605 678 901", location: "Warsaw office", working_hours: "Mon–Fri, 8:00–16:00", skills: ["Vendor management", "Budgeting", "Compliance"], lead: true },
+  { username: "aleksandra.lewandowska", job_title: "Tester", pronouns: "she/her", phone: "+48 605 678 901", location: "Warsaw office", working_hours: "Mon–Fri, 8:00–16:00", skills: ["Vendor management", "Budgeting", "Compliance"] },
   { username: "piotr.kaminski", job_title: "Frontend developer", pronouns: "he/him", phone: "+48 606 789 012", location: "Gdańsk · Remote", working_hours: "Mon–Thu, 9:00–18:00", skills: ["React", "Web performance", "Testing"] },
-  { username: "julia.dabrowska", job_title: "Infrastructure lead", phone: "+48 607 890 123", location: "Wrocław · Hybrid", working_hours: "Mon–Fri, 9:00–17:00", skills: ["AWS", "Kubernetes", "Networking"] },
+  { username: "julia.dabrowska", job_title: "Infrastructure lead", phone: "+48 607 890 123", location: "Wrocław · Hybrid", working_hours: "Mon–Fri, 9:00–17:00", skills: ["AWS", "Kubernetes", "Networking"], lead: true },
   { username: "tomasz.wojcik", job_title: "QA engineer", pronouns: "he/him", phone: "+48 608 901 234", location: "Warsaw office", working_hours: "Mon–Fri, 9:00–17:00", skills: ["Test automation", "Playwright", "Exploratory testing"] },
 ];
 
-// [username, type, first day offset, last day offset, note]
+// [username, type, first day offset, last day offset, note]: the days around today are in demo/story.ts.
 const absences: [Username, AbsenceType, number, number, string | null][] = [
-  ["zofia.wisniewska", "VACATION", -2, 4, "Mountains with family"],
-  ["julia.dabrowska", "OTHER", 0, 0, "Moving flat"],
-  ["michal.zielinski", "BUSINESS_TRIP", 5, 7, "Client workshop in Gdańsk"],
-  ["piotr.kaminski", "SICK_LEAVE", -10, -8, null],
-  ["tomasz.wojcik", "VACATION", 20, 30, null],
-  ["natalia.kwiatek", "VACATION", 40, 47, null],
+  ["piotr.kaminski", "SICK_LEAVE", -23, -21, null],
+  ["zofia.wisniewska", "VACATION", -15, -9, "Mountains with family"],
+  ["michal.zielinski", "BUSINESS_TRIP", -8, -6, "Client workshop in Gdańsk"],
+  ["tomasz.wojcik", "VACATION", 7, 17, null],
+  ["natalia.kwiatek", "VACATION", 27, 34, null],
 ];
 
 async function seedPeople() {
@@ -293,21 +164,22 @@ async function seedJoinDates() {
 }
 
 // [username, suggested title, reason, days ago]: sample job title requests from each person's team lead.
-const titleRequests: [Username, string, string, number][] = [
+// [username, title, note, days ago, already approved?]
+const titleRequests: [Username, string, string, number, true?][] = [
   ["michal.zielinski", "Senior full-stack developer", "Has owned the billing service end to end since the summer.", 0],
-  ["zofia.wisniewska", "Design lead", "Runs the design system and mentors two juniors.", 1],
+  ["zofia.wisniewska", "Design lead", "Runs the design system and mentors two juniors.", 1, true],
   ["aleksandra.lewandowska", "Operations manager", "Back to running operations after the QA rotation.", 3],
 ];
 
-/** Pending requests for the super admin's dashboard, sent by the person's current team lead. Safe to run again. */
+/** Requests for the super admin's dashboard (one already approved, as this month's promotion), sent by the person's current team lead. Safe to run again. */
 async function seedTitleRequests() {
   let added = 0;
-  for (const [username, title, note, daysAgo] of titleRequests) {
+  for (const [username, title, note, daysAgo, approved] of titleRequests) {
     const person = await prisma.user.findUnique({ where: { username }, select: { id: true, team_id: true, title_requests_about: { select: { id: true }, take: 1 } } });
     if (!person || person.team_id === null || person.title_requests_about.length) continue;
     const lead = await prisma.user.findFirst({ where: { team_id: person.team_id, team_lead: true, id: { not: person.id } }, select: { id: true } });
     if (!lead) continue;
-    await prisma.jobTitleRequest.create({ data: { user_id: person.id, requested_by: lead.id, title, note, created_at: day(-daysAgo) } });
+    await prisma.jobTitleRequest.create({ data: { user_id: person.id, requested_by: lead.id, title, note, created_at: day(-daysAgo), ...(approved ? { status: "APPROVED", decided_at: new Date() } : {}) } });
     added++;
   }
   if (added) console.log(`Added ${added} job title requests.`);
@@ -325,9 +197,8 @@ async function main() {
     return;
   }
 
-  const ids = new Map<Username, number>();
   for (const [username, firstName, lastName] of users) {
-    const user = await prisma.user.create({
+    await prisma.user.create({
       data: {
         username,
         email: `${username}@flawment.dev`,
@@ -336,57 +207,12 @@ async function main() {
         last_name: lastName,
       },
     });
-    ids.set(username, user.id);
   }
-  const id = (username: Username) => ids.get(username)!;
-
-  for (const project of projects) {
-    const manager = project.members.find(([, role]) => role === "COORDINATOR")?.[0] ?? project.owner;
-    const created = await prisma.project.create({
-      select: { id: true, tasks: { select: { id: true }, orderBy: { id: "asc" } } },
-      data: {
-        name: project.name,
-        description: project.description,
-        status: project.status,
-        start_date: day(project.start),
-        end_date: project.end === null ? null : day(project.end),
-        owner_id: id(project.owner),
-        memberships: {
-          create: project.members.map(([username, role, joined]) => ({
-            user_id: id(username),
-            role,
-            joined_at: day(joined),
-          })),
-        },
-        tasks: {
-          create: project.tasks.map(([title, assignee, deadline, status, priority, description], index) => ({
-            title,
-            description,
-            assigned_to: assignee ? id(assignee) : null,
-            created_by: id(index % 2 === 0 ? project.owner : manager),
-            deadline: deadline === null ? null : day(deadline),
-            status,
-            priority,
-            // Added a few at a time, and finished around their deadlines.
-            created_at: day(Math.min(project.start + index * 3, (deadline ?? 0) - 5, -1)),
-            completed_at: status === "COMPLETED" ? day(Math.min((deadline ?? 0) + (index % 3) - 1, -1)) : null,
-          })),
-        },
-      },
-    });
-    let first = 0;
-    for (const [name, deadline, count] of project.stages ?? []) {
-      const stage = await prisma.projectStage.create({ data: { project_id: created.id, name, deadline: day(deadline) } });
-      const tasks = created.tasks.slice(first, first + count).map((task) => task.id);
-      await prisma.task.updateMany({ where: { id: { in: tasks } }, data: { stage_id: stage.id } });
-      first += count;
-    }
-  }
-
-  console.log(`Seeded ${users.length} users and ${projects.length} projects.`);
+  console.log(`Seeded ${users.length} users.`);
   await seedJobTitles();
   await seedPeople();
   await seedDetails();
+  await applyDemo();
   await seedJoinDates();
   await seedAdminProfile();
   await seedTitleRequests();

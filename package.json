@@ -13,6 +13,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:seed": "prisma db seed",
+    "db:demo": "tsx prisma/seed-demo.ts",
     "db:seed:admin": "tsx prisma/seed-admin.ts",
     "test": "tsx --test tests/*.test.ts",
     "test:integration": "tsx --test --test-concurrency=1 tests/integration/*.test.ts",

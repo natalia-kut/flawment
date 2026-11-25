@@ -101,6 +101,7 @@ unset DATABASE_URL
 | `npm run db:deploy` | Apply committed migrations without prompts |
 | `npm run db:generate` | Regenerate Prisma Client after schema changes |
 | `npm run db:seed` | Add optional sample data to an empty database |
+| `npm run db:demo` | Bring the sample projects up to date with today (see below) |
 | `npm run build` | Create a production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | Run ESLint |
@@ -109,6 +110,12 @@ After pulling dependency or migration changes, rerun bootstrap. After editing
 `prisma/schema.prisma`, run `db:migrate` and then `db:generate`, and commit the
 resulting migration. Prisma 7 does not automatically generate the client when
 running migrations. The sample-data seed skips when standard users already exist.
+
+The sample projects live in `prisma/demo/story.ts`, with dates in working days from today.
+`npm run db:demo` puts them into a database that already has the sample people, or moves
+them to the present when they have aged. It resets the status, dates, people and priority
+of its own tasks and the teams of the sample people (and sets two statuses and a few days
+off), keeps descriptions that were written, and leaves everything else alone. Like the seed, it is not for production data.
 
 ## Accounts and project roles
 
