@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { projectInsights } from "../lib/documents/insights";
+import { buildVariables } from "../lib/documents/engine";
 import { stageRows } from "../lib/documents/stages";
 import { parseBlocks } from "../lib/documents/template-schema";
 import type { DocumentProject, DocumentStage, DocumentTask } from "../lib/documents/types";
@@ -87,4 +88,11 @@ test("charts that were removed turn into what replaced them", () => {
     { id: "c", type: "insights", title: "Our own title" },
     { id: "d", type: "chart", kind: "timeline", title: "Deadline timeline" },
   ]);
+});
+
+test("planned duration counts both the first and the last day", () => {
+  const duration = (startDate: string, endDate: string) => buildVariables(project([], { startDate, endDate }), "2026-11-25").duration;
+  assert.equal(duration("2026-11-10", "2026-11-10"), "1 day");
+  assert.equal(duration("2026-11-10", "2026-11-11"), "2 days");
+  assert.equal(duration("2026-10-15", "2026-12-20"), "67 days");
 });

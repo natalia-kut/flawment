@@ -38,6 +38,8 @@ test("task creation, editing and deletion enforce permissions and project bounda
       form({ project_id: project.id, title: "Prepare report", priority: "MEDIUM", ...extra });
 
     const created = await createTask(actor(0), input({ assigned_to: users[2], deadline: "2026-11-01" }));
+    // A two-digit year typed into a date field arrives as year 0026.
+    await assert.rejects(createTask(actor(0), input({ deadline: "0026-01-12" })), /year 2000/);
     const saved = await prisma.task.findUniqueOrThrow({ where: { id: created.id } });
     assert.equal(saved.assigned_to, users[2]);
     assert.equal(saved.created_by, users[0]);

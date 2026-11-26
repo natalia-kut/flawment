@@ -1,4 +1,5 @@
 import PaceChart from "./pace-chart";
+import { formatMonthTick } from "@/lib/time-off/dates";
 import StageRoadmap from "./stage-roadmap";
 import TeamPlanChart from "./team-plan-chart";
 import {
@@ -24,7 +25,6 @@ import {
 type ChartProps = { project: DocumentProject; today: string };
 
 const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
-const monthName = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" });
 
 function utc(day: string) {
   return Date.parse(`${day}T00:00:00Z`);
@@ -201,7 +201,7 @@ function Timeline({ project, today }: ChartProps) {
           index % monthStep === 0 ? (
             <g key={month}>
               <line className="chart-axis" x1={x(month)} x2={x(month)} y1={axisY} y2={axisY + 4} />
-              <text className="chart-tick" x={x(month)} y={axisY + 15} textAnchor="middle">{monthName.format(utc(month))}</text>
+              <text className="chart-tick" x={x(month)} y={axisY + 15} textAnchor="middle">{formatMonthTick(month, index === 0)}</text>
             </g>
           ) : null,
         )}

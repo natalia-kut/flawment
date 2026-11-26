@@ -4,6 +4,7 @@ import { useActionState, type ReactNode } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { projectAction } from "@/lib/projects/actions";
 import { projectStatusLabels } from "@/lib/projects/labels";
+import { workspaceToday } from "@/lib/time-off/dates";
 import details from "@/components/ui/details-dialog.module.css";
 import TaskDetailsDialog from "./task-details-dialog";
 import { submitInPlace } from "@/components/ui/submit-in-place";
@@ -27,7 +28,8 @@ export default function ProjectDetailsForm({ project, onClose, onSaved, deletion
   const creating = !project;
   const initial = {
     name: project?.name ?? "", description: project?.description ?? "",
-    start_date: project?.start_date ?? new Date().toISOString().slice(0, 10),
+    // The Warsaw day: just after midnight the UTC day is still yesterday.
+    start_date: project?.start_date ?? workspaceToday(),
     end_date: project?.end_date ?? "", status: (project?.status ?? "TO_DO") as string,
   };
   // As in the task dialog: sent with expected_* so a colleague's newer values are kept, and clashes refused.

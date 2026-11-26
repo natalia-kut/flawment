@@ -1,4 +1,5 @@
 import type { MemberSort, TaskFilter, TaskSort, VariableKey } from "./template-schema";
+import { formatShortDay } from "@/lib/time-off/dates";
 import {
   projectRoleLabels,
   projectStatusLabels,
@@ -38,12 +39,8 @@ export function formatDay(day: string | null) {
   return day ? dateFormatter.format(toUtc(day)) : "—";
 }
 
-const shortDayFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
-
-/** "3 Dec", for sentences about the near future. */
-export function formatShortDay(day: string) {
-  return shortDayFormatter.format(toUtc(day));
-}
+// "3 Dec" this year, "3 Dec 2027" in any other, for sentences.
+export { formatShortDay };
 
 export function plural(count: number, word: string) {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
@@ -120,7 +117,8 @@ export function buildVariables(project: DocumentProject, today: string): Record<
   let duration = "No end date";
   let remaining = "No end date";
   if (project.endDate) {
-    duration = plural(Math.max(daysBetween(project.startDate, project.endDate), 1), "day");
+    // Both ends count: a project from 10 to 11 Nov takes 2 days.
+    duration = plural(Math.max(daysBetween(project.startDate, project.endDate) + 1, 1), "day");
 
     const left = daysBetween(today, project.endDate);
     remaining = left > 0 ? `${plural(left, "day")} left` : left === 0 ? "ends today" : `ended ${plural(-left, "day")} ago`;
