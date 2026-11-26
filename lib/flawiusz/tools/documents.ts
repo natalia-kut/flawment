@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { saveTemplate } from "@/lib/documents/actions";
 import { builtInTemplates } from "@/lib/documents/built-in-templates";
-import { getDocumentProjects, getDocumentTemplates } from "@/lib/documents/data";
+import { getDocumentTemplates } from "@/lib/documents/data";
+import { projectList } from "./projects";
 import {
   assignmentFilterOptions,
   blockTypeOptions,
@@ -131,7 +132,8 @@ async function prepareTemplate(
         "If you do not know yet, ask the user.",
     };
   }
-  const project = projectId === null ? null : (await getDocumentProjects()).find((item) => item.id === projectId);
+  // Only whether it exists for this user matters here, so the light list is enough.
+  const project = projectId === null ? null : (await projectList()).find((item) => item.id === projectId);
   if (project === undefined) return { ok: false as const, error: `There is no project ${projectId}; use an id from list_projects or ask_project.` };
 
   const parsed = parseTemplateInput({

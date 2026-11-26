@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ComponentProps, type ReactNode } from "react";
+import { useState, useTransition, type ComponentProps, type ReactNode } from "react";
 import Link from "next/link";
 import SessionWatch from "./session-watch";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -67,6 +67,11 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
   const [requestedTemplateId, setRequestedTemplateId] = useState<string | null>(null);
   const chat = useFlawiuszChat();
   const [collapsed, setCollapsed] = useState(sidebarCollapsed);
+  // A view comes from the server, which takes a moment: the clicked item is marked at once,
+  // and the page shows it is loading, instead of nothing happening until it arrives.
+  const [navigating, startNavigation] = useTransition();
+  const [requestedPage, setRequestedPage] = useState<NavigationItem | AccountView | null>(null);
+  const shownPage = navigating && requestedPage ? requestedPage : activePage;
 
   function toggleSidebar() {
     const next = !collapsed;
@@ -82,7 +87,11 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
     if (item === "Dashboard") params.delete("view");
     else params.set("view", item.toLowerCase());
     // Unsaved work on the page (a description being edited, a dialog with changes) asks first.
-    void confirmLeave().then((ok) => { if (ok) router.push(params.size ? "/?" + params.toString() : "/"); });
+    void confirmLeave().then((ok) => {
+      if (!ok) return;
+      setRequestedPage(item);
+      startNavigation(() => router.push(params.size ? "/?" + params.toString() : "/"));
+    });
   }
 
   function openTemplate(templateId: string) {
@@ -114,11 +123,11 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
         <nav className="main-nav" aria-label="Main navigation">
           {visibleNavigation.map((item) => (
             <button
-              className={`nav-link${activePage === item ? " active" : ""}`}
+              className={`nav-link${shownPage === item ? " active" : ""}`}
               key={item}
               type="button"
               onClick={() => setActivePage(item)}
-              aria-current={activePage === item ? "page" : undefined}
+              aria-current={shownPage === item ? "page" : undefined}
               aria-label={collapsed ? item : undefined}
               title={collapsed ? item : undefined}
             >
@@ -132,7 +141,7 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
         </div>
       </aside>
 
-      <main className="main-content">
+      <main className="main-content" aria-busy={navigating || undefined} data-navigating={navigating || undefined}>
         {accountView === "profile" ? profile : accountView === "time-off" ? timeOff : activePage === "Team" ? team : activePage === "People" ? people : activePage === "Documents" ? (
           // Remount when Flawiusz asks to open a template, so the page selects it.
           <RequestedTemplateContext value={requestedTemplateId} key={requestedTemplateId ?? "documents"}>

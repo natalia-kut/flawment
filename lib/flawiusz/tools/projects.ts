@@ -1,11 +1,18 @@
 import { z } from "zod";
-import { getDocumentProjects } from "@/lib/documents/data";
+import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth/session";
+import { visibleProjects } from "@/lib/rbac";
 import { defineTool } from "./define";
 
 export type ProjectChoice = { id: number; name: string };
 
+/**
+ * The projects the user can see, by id and name only: in the same order as on the
+ * Documents page, without loading every task, file and absence of each project.
+ */
 export async function projectList(): Promise<ProjectChoice[]> {
-  return (await getDocumentProjects()).map(({ id, name }) => ({ id, name }));
+  const user = await requireUser();
+  return prisma.project.findMany({ where: visibleProjects(user), orderBy: [{ start_date: "desc" }, { id: "asc" }], select: { id: true, name: true } });
 }
 
 export const listProjects = defineTool({

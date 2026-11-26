@@ -24,6 +24,10 @@ import { getLeadTitleRequests, getPendingTitleRequests } from "@/lib/job-title-r
 async function Workspace({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
   const params = await searchParams;
   const taskId = params.task;
+  // Only the view on screen is rendered (as AppShell picks it): a project or task link lives under
+  // Projects or Tasks. Rendering every view for every page made each one about 1 MB for a super admin.
+  const view = typeof params.view === "string" ? params.view : "";
+  const section = params.project !== undefined ? "projects" : taskId !== undefined ? "tasks" : view;
   // This address, so signing in returns here (a shared task or view link).
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) for (const one of [value ?? []].flat()) query.append(key, one);
@@ -49,21 +53,21 @@ async function Workspace({ searchParams }: Pick<PageProps<"/">, "searchParams">)
   return (
     <AppShell
       user={{ ...user, celebrations, status: activeStatus(me), availability: availability(toRanges(myAbsences, true), today) }}
-      profile={<ProfileSection />}
-      team={<TeamSection overview={teams} titleRequests={leadRequests.byPerson} />}
-      timeOff={<TimeOffSection />}
-      people={<PeopleSection />}
+      profile={section === "profile" ? <ProfileSection /> : null}
+      team={section === "team" ? <TeamSection overview={teams} titleRequests={leadRequests.byPerson} /> : null}
+      timeOff={section === "time-off" ? <TimeOffSection /> : null}
+      people={section === "people" ? <PeopleSection /> : null}
       directory={{ people: teams.people, teams: teams.teams.map(({ id, name }) => ({ id, name })) }}
       workspace={{ projects, userId: user.id, today, timeOff, myTeam, admin }}
       sidebarCollapsed={sidebarCollapsed}
-      tasks={<TasksOverview projects={projects} currentUserId={user.id} today={today} />}
+      tasks={section === "tasks" && taskId === undefined ? <TasksOverview projects={projects} currentUserId={user.id} today={today} /> : null}
       task={taskId !== undefined ? <TaskSection taskId={String(taskId)} projects={projects} user={user} today={today} /> : null}
-      projects={<ProjectsView projects={projects} today={today} canCreateProjects={canCreateProjects} />}
-      documents={
+      projects={section === "projects" ? <ProjectsView projects={projects} today={today} canCreateProjects={canCreateProjects} /> : null}
+      documents={section === "documents" ? (
         <Suspense fallback={<DocumentsSkeleton />}>
           <DocumentsSection />
         </Suspense>
-      }
+      ) : null}
     />
   );
 }
