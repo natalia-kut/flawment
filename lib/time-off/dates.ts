@@ -25,17 +25,30 @@ export function daySpan(from: string, to: string) {
 }
 
 const short = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+const shortWithYear = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 const long = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
 
-/** "14 Nov". */
-export const formatShortDay = (day: string) => short.format(new Date(day));
+/**
+ * "14 Nov" this year, "14 Nov 2027" in any other: without the year, "until
+ * 19 Nov" a year ahead reads as already over. `today` is the workspace day.
+ */
+export const formatShortDay = (day: string, today = workspaceToday()) =>
+  (day.slice(0, 4) === today.slice(0, 4) ? short : shortWithYear).format(new Date(day));
 /** "14 November": how a birthday is shown, without the year. */
 export const formatBirthday = (day: string) => long.format(new Date(day));
 
-/** "14 Nov" for one day, otherwise "14 – 20 Nov". */
-export function formatRange(from: string, to: string) {
-  if (from === to) return formatShortDay(from);
-  return `${formatShortDay(from)} – ${formatShortDay(to)}`;
+/** "14 Nov" for one day, otherwise "14 – 20 Nov"; the year shows as for formatShortDay ("20 Dec 2026 – 3 Jan 2027"). */
+export function formatRange(from: string, to: string, today = workspaceToday()) {
+  if (from === to) return formatShortDay(from, today);
+  // Both in the same other year: the year once, at the end ("1 – 5 Jan 2027").
+  const sameYear = from.slice(0, 4) === to.slice(0, 4);
+  return `${sameYear ? short.format(new Date(from)) : formatShortDay(from, today)} – ${formatShortDay(to, today)}`;
+}
+
+/** A month label for a chart axis: "Mar", or "Jan 2027" on the first tick and on each January. */
+export function formatMonthTick(month: string, first: boolean) {
+  return new Intl.DateTimeFormat("en-GB", { month: "short", ...(first || month.slice(5, 7) === "01" ? { year: "numeric" } : {}), timeZone: "UTC" })
+    .format(new Date(month.slice(0, 7) + "-01"));
 }
 
 /**

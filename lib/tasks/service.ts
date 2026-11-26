@@ -1,6 +1,6 @@
 import { can, type Actor } from "@/lib/rbac";
 import { normalizeNewlines } from "@/lib/rich-text/markdown";
-import { MAX_DESCRIPTION_LENGTH } from "./limits";
+import { MAX_DESCRIPTION_LENGTH, MIN_DEADLINE } from "./limits";
 import type { Task, TaskPriority, TaskStatus } from "@/src/generated/prisma/client";
 import { serializable } from "@/lib/transaction";
 import { keepUnchanged, knowsBase, listFields, staleFields } from "@/lib/stale";
@@ -95,6 +95,10 @@ function readFields(data: FormData, editing: boolean) {
       Number.isNaN(Date.parse(deadline)) ||
       new Date(deadline).toISOString().slice(0, 10) !== deadline)) {
     throw new TaskError("Enter a valid deadline.");
+  }
+  // A two-digit year typed into a date field becomes year 0026.
+  if (deadline && deadline < MIN_DEADLINE) {
+    throw new TaskError("Enter a deadline from the year 2000 on.");
   }
   return { status, stageId, title, description, priority, deadline, assignedTo };
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { formatTaskDeadline, taskPriorityLabels, taskStatusLabels } from "@/lib/tasks/labels";
 import { isTaskOverdue } from "@/lib/tasks/board";
+import { formatShortDay } from "@/lib/time-off/dates";
 import { plainText } from "@/lib/rich-text/markdown";
 import EmptyState from "@/components/ui/empty-state";
 import DeleteTaskForm from "./delete-task-form";
@@ -12,7 +13,6 @@ import styles from "./project-task-list.module.css";
 
 type Task = WorkspaceProject["tasks"][number];
 
-const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
 /**
  * A project's tasks as a compact table: open work by deadline, finished work folded
@@ -47,7 +47,7 @@ export default function ProjectTaskList({ project, today, onCreate, onEdit }: {
       <span role="cell"><span className={styles.status} data-status={task.status}>{taskStatusLabels[task.status]}</span></span>
       <span role="cell" className={styles.assignee} data-empty={task.assignedTo === null || undefined}>{task.assigneeName}</span>
       <span role="cell" className={styles.due} data-late={late || undefined} title={formatTaskDeadline(task.deadline)}>
-        {task.deadline ? shortDate.format(new Date(task.deadline + "T00:00:00Z")) : "—"}{late && <span className="visually-hidden"> (overdue)</span>}
+        {task.deadline ? formatShortDay(task.deadline) : "—"}{late && <span className="visually-hidden"> (overdue)</span>}
       </span>
       <span role="cell">{task.canEdit && <DeleteTaskForm className={styles.delete} projectId={project.id} taskId={task.id} title={task.title} />}</span>
     </div>;

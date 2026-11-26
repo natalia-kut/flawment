@@ -8,7 +8,7 @@ import type { TaskDetails } from "@/lib/tasks/details";
 import { changeTaskStatusAction, patchTaskAction } from "@/lib/tasks/actions";
 import { formatTaskDeadline, taskPriorityLabels, taskStatusLabels } from "@/lib/tasks/labels";
 import { isTaskOverdue } from "@/lib/tasks/board";
-import { MAX_DESCRIPTION_LENGTH } from "@/lib/tasks/limits";
+import { MAX_DESCRIPTION_LENGTH, MIN_DEADLINE } from "@/lib/tasks/limits";
 import { normalizeNewlines, toggleTask } from "@/lib/rich-text/markdown";
 import RichText from "@/components/rich-text/rich-text";
 import { EditableRichText, LazyRichTextEditor } from "@/components/rich-text/rich-text-field";
@@ -67,11 +67,13 @@ function Fact({ label, note, editable, children }: { label: string; note?: React
  */
 function DeadlineInput({ value, onSave }: { value: string; onSave: (value: string) => void }) {
   const [draft, setDraft] = useState<string | null>(null);
+  // Cleared, or a date from 2000 on: a half-typed year ("0026") is dropped rather than saved.
+  const acceptable = (day: string) => day === "" || day >= MIN_DEADLINE;
   function commit() {
-    if (draft !== null && draft !== value) onSave(draft);
+    if (draft !== null && draft !== value && acceptable(draft)) onSave(draft);
     setDraft(null);
   }
-  const ready = draft !== null && draft !== value && draft >= "2000";
+  const ready = draft !== null && draft !== value && draft !== "" && acceptable(draft);
   useEffect(() => {
     if (!ready) return;
     const timer = setTimeout(() => { onSave(draft!); setDraft(null); }, DEADLINE_DELAY_MS);
@@ -79,7 +81,7 @@ function DeadlineInput({ value, onSave }: { value: string; onSave: (value: strin
   // Only a change of the draft restarts the wait, not a re-render of the page around it.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, ready]);
-  return <input type="date" value={draft ?? value} max="9999-12-31"
+  return <input type="date" value={draft ?? value} min={MIN_DEADLINE} max="9999-12-31"
     onChange={(event) => setDraft(event.target.value)} onBlur={commit} />;
 }
 

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { availability, mergeRanges } from "../lib/time-off/availability";
-import { daySpan, daysUntilBirthday, formatBirthday, formatRange, nextAnniversary, todaysCelebrations, workspaceToday } from "../lib/time-off/dates";
+import { daySpan, daysUntilBirthday, formatBirthday, formatMonthTick, formatRange, formatShortDay, nextAnniversary, todaysCelebrations, workspaceToday } from "../lib/time-off/dates";
 import { activeStatus, statusExpiry, workspaceMidnight } from "../lib/status/status";
 
 test("day helpers count both ends and format without the year", () => {
@@ -59,4 +59,19 @@ test("statuses expire on time in the workspace time zone and hide once expired",
   assert.equal(activeStatus({ ...lunch, status_expires_at: statusExpiry("today", now) }, now)?.untilLabel, "Until tomorrow");
   assert.equal(activeStatus(lunch, new Date("2026-11-12T12:00:00Z")), null, "expired at its end time");
   assert.equal(activeStatus({ status_emoji: null, status_text: null, status_expires_at: null }, now), null);
+});
+
+test("dates show the year when it is not the current one", () => {
+  const today = "2026-11-25";
+  assert.equal(formatShortDay("2026-12-02", today), "2 Dec");
+  assert.equal(formatShortDay("2027-11-19", today), "19 Nov 2027");
+  assert.equal(formatShortDay("2025-11-30", today), "30 Nov 2025");
+  assert.equal(formatRange("2026-12-02", "2026-12-05", today), "2 Dec – 5 Dec");
+  assert.equal(formatRange("2027-01-01", "2028-01-01", today), "1 Jan 2027 – 1 Jan 2028");
+  assert.equal(formatRange("2026-12-20", "2027-01-03", today), "20 Dec – 3 Jan 2027");
+  assert.equal(formatRange("2027-02-01", "2027-02-05", today), "1 Feb – 5 Feb 2027");
+  assert.equal(formatRange("2027-03-04", "2027-03-04", today), "4 Mar 2027");
+  assert.equal(formatMonthTick("2026-02-01", true), "Feb 2026");
+  assert.equal(formatMonthTick("2026-05-01", false), "May");
+  assert.equal(formatMonthTick("2027-01-01", false), "Jan 2027");
 });

@@ -1,5 +1,6 @@
 import { addDays, daysBetween, formatDay, plural } from "@/lib/documents/engine";
 import { projectHistory, type Forecast } from "@/lib/documents/pace";
+import { formatMonthTick } from "@/lib/time-off/dates";
 import type { DocumentProject } from "@/lib/documents/types";
 
 const WIDTH = 640, LEFT = 26, RIGHT = 10, TOP = 22, HEIGHT = 150;
@@ -8,7 +9,6 @@ const BASE = TOP + HEIGHT;
 const MAX_DAYS_PAST_END = 45;
 const MAX_MONTHS = 8;
 
-const monthName = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" });
 
 function verdict(forecast: Forecast, open: number, endDate: string | null) {
   if (forecast.state === "finished") return "All work is done.";
@@ -70,8 +70,8 @@ export default function PaceChart({ project, today }: { project: DocumentProject
             <text className="chart-tick" x={LEFT - 6} y={y(value) + 3.5} textAnchor="end">{value}</text>
           </g>
         ))}
-        {months.filter((_, index) => index % step === 0).map((month) => (
-          <text key={month} className="chart-tick" x={x(month)} y={BASE + 16} textAnchor="middle">{monthName.format(new Date(month))}</text>
+        {months.filter((_, index) => index % step === 0).map((month, index) => (
+          <text key={month} className="chart-tick" x={x(month)} y={BASE + 16} textAnchor="middle">{formatMonthTick(month, index === 0)}</text>
         ))}
 
         {done && <path className="pace-area" d={`${done}V${BASE}H${x(known[0].day)}Z`} />}

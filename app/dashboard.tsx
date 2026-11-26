@@ -18,7 +18,7 @@ import { taskAssigneeKey } from "@/lib/tasks/filters";
 import { taskPriorityLabels } from "@/lib/tasks/labels";
 import styles from "./dashboard.module.css";
 import CelebrationBanner from "./celebration-banner";
-import type { Celebration } from "@/lib/time-off/dates";
+import { formatShortDay, type Celebration } from "@/lib/time-off/dates";
 import type { CalendarTimeOff } from "@/lib/time-off/calendar";
 import NeedsYou, { setupNeeds, type AdminData } from "./admin-panels";
 
@@ -27,7 +27,6 @@ const DAY = 86_400_000;
 
 const isOpen = (task: { status: string }) => task.status !== "COMPLETED" && task.status !== "CANCELLED";
 const daysUntil = (deadline: string, today: string) => Math.round((Date.parse(deadline) - Date.parse(today)) / DAY);
-const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 const longDay = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 
 /** "3 days late", "Today", "Tomorrow", "In 4 days" or "12 Dec". */
@@ -38,7 +37,7 @@ function dueLabel(deadline: string, today: string) {
   if (days === 0) return "Today";
   if (days === 1) return "Tomorrow";
   if (days < 7) return `In ${days} days`;
-  return shortDate.format(new Date(deadline + "T00:00:00Z"));
+  return formatShortDay(deadline, today);
 }
 
 /** Counts up from 0 to `value` once, on first show (instantly when motion is reduced). */

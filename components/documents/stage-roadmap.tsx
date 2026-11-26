@@ -1,8 +1,8 @@
 import { addDays, daysBetween, formatDay, formatShortDay, isOpen, isOverdue } from "@/lib/documents/engine";
 import { stageRows } from "@/lib/documents/stages";
+import { formatMonthTick } from "@/lib/time-off/dates";
 import { taskStatusLabels, type DocumentProject } from "@/lib/documents/types";
 
-const monthName = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" });
 const MAX_MONTHS = 8;
 
 /** Stages one under another: how much is done, and where their tasks and deadlines fall on the calendar. */
@@ -40,7 +40,7 @@ export default function StageRoadmap({ project, today }: { project: DocumentProj
         <div className="roadmap-row roadmap-head">
           <span>Stage</span><span>Done</span>
           <span className="roadmap-track">
-            {shownMonths.map((month) => <span key={month} className="roadmap-month" style={{ left: left(month) }}>{monthName.format(new Date(month))}</span>)}
+            {shownMonths.map((month, index) => <span key={month} className="roadmap-month" style={{ left: left(month) }}>{formatMonthTick(month, index === 0)}</span>)}
           </span>
         </div>
         {rows.map(({ stage, tasks, done, state, label }) => (
