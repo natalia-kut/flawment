@@ -42,6 +42,17 @@ test("registration, login and project authorization against PostgreSQL", async (
     assert.equal((await authenticate(form({ email: emails[0].toUpperCase(), password: "TestPassword123!" }))).userId, owner.id);
     assert.equal((await authenticate(form({ email: emails[0], password: "wrong" }))).error, "Invalid email address or password.");
     assert.ok((await registerAccount(form({ username: `${prefix}-OWNER`, email: emails[0].toUpperCase(), first_name: "Duplicate", last_name: "Test", password: "TestPassword123!", confirm_password: "TestPassword123!" }))).error);
+
+    // `_` and `%` are characters, not wildcards (they were, through ILIKE).
+    for (const pattern of [emails[0].replace("-owner", "-owne_"), "%" + emails[0].slice(1), emails[0].replace(/t$/, "%")]) {
+      emails.push(pattern);
+      assert.equal((await authenticate(form({ email: pattern, password: "TestPassword123!" }))).error, "Invalid email address or password.", pattern);
+    }
+    const lookalike = await registerAccount(form({ username: `${prefix}_owner`, email: `${prefix}_owner@example.test`,
+      first_name: "Lookalike", last_name: "Test", password: "TestPassword123!", confirm_password: "TestPassword123!" }));
+    assert.equal(lookalike.error, undefined, "an underscore does not clash with the hyphen of another account");
+    userIds.push(lookalike.userId!);
+    assert.equal((await authenticate(form({ email: emails[0], password: "TestPassword123!" }))).userId, owner.id);
     await prisma.user.update({ where: { id: outsider.id }, data: { is_active: false } });
     assert.equal((await authenticate(form({ email: emails[3], password: "TestPassword123!" }))).error, "Invalid email address or password.");
     await prisma.user.update({ where: { id: outsider.id }, data: { is_active: true } });
@@ -96,7 +107,7 @@ test("registration, login and project authorization against PostgreSQL", async (
     assert.equal(await prisma.project.count({ where: { id: ownProject.id } }), 0);
 
     for (let i = 0; i < 11; i++) await authenticate(form({ email: emails[0], password: "wrong" }));
-    assert.match((await authenticate(form({ email: emails[0], password: "TestPassword123!" }))).error ?? "", /Too many/);
+    assert.match((await authenticate(form({ email: emails[0], password: "TestPassword123!" }))).error ?? "", /Too many login attempts\. Try again in 15 minutes\./);
   } finally {
     await prisma.jobTitle.deleteMany({ where: { name_key: { startsWith: prefix.toLowerCase() } } });
     await prisma.project.deleteMany({ where: { id: { in: projectIds } } });

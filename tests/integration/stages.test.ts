@@ -43,6 +43,9 @@ test("stages support authorized CRUD, task assignment and safe deletion", async 
     await assert.rejects(mutateStage(actor(2), stageInput({ name: "Forbidden" })), /permission/);
     await assert.rejects(mutateStage(actor(3), stageInput()), /permission/);
     await assert.rejects(mutateStage(actor(0), stageInput({ name: " planning " })), /already exists/);
+    // `_` is a character, not a wildcard: "Plan_ing" is not "Planning".
+    const underscored = await mutateStage(actor(0), stageInput({ name: "Plan_ing" }));
+    await mutateStage(actor(0), stageInput({ operation: "delete", stage_id: underscored.id }));
     await assert.rejects(mutateStage(actor(0), stageInput({ name: " " })), /stage name/);
     await assert.rejects(mutateStage(actor(0), stageInput({ deadline: "2026-02-30" })), /deadline/);
     const renamed = await mutateStage(actor(1), stageInput({

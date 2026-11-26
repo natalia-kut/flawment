@@ -4,6 +4,8 @@ import { scryptSync } from "node:crypto";
 import { hashPassword, verifyPassword } from "../lib/auth/password";
 import { can } from "../lib/rbac";
 import { isValidName } from "../lib/auth/names";
+import { isValidEmail } from "../lib/auth/email";
+import { authHref, safeReturnPath } from "../lib/auth/return-path";
 
 test("password hashes use unique salts and verify only the correct password", async () => {
   const first = await hashPassword("A long password!123");
@@ -44,4 +46,22 @@ test("names allow letters from any alphabet joined by a hyphen, apostrophe or sp
   for (const name of ["22", "Anna2", "Anna--Maria", "-Anna", "Anna-", "Anna  Maria", "Anna!", "x".repeat(81)]) {
     assert.equal(isValidName(name), false, name);
   }
+});
+
+test("emails need a dot in the domain and no control characters, as the server requires", () => {
+  for (const email of ["anna@company.com", "a.b+c@sub.example.pl", "auth_b_x@example.test"]) assert.equal(isValidEmail(email), true, email);
+  for (const email of ["anna@company", "anna", "@company.com", "an na@company.com", "anna@@company.com", "an\u0000na@company.com", "a".repeat(250) + "@x.pl"]) {
+    assert.equal(isValidEmail(email), false, JSON.stringify(email));
+  }
+});
+
+test("signing in returns only to a path on this site", () => {
+  for (const path of ["/", "/?task=12", "/?view=team&project=3"]) assert.equal(safeReturnPath(path), path);
+  for (const path of ["https://evil.test", "//evil.test", "/\\evil.test", "evil", "/\nx", "/login", "/login?next=/", "/register", "", undefined, ["/"], "/" + "x".repeat(2000)]) {
+    assert.equal(safeReturnPath(path), "/", JSON.stringify(path));
+  }
+  assert.equal(safeReturnPath("/logins"), "/logins");
+  assert.equal(authHref("/login", "/?task=12"), "/login?next=%2F%3Ftask%3D12");
+  assert.equal(authHref("/register", "/"), "/register");
+  assert.equal(authHref("/login", "//evil.test"), "/login");
 });

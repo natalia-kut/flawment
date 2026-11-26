@@ -22,8 +22,12 @@ import { getTeamsOverview } from "@/lib/teams/data";
 import { getLeadTitleRequests, getPendingTitleRequests } from "@/lib/job-title-requests/data";
 
 async function Workspace({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
-  const { task: taskId } = await searchParams;
-  const user = await requireUser();
+  const params = await searchParams;
+  const taskId = params.task;
+  // This address, so signing in returns here (a shared task or view link).
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) for (const one of [value ?? []].flat()) query.append(key, one);
+  const user = await requireUser(query.size ? "/?" + query : "/");
   const projects = await getWorkspaceProjects();
   // Read on the server, so a collapsed sidebar is already narrow on first paint.
   const sidebarCollapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "collapsed";

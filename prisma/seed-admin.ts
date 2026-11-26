@@ -11,7 +11,7 @@ async function main() {
   const email = (process.env.SUPER_ADMIN_EMAIL || "admin@flawment.local").trim().toLowerCase();
   const password = process.env.SUPER_ADMIN_PASSWORD || "FlawmentAdmin123!";
   if (password.length < 10 || password.length > 128 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Invalid super admin credentials.");
-  const existing = await prisma.user.findFirst({ where: { OR: [{ email: { equals: email, mode: "insensitive" } }, { username: { equals: "superadmin", mode: "insensitive" } }] } });
+  const existing = await prisma.user.findFirst({ where: { OR: [{ email }, { username: "superadmin" }] } });
   if (existing) {
     if (existing.email.toLowerCase() !== email || existing.role !== "SUPER_ADMIN") throw new Error("Super admin email or username belongs to another account. Choose an unused email and resolve the username collision manually.");
     console.log("Super admin already exists; keeping its password and profile.");
