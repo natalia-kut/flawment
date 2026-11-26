@@ -216,6 +216,8 @@ function AddMember({ team, people, teams }: { team: Team; people: TeamPerson[]; 
   if (candidates.length === 0) return null;
   return <form action={action} onSubmit={submitInPlace(action)} className="workspace-card add-member-form">
     <input type="hidden" name="operation" value="assign" /><input type="hidden" name="team_id" value={team.id} />
+    {/* Where the list says they are now, so a move warning is never skipped. */}
+    {selected && <input type="hidden" name="expected_team_id" value={selected.teamId ?? ""} />}
     <fieldset disabled={pending}>
       <label>Add to {team.name}
         <select name="user_id" required value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
@@ -255,6 +257,8 @@ function MemberControls({ person, currentLead }: { person: TeamPerson; currentLe
       confirm: "Make team lead", danger: false,
     }) : undefined}>
       <input type="hidden" name="operation" value="lead" /><input type="hidden" name="user_id" value={person.id} />
+      {/* The team this card shows: refused if they have moved since. */}
+      <input type="hidden" name="expected_team_id" value={person.teamId ?? ""} />
       {!person.teamLead && <input type="hidden" name="team_lead" value="on" />}
       {/* Leading is for managers, so the job title decides who can. */}
       <button className="text-button" disabled={leadPending || (!person.teamLead && !person.canLead)}
@@ -264,6 +268,7 @@ function MemberControls({ person, currentLead }: { person: TeamPerson; currentLe
     </form>
     <form action={remove} onSubmit={confirmSubmit({ title: `Remove ${person.first_name} from this team?`, message: "They keep their account, just without a team.", confirm: "Remove" })}>
       <input type="hidden" name="operation" value="assign" /><input type="hidden" name="user_id" value={person.id} />
+      <input type="hidden" name="expected_team_id" value={person.teamId ?? ""} />
       <button className="text-button danger" disabled={removePending}>Remove from team</button>
     </form>
     {(leadState.error || removeState.error) && <p className="form-error" role="alert">{leadState.error ?? removeState.error}</p>}

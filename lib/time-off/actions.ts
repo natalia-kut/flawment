@@ -12,6 +12,8 @@ export async function timeOffAction(_state: TimeOffState, data: FormData): Promi
   try {
     await mutateTimeOff(actor, data, workspaceToday());
   } catch (error) {
+    // The page may be out of date (someone else changed or removed this): show what is saved now.
+    revalidatePath("/");
     return { error: error instanceof TimeOffError ? error.message : "Your time off could not be saved. Please try again." };
   }
   revalidatePath("/");

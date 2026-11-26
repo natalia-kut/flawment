@@ -1,9 +1,9 @@
-import { prisma } from "@/lib/prisma";
 import { can, type Actor } from "@/lib/rbac";
 import { normalizeNewlines } from "@/lib/rich-text/markdown";
 import type { Prisma } from "@/src/generated/prisma/client";
 import { MAX_COMMENT_LENGTH } from "./limits";
 import { recordId, TaskError } from "./service";
+import { serializable } from "@/lib/transaction";
 
 const field = (data: FormData, key: string) => String(data.get(key) ?? "");
 
@@ -27,7 +27,7 @@ export async function addComment(actor: Actor, data: FormData) {
   const taskId = recordId(field(data, "task_id"));
   const parentId = field(data, "parent_id") ? recordId(field(data, "parent_id")) : null;
   const body = readBody(data);
-  return prisma.$transaction(async (tx) => {
+  return serializable(async (tx) => {
     const task = await tx.task.findUnique({ where: { id: taskId }, select: { project_id: true } });
     if (!task || !can(await roleIn(tx, actor, task.project_id), "project:read", actor.role)) {
       throw new TaskError("This task is no longer available.");
@@ -40,7 +40,7 @@ export async function addComment(actor: Actor, data: FormData) {
       data: { task_id: taskId, author_id: actor.id, body, parent_id: parent ? parent.parent_id ?? parent.id : null },
       select: { id: true },
     });
-  }, { isolationLevel: "Serializable" });
+  });
 }
 
 /** The comment, for someone who can still see its task. */
@@ -57,16 +57,16 @@ async function findComment(tx: Prisma.TransactionClient, actor: Actor, data: For
 /** Only the author changes what they wrote. */
 export async function editComment(actor: Actor, data: FormData) {
   const body = readBody(data);
-  return prisma.$transaction(async (tx) => {
+  return serializable(async (tx) => {
     const { comment } = await findComment(tx, actor, data);
     if (comment.author_id !== actor.id) throw new TaskError("You can only edit your own comments.");
     return tx.taskComment.update({ where: { id: comment.id }, data: { body, edited_at: new Date() }, select: { id: true } });
-  }, { isolationLevel: "Serializable" });
+  });
 }
 
 /** The author, or whoever runs the project's tasks. Other people's replies stay. */
 export async function deleteComment(actor: Actor, data: FormData) {
-  return prisma.$transaction(async (tx) => {
+  return serializable(async (tx) => {
     const { comment, role } = await findComment(tx, actor, data);
     if (comment.author_id !== actor.id && !can(role, "tasks:manage", actor.role)) {
       throw new TaskError("You can only delete your own comments.");
@@ -81,5 +81,5 @@ export async function deleteComment(actor: Actor, data: FormData) {
     if (comment.parent_id !== null) {
       await tx.taskComment.deleteMany({ where: { id: comment.parent_id, deleted_at: { not: null }, replies: { none: {} } } });
     }
-  }, { isolationLevel: "Serializable" });
+  });
 }

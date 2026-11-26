@@ -12,6 +12,8 @@ export async function projectAction(_state: ProjectState, data: FormData): Promi
     revalidatePath("/");
     return { success: "Changes saved.", projectId: data.get("operation") === "create" ? result.id : undefined };
   } catch (error) {
+    // The page may be out of date (a conflict, a member already removed): show what is saved now.
+    revalidatePath("/");
     return { error: error instanceof ProjectError ? error.message : "The change could not be saved. Refresh and try again." };
   }
 }

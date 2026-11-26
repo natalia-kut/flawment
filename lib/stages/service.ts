@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
 import { can, type Actor } from "@/lib/rbac";
+import { serializable } from "@/lib/transaction";
 
 export class StageError extends Error {}
 const text = (data: FormData, key: string) => String(data.get(key) ?? "").trim();
@@ -25,7 +25,7 @@ export async function mutateStage(actor: Actor, data: FormData) {
       throw new StageError("Enter a valid deadline.");
     }
   }
-  return prisma.$transaction(async (tx) => {
+  return serializable(async (tx) => {
     const project = await tx.project.findUnique({ where: { id: projectId }, include: { memberships: true } });
     const role = project?.memberships.find((member) => member.user_id === actor.id)?.role ?? null;
     if (!project || !can(role, "project:update", actor.role)) throw new StageError("You do not have permission to manage stages in this project.");
@@ -47,5 +47,5 @@ export async function mutateStage(actor: Actor, data: FormData) {
     return stageId === null
       ? tx.projectStage.create({ data: { ...values, project_id: projectId } })
       : tx.projectStage.update({ where: { id: stageId, project_id: projectId }, data: values });
-  }, { isolationLevel: "Serializable" });
+  });
 }

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { Actor } from "@/lib/rbac";
 import type { AbsenceType } from "@/src/generated/prisma/enums";
 import { daySpan, isValidDay, addDays } from "./dates";
+import { serializable } from "@/lib/transaction";
 
 export class TimeOffError extends Error {}
 
@@ -32,7 +33,7 @@ export async function mutateTimeOff(actor: Actor, data: FormData, today: string)
   if (end < addDays(today, -30)) throw new TimeOffError("Time off can be added up to 30 days back.");
   if (note.length > 200) throw new TimeOffError("Keep the note under 200 characters.");
 
-  return prisma.$transaction(async (tx) => {
+  return serializable(async (tx) => {
     const overlap = await tx.absence.findFirst({
       where: { user_id: actor.id, start_date: { lte: new Date(end) }, end_date: { gte: new Date(start) } },
       select: { id: true },
@@ -42,5 +43,5 @@ export async function mutateTimeOff(actor: Actor, data: FormData, today: string)
       data: { user_id: actor.id, type, start_date: new Date(start), end_date: new Date(end), note: note || null },
       select: { id: true },
     });
-  }, { isolationLevel: "Serializable" });
+  });
 }

@@ -88,6 +88,8 @@ function RequestDialog({ request: r, today, onClose }: { request: PendingTitleRe
     const data = new FormData();
     data.set("operation", operation);
     data.set("request_id", String(r.id));
+    // What this dialog shows: refused if the lead has changed the suggestion since.
+    data.set("expected_title", r.title);
     startTransition(() => action(data));
   }
   return <dialog ref={ref} className={styles.dialog} aria-labelledby={`request-${r.id}-title`} onCancel={onClose}

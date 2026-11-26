@@ -101,6 +101,13 @@ export default function TaskPage({ project, task, details, viewer, today }: {
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   // Not null while the description is being edited.
   const [descriptionDraft, setDescriptionDraft] = useState<string | null>(null);
+  // The description the draft started from, so saving cannot silently replace a colleague's newer text.
+  // Null after a conflict: the person has been told, and saving again keeps their version.
+  const [descriptionBase, setDescriptionBase] = useState<string | null>(null);
+  function editDescription() {
+    setDescriptionDraft(values.description);
+    setDescriptionBase(values.description);
+  }
 
   useEffect(() => {
     if (!justSaved) return;
@@ -113,7 +120,7 @@ export default function TaskPage({ project, task, details, viewer, today }: {
     return () => clearTimeout(timer);
   }, [copied]);
 
-  function run(change: Partial<Values>, action: typeof patchTaskAction, data: FormData, onSuccess?: () => void) {
+  function run(change: Partial<Values>, action: typeof patchTaskAction, data: FormData, onSuccess?: () => void, onConflict?: () => void) {
     data.set("project_id", String(project.id));
     data.set("task_id", String(task.id));
     setError(""); setJustSaved(false);
@@ -121,17 +128,21 @@ export default function TaskPage({ project, task, details, viewer, today }: {
       showChange(change);
       try {
         const result = await action(data);
-        if (result.error) { setError(result.error); router.refresh(); }
+        if (result.error) { setError(result.error); if (result.conflict) onConflict?.(); router.refresh(); }
         else { setJustSaved(true); onSuccess?.(); }
       } catch {
         setError("Could not save the change. Please try again.");
       }
     });
   }
-  function save(key: Exclude<keyof Values, "status">, value: string, onSuccess?: () => void) {
+  /** Saves one field, with the value it is replacing: if someone else changed it meanwhile, the save is refused. */
+  function save(key: Exclude<keyof Values, "status">, value: string, { onSuccess, onConflict, expected = values[key] }: {
+    onSuccess?: () => void; onConflict?: () => void; expected?: string;
+  } = {}) {
     const data = new FormData();
     data.set(key, value);
-    run({ [key]: value }, patchTaskAction, data, onSuccess);
+    data.set("expected_" + key, expected);
+    run({ [key]: value }, patchTaskAction, data, onSuccess, onConflict);
   }
   // The status has its own action: whoever the task is assigned to may move it without editing the rest.
   function saveStatus(status: string, origin: { x: number; y: number }) {
@@ -161,11 +172,16 @@ export default function TaskPage({ project, task, details, viewer, today }: {
   const descriptionTooLong = (descriptionDraft?.length ?? 0) > MAX_DESCRIPTION_LENGTH;
   function saveDescription() {
     // The draft stays until it is saved, so a failed save loses nothing.
-    if (descriptionDirty && !descriptionTooLong && !saving) save("description", descriptionDraft.trim(), () => setDescriptionDraft(null));
+    if (descriptionDirty && !descriptionTooLong && !saving) save("description", descriptionDraft.trim(), {
+      expected: descriptionBase ?? values.description,
+      onSuccess: () => setDescriptionDraft(null),
+      onConflict: () => setDescriptionBase(null),
+    });
   }
   function toggleChecklist(index: number) {
     const description = toggleTask(values.description, index);
-    if (description === null) setDescriptionDraft(values.description);
+    if (description === null) editDescription();
+    // Refused if the text changed meanwhile; the page then shows the new text to tick again.
     else save("description", description);
   }
 
@@ -269,13 +285,13 @@ export default function TaskPage({ project, task, details, viewer, today }: {
                     ? `${descriptionDraft.length} of ${MAX_DESCRIPTION_LENGTH} characters, formatting included`
                     : "Ctrl + Enter to save"}
                 </span>
-                <button type="button" className="secondary-button" onClick={() => setDescriptionDraft(null)}>Cancel</button>
+                <button type="button" className="secondary-button" onClick={() => { setDescriptionDraft(null); setError(""); }}>Cancel</button>
                 <button type="button" className="primary-button" disabled={saving || !descriptionDirty || descriptionTooLong} onClick={saveDescription}>{saving ? "Saving…" : "Save description"}</button>
               </div>
             </div>
             : task.canEdit
               ? <EditableRichText text={values.description} label="Description" placeholder="Add a description…"
-                onEdit={() => setDescriptionDraft(values.description)} onToggleTask={toggleChecklist} />
+                onEdit={editDescription} onToggleTask={toggleChecklist} />
               : values.description ? <RichText text={values.description} /> : <p className={styles.empty}>No description yet.</p>}
         </section>
         <TaskFiles taskId={task.id} files={details.files} canModerate={project.canManageTasks} />

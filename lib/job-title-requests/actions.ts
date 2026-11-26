@@ -11,6 +11,8 @@ export async function titleRequestAction(_state: TitleRequestState, data: FormDa
   try {
     await mutateTitleRequest(actor, data);
   } catch (error) {
+    // The page may be out of date (a changed or already decided request): show what is saved now.
+    revalidatePath("/");
     return { error: error instanceof TitleRequestError ? error.message : "The request could not be saved. Refresh and try again." };
   }
   revalidatePath("/");

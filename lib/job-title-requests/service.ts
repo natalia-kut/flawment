@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
 import type { Actor } from "@/lib/rbac";
 import { findOrCreateJobTitle } from "@/lib/people/service";
+import { serializable } from "@/lib/transaction";
 
 export class TitleRequestError extends Error {}
 
@@ -18,7 +18,7 @@ function recordId(value: FormDataEntryValue | null) {
  */
 export async function mutateTitleRequest(actor: Actor, data: FormData) {
   const operation = String(data.get("operation") ?? "");
-  return prisma.$transaction(async (tx) => {
+  return serializable(async (tx) => {
     if (operation === "request") {
       const userId = recordId(data.get("user_id"));
       const title = clean(data.get("title")), note = clean(data.get("note"));
@@ -49,6 +49,10 @@ export async function mutateTitleRequest(actor: Actor, data: FormData) {
       return tx.jobTitleRequest.delete({ where: { id: requestId }, select: { id: true } });
     }
     if (actor.role !== "SUPER_ADMIN") throw new TitleRequestError("Only administrators can approve or decline requests.");
+    // A lead's new suggestion replaces the waiting one in place: decide only what the administrator saw.
+    if (data.has("expected_title") && clean(data.get("expected_title")) !== request.title) {
+      throw new TitleRequestError(`The suggestion changed to “${request.title}” after you opened it. Check it again before deciding.`);
+    }
     const decided = { decided_by: actor.id, decided_at: new Date() };
     if (operation === "decline") {
       return tx.jobTitleRequest.update({ where: { id: requestId }, data: { status: "DECLINED", ...decided }, select: { id: true } });
@@ -61,5 +65,5 @@ export async function mutateTitleRequest(actor: Actor, data: FormData) {
       data: { job_title_id: jobTitle.id, ...(jobTitle.can_lead ? {} : { team_lead: false }) },
     });
     return tx.jobTitleRequest.update({ where: { id: requestId }, data: { status: "APPROVED", ...decided }, select: { id: true } });
-  }, { isolationLevel: "Serializable" });
+  });
 }

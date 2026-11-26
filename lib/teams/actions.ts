@@ -11,6 +11,8 @@ export async function teamAction(_state: TeamState, data: FormData): Promise<Tea
   try {
     await mutateTeam(actor, data);
   } catch (error) {
+    // The page may be out of date (someone else changed or removed this): show what is saved now.
+    revalidatePath("/");
     return { error: error instanceof TeamError ? error.message : "The team could not be saved. Refresh and try again." };
   }
   revalidatePath("/");
