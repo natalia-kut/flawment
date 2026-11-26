@@ -99,6 +99,7 @@ export function toCustomTemplate(record: {
   project_id: number | null;
   show_status: boolean;
   show_name: boolean;
+  updated_at?: Date;
 }): DocumentTemplate {
   return {
     id: `custom-${record.id}`,
@@ -109,6 +110,7 @@ export function toCustomTemplate(record: {
     projectId: record.project_id,
     showStatus: record.show_status,
     showName: record.show_name,
+    version: record.updated_at?.toISOString(),
   };
 }
 

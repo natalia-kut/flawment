@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/session";
-import { createTask, updateTask, patchTask, deleteTask, changeTaskStatus, TaskError } from "./service";
+import { createTask, updateTask, patchTask, deleteTask, changeTaskStatus, TaskConflictError, TaskError } from "./service";
 import { addComment, editComment, deleteComment } from "./comments";
 
-export type TaskState = { error?: string; success?: boolean };
+/** `conflict`: the page was out of date, and has been refreshed. */
+export type TaskState = { error?: string; success?: boolean; conflict?: boolean };
 
 export async function createTaskAction(_state: TaskState, data: FormData): Promise<TaskState> {
   const actor = await requireUser();
@@ -25,7 +26,9 @@ export async function updateTaskAction(_state: TaskState, data: FormData): Promi
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    return { error: error instanceof TaskError ? error.message : "Could not update the task. Please try again." };
+    // The page may be out of date (a conflict, a deleted task): show what is saved now.
+    revalidatePath("/");
+    return { error: error instanceof TaskError ? error.message : "Could not update the task. Please try again.", conflict: error instanceof TaskConflictError };
   }
 }
 
@@ -36,7 +39,8 @@ export async function patchTaskAction(data: FormData): Promise<TaskState> {
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    return { error: error instanceof TaskError ? error.message : "Could not save the change. Please try again." };
+    revalidatePath("/");
+    return { error: error instanceof TaskError ? error.message : "Could not save the change. Please try again.", conflict: error instanceof TaskConflictError };
   }
 }
 
@@ -61,6 +65,7 @@ export async function deleteTaskAction(_state: TaskState, data: FormData): Promi
     revalidatePath("/");
     return { success: true };
   } catch (error) {
+    revalidatePath("/");
     return { error: error instanceof TaskError ? error.message : "Could not delete the task. Please try again." };
   }
 }
@@ -72,6 +77,7 @@ export async function changeTaskStatusAction(data: FormData): Promise<TaskState>
     revalidatePath("/");
     return { success: true };
   } catch (error) {
+    revalidatePath("/");
     return { error: error instanceof TaskError ? error.message : "Could not move the task. Refresh and try again." };
   }
 }

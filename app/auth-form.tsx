@@ -8,6 +8,7 @@ import { NAME_PATTERN, NAME_RULE } from "@/lib/auth/names";
 import { authHref } from "@/lib/auth/return-path";
 import styles from "./auth-form.module.css";
 import { submitInPlace } from "@/components/ui/submit-in-place";
+import { SESSION_KEY } from "./session-watch";
 
 type Errors = Record<string, string>;
 
@@ -55,6 +56,9 @@ export default function AuthForm({ mode, next }: { mode: "login" | "register"; n
   const [state, action, pending] = useActionState(registering ? register : login, {});
   const [errors, setErrors] = useState<Errors>({});
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Tells workspace tabs still open in this browser that their account is no longer signed in here.
+  useEffect(() => { localStorage.setItem(SESSION_KEY, ""); }, []);
 
   // A refused sign-in keeps the email: only the password is cleared, and it
   // gets the focus for the next try.

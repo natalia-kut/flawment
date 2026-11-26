@@ -1,10 +1,13 @@
-import { prisma } from "@/lib/prisma";
 import { can, type Actor } from "@/lib/rbac";
 import { normalizeNewlines } from "@/lib/rich-text/markdown";
 import { MAX_DESCRIPTION_LENGTH } from "./limits";
 import type { Task, TaskPriority, TaskStatus } from "@/src/generated/prisma/client";
+import { serializable } from "@/lib/transaction";
+import { keepUnchanged, knowsBase, listFields, staleFields } from "@/lib/stale";
 
 export class TaskError extends Error {}
+/** The page was out of date: someone changed what it was about to save. */
+export class TaskConflictError extends TaskError {}
 
 const text = (data: FormData, key: string) => String(data.get(key) ?? "").trim();
 const priorities: TaskPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
@@ -37,16 +40,33 @@ export async function patchTask(actor: Actor, data: FormData) {
   return saveTask(actor, data, true, true);
 }
 
-/** The task's own values, with the submitted ones over them: a whole form out of a partial one. */
-function completeForm(data: FormData, task: Task) {
-  const current: Record<string, string> = {
-    title: task.title, description: task.description ?? "", priority: task.priority, status: task.status,
+/** The task's values as a form would send them. */
+function formValues(task: Task): Record<string, string> {
+  return {
+    title: task.title, description: normalizeNewlines(task.description ?? ""), priority: task.priority, status: task.status,
     deadline: task.deadline?.toISOString().slice(0, 10) ?? "",
     assigned_to: task.assigned_to?.toString() ?? "", stage_id: task.stage_id?.toString() ?? "",
   };
+}
+
+/** The task's own values, with the submitted ones over them: a whole form out of a partial one. */
+function completeForm(data: FormData, task: Task) {
   const whole = new FormData();
-  for (const [key, value] of Object.entries(current)) whole.set(key, patchable.includes(key) && data.has(key) ? text(data, key) : value);
+  for (const [key, value] of Object.entries(formValues(task))) whole.set(key, patchable.includes(key) && data.has(key) ? text(data, key) : value);
   return whole;
+}
+
+// Pages that may be out of date: see lib/stale.ts.
+const fieldNames: Record<string, string> = {
+  title: "title", description: "description", priority: "priority", deadline: "deadline",
+  assigned_to: "assignee", stage_id: "stage", status: "status",
+};
+const sameValue = (key: string, a: string, b: string) => key === "description" ? normalizeNewlines(a) === normalizeNewlines(b) : a === b;
+
+function checkNotStale(data: FormData, task: Task) {
+  const stale = staleFields(data, formValues(task), sameValue);
+  if (stale.length === 0) return;
+  throw new TaskConflictError(`Someone changed the ${listFields(stale.map((key) => fieldNames[key]))} of this task in the meantime. Your version is still here: check it and save again to keep it.`);
 }
 
 /** When a task is finished or reopened, its completion date follows; otherwise it stays as it was. */
@@ -84,7 +104,7 @@ async function saveTask(actor: Actor, data: FormData, editing: boolean, partial 
   const projectId = recordId(text(data, "project_id"));
   const submitted = partial ? null : readFields(data, editing);
 
-  return prisma.$transaction(async (tx) => {
+  return serializable(async (tx) => {
     const project = await tx.project.findUnique({
       where: { id: projectId }, include: { memberships: true },
     });
@@ -98,13 +118,16 @@ async function saveTask(actor: Actor, data: FormData, editing: boolean, partial 
     if (taskId !== null && !existing) throw new TaskError("This task is no longer available in this project.");
     // Contributors edit the tasks they added, and hand work only to themselves.
     if (!manages && existing && existing.created_by !== actor.id) throw new TaskError("You can only edit tasks you added.");
+    if (existing) checkNotStale(data, existing);
     const { status, stageId, title, description, priority, deadline, assignedTo } =
-      submitted ?? readFields(completeForm(data, existing!), true);
+      partial ? readFields(completeForm(data, existing!), true)
+      : existing && knowsBase(data, Object.keys(fieldNames)) ? readFields(keepUnchanged(data, formValues(existing), sameValue), true)
+      : submitted!;
     if (!manages && assignedTo !== null && assignedTo !== actor.id && assignedTo !== existing?.assigned_to) {
       throw new TaskError("You can assign tasks only to yourself.");
     }
     // An assignee left as they were is not checked again: renaming a task must not fail because they since left.
-    if (assignedTo !== null && !(partial && assignedTo === existing?.assigned_to)) {
+    if (assignedTo !== null && !(existing && assignedTo === existing.assigned_to)) {
       const member = await tx.projectMembership.findUnique({
         where: { project_id_user_id: { project_id: projectId, user_id: assignedTo } },
         include: { user: { select: { is_active: true, role: true } } },
@@ -133,13 +156,13 @@ async function saveTask(actor: Actor, data: FormData, editing: boolean, partial 
       data: { ...values, project_id: projectId, created_by: actor.id },
       select: { id: true },
     });
-  }, { isolationLevel: "Serializable" });
+  });
 }
 
 export async function deleteTask(actor: Actor, data: FormData) {
   const projectId = recordId(text(data, "project_id"));
   const taskId = recordId(text(data, "task_id"));
-  return prisma.$transaction(async (tx) => {
+  return serializable(async (tx) => {
     const project = await tx.project.findUnique({
       where: { id: projectId }, include: { memberships: true },
     });
@@ -158,7 +181,7 @@ export async function deleteTask(actor: Actor, data: FormData) {
     if (deleted.count !== 1) {
       throw new TaskError("This task is no longer available in this project.");
     }
-  }, { isolationLevel: "Serializable" });
+  });
 }
 
 export async function changeTaskStatus(actor: Actor, data: FormData) {
@@ -169,7 +192,7 @@ export async function changeTaskStatus(actor: Actor, data: FormData) {
   if (!taskStatuses.includes(status) || !taskStatuses.includes(expected)) {
     throw new TaskError("Choose a valid task status.");
   }
-  return prisma.$transaction(async (tx) => {
+  return serializable(async (tx) => {
     const task = await tx.task.findFirst({
       where: { id: taskId, project_id: projectId },
       include: { project: { include: { memberships: true } } },
@@ -184,5 +207,5 @@ export async function changeTaskStatus(actor: Actor, data: FormData) {
       data: { status, ...completion(status, expected) },
     });
     if (changed.count !== 1) throw new TaskError("Someone changed this task in the meantime. Check its status and try again.");
-  }, { isolationLevel: "Serializable" });
+  });
 }

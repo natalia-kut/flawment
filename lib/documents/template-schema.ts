@@ -175,6 +175,8 @@ export type DocumentTemplate = {
   projectId: number | null;
   showStatus: boolean;
   showName: boolean;
+  /** A custom template's last save (its updated_at), so an old copy cannot overwrite a newer one. */
+  version?: string;
 };
 
 export type TemplateInput = {

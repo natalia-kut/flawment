@@ -12,8 +12,11 @@ import { celebrate } from "@/components/ui/confetti";
 import styles from "./tasks-board.module.css";
 import details from "@/components/ui/details-dialog.module.css";
 import { submitInPlace } from "@/components/ui/submit-in-place";
+import { useBaseFields } from "@/components/ui/use-base-fields";
 
 type Task = WorkspaceProject["tasks"][number];
+
+const fieldLabels = { title: "title", description: "description", status: "status", priority: "priority", assigned_to: "assignee", deadline: "deadline", stage_id: "stage" };
 
 /**
  * The one task dialog, for both a new task and an existing one: the title,
@@ -42,20 +45,22 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
     priority: (task?.priority ?? "MEDIUM") as string, assigned_to: task?.assignedTo?.toString() ?? "",
     deadline: task?.deadline ?? "", stage_id: task?.stageId?.toString() ?? "",
   };
-  const [fields, setFields] = useState(initial);
+  // What the form started from is sent with it (expected_*): the server keeps a colleague's newer
+  // values in the fields left alone, and refuses clashes. While the dialog is open, fields left
+  // alone follow the task (a colleague's save, a drag that just finished, a refresh after a conflict).
+  const { base, fields, dirty, clashed, keys, revision, update, discard, clearClashed } = useBaseFields(initial, !creating);
   // Discarding starts the description afresh too: its editor keeps its own text.
   const [discards, setDiscards] = useState(0);
-  const dirty = (Object.keys(initial) as (keyof typeof initial)[]).some((key) => fields[key] !== initial[key]);
-  const update = (key: keyof typeof initial, value: string) => setFields((current) => ({ ...current, [key]: value }));
+  const notice = clashed.length ? `Someone else changed the ${clashed.map((key) => fieldLabels[key]).join(", ")} meanwhile. Saving keeps your version.` : "";
 
   const [state, action, pending] = useActionState(async (previous: TaskState, data: FormData) => {
     const result = await (creating ? createTaskAction : updateTaskAction)(previous, data);
-    if (result.success && !creating && data.get("status") === "COMPLETED" && initial.status !== "COMPLETED") {
+    if (result.success && !creating && data.get("status") === "COMPLETED" && base.status !== "COMPLETED") {
       // Burst from the button that saved it (the focused submitter), or the middle of the screen.
       const box = document.activeElement instanceof HTMLElement ? document.activeElement.getBoundingClientRect() : null;
       celebrate("small", box && box.width ? { x: box.left + box.width / 2, y: box.top } : undefined);
     }
-    if (result.success) onSaved();
+    if (result.success) { clearClashed(); onSaved(); }
     return result;
   }, {});
   const formId = "task-details-" + (task?.id ?? "new");
@@ -72,6 +77,7 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
     <form id={formId} action={action} onSubmit={submitInPlace(action)}>
       <input type="hidden" name="project_id" value={project.id} />
       {task && <input type="hidden" name="task_id" value={task.id} />}
+      {task && keys.map((key) => <input key={key} type="hidden" name={"expected_" + key} value={base[key]} />)}
       <fieldset className={details.detailsFieldset} disabled={pending}>
         {!choosingProject && <p className={details.detailsContext}>
           {/* Leaving drops what is not saved yet, so the ways out wait until there is nothing to lose. */}
@@ -82,7 +88,7 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
             {/* People and stages belong to a project, so switching clears them. */}
             <select value={project.id} onChange={(e) => {
               setProjectId(Number(e.target.value));
-              setFields((current) => ({ ...current, assigned_to: "", stage_id: "" }));
+              update("assigned_to", ""); update("stage_id", "");
             }}>
               {projectChoices!.map((choice) => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
             </select>
@@ -101,7 +107,7 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
           <label><span>Assigned to</span>
             <select name="assigned_to" value={fields.assigned_to} onChange={(e) => update("assigned_to", e.target.value)}>
               <option value="">Unassigned</option>
-              {project.members.filter((member) => project.canManageTasks || member.id === project.viewerId || String(member.id) === initial.assigned_to)
+              {project.members.filter((member) => project.canManageTasks || member.id === project.viewerId || String(member.id) === base.assigned_to)
                 .map((member) => <option key={member.id} value={member.id}>{member.first_name} {member.last_name}</option>)}
             </select>
           </label>
@@ -118,15 +124,16 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
         {assignee?.availability && <p className="availability-note" role="status">
           Heads up: {assignee.first_name} {assignee.availability.state === "away" ? "is" : "will be"} {assignee.availability.label.charAt(0).toLowerCase() + assignee.availability.label.slice(1)}.
         </p>}</>}>
-          <RichTextField key={discards} name="description" label="Description" placeholder="Add a description…"
+          <RichTextField key={`${discards}-${revision}`} name="description" label="Description" placeholder="Add a description…"
             value={fields.description} startEditing={creating} onChange={(value) => update("description", value)} />
         </TaskDialogColumns>
         {state.error && <p className="form-error" role="alert">{state.error}</p>}
+        {notice && !state.error && <p className="form-error" role="status">{notice}</p>}
         <div className="dialog-actions">
           {task && !dirty && <Link className={"secondary-button " + details.detailsOpen} href={"/?task=" + task.id}>Open task page</Link>}
           {creating
             ? <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
-            : dirty && <button type="button" className="secondary-button" onClick={() => { setFields(initial); setDiscards((count) => count + 1); }}>Discard</button>}
+            : dirty && <button type="button" className="secondary-button" onClick={() => { discard(); setDiscards((count) => count + 1); }}>Discard</button>}
           <button className="primary-button" disabled={!canSave || pending}>
             {pending ? "Saving…" : creating ? "Create task" : "Save changes"}
           </button>

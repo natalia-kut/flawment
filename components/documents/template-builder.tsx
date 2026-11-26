@@ -500,7 +500,7 @@ export default function TemplateBuilder({
   function handleSave() {
     setError("");
     startSaving(async () => {
-      const result = await saveTemplate(editingId, { name, description, blocks, showStatus, showName }, project?.id ?? null);
+      const result = await saveTemplate(editingId, { name, description, blocks, showStatus, showName }, project?.id ?? null, source.version);
       if (result.ok) onSaved(result.value);
       else setError(result.error);
     });

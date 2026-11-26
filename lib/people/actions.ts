@@ -11,6 +11,8 @@ export async function personAction(_state: PersonState, data: FormData): Promise
   try {
     await updatePerson(actor, data);
   } catch (error) {
+    // The page may be out of date (someone else changed or removed this): show what is saved now.
+    revalidatePath("/");
     return { error: error instanceof PeopleError ? error.message : "These details could not be saved. Refresh and try again." };
   }
   revalidatePath("/");
@@ -22,6 +24,8 @@ export async function jobTitleAction(_state: PersonState, data: FormData): Promi
   try {
     await setJobTitleCanLead(actor, data);
   } catch (error) {
+    // The page may be out of date (someone else changed or removed this): show what is saved now.
+    revalidatePath("/");
     return { error: error instanceof PeopleError ? error.message : "This job title could not be saved. Refresh and try again." };
   }
   revalidatePath("/");

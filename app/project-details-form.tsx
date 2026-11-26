@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useState, type ReactNode } from "react";
+import { useActionState, type ReactNode } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { projectAction } from "@/lib/projects/actions";
 import { projectStatusLabels } from "@/lib/projects/labels";
 import details from "@/components/ui/details-dialog.module.css";
 import TaskDetailsDialog from "./task-details-dialog";
 import { submitInPlace } from "@/components/ui/submit-in-place";
+import { useBaseFields } from "@/components/ui/use-base-fields";
 
 /**
  * Create or edit a project in the same in-place style as a task: the name is
@@ -29,13 +30,13 @@ export default function ProjectDetailsForm({ project, onClose, onSaved, deletion
     start_date: project?.start_date ?? new Date().toISOString().slice(0, 10),
     end_date: project?.end_date ?? "", status: (project?.status ?? "TO_DO") as string,
   };
-  const [fields, setFields] = useState(initial);
-  const dirty = (Object.keys(initial) as (keyof typeof initial)[]).some((key) => fields[key] !== initial[key]);
-  const update = (key: keyof typeof initial, value: string) => setFields((current) => ({ ...current, [key]: value }));
+  // As in the task dialog: sent with expected_* so a colleague's newer values are kept, and clashes refused.
+  const { base, fields, dirty, clashed, keys, update, discard, clearClashed } = useBaseFields(initial, !creating);
+  const notice = clashed.length ? `Someone else changed the ${clashed.map((key) => key.replace("_", " ")).join(", ")} meanwhile. Saving keeps your version.` : "";
 
   const [state, action, pending] = useActionState(async (previous: Awaited<ReturnType<typeof projectAction>>, data: FormData) => {
     const result = await projectAction(previous, data);
-    if (result.success) onSaved(result.projectId);
+    if (result.success) { clearClashed(); onSaved(result.projectId); }
     return result;
   }, {});
   const formId = "project-details-" + (project?.id ?? "new");
@@ -51,6 +52,7 @@ export default function ProjectDetailsForm({ project, onClose, onSaved, deletion
     <form id={formId} action={action} onSubmit={submitInPlace(action)}>
       <input type="hidden" name="operation" value={creating ? "create" : "update"} />
       {project && <input type="hidden" name="project_id" value={project.id} />}
+      {project && keys.map((key) => <input key={key} type="hidden" name={"expected_" + key} value={base[key]} />)}
       <fieldset className={details.detailsFieldset} disabled={pending}>
         {creating && <p className={details.detailsContext}>Start with the basics. You can invite your team next.</p>}
         <textarea name="description" className={details.descriptionInput} aria-label="Description" maxLength={4000}
@@ -69,11 +71,12 @@ export default function ProjectDetailsForm({ project, onClose, onSaved, deletion
           </label>
         </div>
         {state.error && <p className="form-error" role="alert">{state.error}</p>}
+        {notice && !state.error && <p className="form-error" role="status">{notice}</p>}
         <div className="dialog-actions">
           {deletion && <button type="submit" form={deletion.formId} className={`text-button danger ${details.detailsDelete}`}>Delete project</button>}
           {creating
             ? <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
-            : dirty && <button type="button" className="secondary-button" onClick={() => setFields(initial)}>Discard</button>}
+            : dirty && <button type="button" className="secondary-button" onClick={discard}>Discard</button>}
           <button className="primary-button" disabled={!canSave || pending}>
             {pending ? "Saving…" : creating ? "Create project" : "Save changes"}
           </button>

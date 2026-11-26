@@ -4,8 +4,19 @@ import { absenceSelect, availability, canSeeAbsenceReason, toRanges } from "@/li
 import type { Viewer } from "@/lib/teams/data";
 import { workspaceToday } from "@/lib/time-off/dates";
 import type { Prisma, ProjectRole, ProjectStatus } from "@/src/generated/prisma/client";
+import { serializable } from "@/lib/transaction";
+import { normalizeNewlines } from "@/lib/rich-text/markdown";
+import { keepUnchanged, knowsBase, listFields, staleFields } from "@/lib/stale";
 
 export class ProjectError extends Error {}
+/** The page was out of date: someone changed what it was about to save. */
+export class ProjectConflictError extends ProjectError {}
+const projectFields: Record<string, string> = { name: "name", description: "description", status: "status", start_date: "start date", end_date: "end date" };
+const projectValues = (project: { name: string; description: string | null; status: string; start_date: Date; end_date: Date | null }): Record<string, string> => ({
+  name: project.name, description: normalizeNewlines(project.description ?? ""), status: project.status,
+  start_date: project.start_date.toISOString().slice(0, 10), end_date: project.end_date?.toISOString().slice(0, 10) ?? "",
+});
+const sameText = (_key: string, a: string, b: string) => normalizeNewlines(a) === normalizeNewlines(b);
 /** The roles you can give someone; there is one owner, the person who created the project. */
 const assignableRoles: ProjectRole[] = ["COORDINATOR", "CONTRIBUTOR"];
 const statuses: ProjectStatus[] = ["TO_DO", "IN_PROGRESS", "COMPLETED", "ARCHIVED", "CANCELLED"];
@@ -47,7 +58,7 @@ async function authorize(tx: Prisma.TransactionClient, actor: Actor, projectId: 
 
 // Only called from authenticated server actions. Recheck permissions inside the mutation transaction.
 export async function mutateProject(actor: Actor, data: FormData) {
-  return prisma.$transaction(async (tx) => {
+  return serializable(async (tx) => {
     const operation = field(data, "operation");
     if (operation === "create") {
       // Projects are started by managers (a managerial job title) or a super admin.
@@ -61,7 +72,14 @@ export async function mutateProject(actor: Actor, data: FormData) {
     const permission = operation === "delete" ? "project:delete" : operation === "update" ? "project:update" : operation === "role" ? "members:roles" : "members:manage";
     const { project, role: actorRole } = await authorize(tx, actor, projectId, permission);
     if (operation === "delete") return tx.project.delete({ where: { id: projectId } });
-    if (operation === "update") return tx.project.update({ where: { id: projectId }, data: projectInput(data) });
+    if (operation === "update") {
+      // Edit project sends where it started from: fields left alone keep a colleague's newer values.
+      const current = projectValues(project);
+      const stale = staleFields(data, current, sameText);
+      if (stale.length) throw new ProjectConflictError(`Someone changed the ${listFields(stale.map((key) => projectFields[key]))} of this project in the meantime. Your version is still here: check it and save again to keep it.`);
+      const input = knowsBase(data, Object.keys(projectFields)) ? keepUnchanged(data, current, sameText) : data;
+      return tx.project.update({ where: { id: projectId }, data: projectInput(input) });
+    }
     if (!["add", "remove", "role"].includes(operation)) throw new ProjectError("Unknown project operation.");
     const userId = id(field(data, "user_id"));
     const target = await tx.user.findUnique({ where: { id: userId }, select: { role: true, is_active: true } });
@@ -85,5 +103,5 @@ export async function mutateProject(actor: Actor, data: FormData) {
     // A removed member must no longer be assigned tasks in this project.
     await tx.task.updateMany({ where: { project_id: projectId, assigned_to: userId }, data: { assigned_to: null } });
     return tx.projectMembership.delete({ where: { id: member.id } });
-  }, { isolationLevel: "Serializable" });
+  });
 }

@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/prisma";
 import type { Actor } from "@/lib/rbac";
 import type { Prisma } from "@/src/generated/prisma/client";
 import { isManagerialTitle } from "./job-titles";
+import { serializable } from "@/lib/transaction";
 
 export class PeopleError extends Error {}
 
@@ -37,7 +37,7 @@ export async function updatePerson(actor: Actor, data: FormData) {
   if (!first_name || !last_name || first_name.length > 60 || last_name.length > 60) throw new PeopleError("Enter a first and last name (up to 60 characters each).");
   if (!EMAIL.test(email) || email.length > 254) throw new PeopleError("Enter a valid email address.");
 
-  return prisma.$transaction(async (tx) => {
+  return serializable(async (tx) => {
     const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true, is_active: true } });
     if (!user?.is_active) throw new PeopleError("This person no longer has an active account.");
     if (await tx.user.findFirst({ where: { email, id: { not: userId } }, select: { id: true } })) {
@@ -65,7 +65,7 @@ export async function updatePerson(actor: Actor, data: FormData) {
       data: { first_name, last_name, email, job_title_id: jobTitle?.id ?? null, team_id: teamId, team_lead: wantsLead },
       select: { id: true },
     });
-  }, { isolationLevel: "Serializable" });
+  });
 }
 
 /**
@@ -78,9 +78,9 @@ export async function setJobTitleCanLead(actor: Actor, data: FormData) {
   const titleId = optionalId(data.get("job_title_id"));
   if (titleId === null) throw new PeopleError("Choose a job title.");
   const canLead = data.get("can_lead") === "on";
-  return prisma.$transaction(async (tx) => {
+  return serializable(async (tx) => {
     if (!await tx.jobTitle.findUnique({ where: { id: titleId }, select: { id: true } })) throw new PeopleError("This job title no longer exists.");
     if (!canLead) await tx.user.updateMany({ where: { job_title_id: titleId, team_lead: true }, data: { team_lead: false } });
     return tx.jobTitle.update({ where: { id: titleId }, data: { can_lead: canLead }, select: { id: true } });
-  }, { isolationLevel: "Serializable" });
+  });
 }

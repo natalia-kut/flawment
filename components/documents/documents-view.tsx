@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
-import { copyTemplate, deleteTemplate, saveTemplate } from "@/lib/documents/actions";
+import { copyTemplate, deleteTemplate, renameTemplate } from "@/lib/documents/actions";
 import { builtIn } from "@/lib/documents/built-in-templates";
 import { createBlock, templateLimits, type DocumentTemplate } from "@/lib/documents/template-schema";
 import type { DocumentProject } from "@/lib/documents/types";
@@ -143,7 +143,7 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
     replace({ ...template, name });
     setError("");
     startRenaming(async () => {
-      const result = await saveTemplate(template.id, { ...template, name });
+      const result = await renameTemplate(template.id, name);
       if (result.ok) replace(result.value);
       else {
         replace(template);

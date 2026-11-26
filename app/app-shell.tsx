@@ -2,6 +2,7 @@
 
 import { useState, type ComponentProps, type ReactNode } from "react";
 import Link from "next/link";
+import SessionWatch from "./session-watch";
 import { useRouter, useSearchParams } from "next/navigation";
 import AccountMenu from "./account-menu";
 import type { Availability } from "@/lib/time-off/availability";
@@ -91,6 +92,7 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
   return (
     <ConfirmProvider>
     <PeopleProvider people={directory.people} teams={directory.teams} currentUserId={user.id}>
+    <SessionWatch userId={user.id} statusEnds={[user.status?.until ?? null, ...directory.people.map((person) => person.status?.until ?? null)]} />
     <div className="app-shell" data-sidebar={collapsed ? "collapsed" : "expanded"}>
       <aside className="sidebar">
         <div className="sidebar-top">
