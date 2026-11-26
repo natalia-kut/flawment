@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { mutateProject, ProjectError } from "./service";
+import { actionError } from "@/lib/action-error";
 
 export type ProjectState = { error?: string; success?: string; projectId?: number };
 export async function projectAction(_state: ProjectState, data: FormData): Promise<ProjectState> {
@@ -16,6 +17,6 @@ export async function projectAction(_state: ProjectState, data: FormData): Promi
   } catch (error) {
     // The page may be out of date (a conflict, a member already removed): show what is saved now.
     revalidatePath("/");
-    return { error: error instanceof ProjectError ? error.message : "The change could not be saved. Refresh and try again." };
+    return { error: actionError(error, ProjectError, "The change could not be saved. Refresh and try again.") };
   }
 }

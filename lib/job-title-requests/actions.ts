@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { mutateTitleRequest, TitleRequestError } from "./service";
+import { actionError } from "@/lib/action-error";
 
 export type TitleRequestState = { error?: string; success?: boolean };
 
@@ -15,7 +16,7 @@ export async function titleRequestAction(_state: TitleRequestState, data: FormDa
   } catch (error) {
     // The page may be out of date (a changed or already decided request): show what is saved now.
     revalidatePath("/");
-    return { error: error instanceof TitleRequestError ? error.message : "The request could not be saved. Refresh and try again." };
+    return { error: actionError(error, TitleRequestError, "The request could not be saved. Refresh and try again.") };
   }
   revalidatePath("/");
   return { success: true };

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { updateProfile, updateProfileField, ProfileError } from "./service";
+import { actionError } from "@/lib/action-error";
 
 export async function profileAction(_state: { error?: string; success?: string }, data: FormData): Promise<{ error?: string; success?: string }> {
   // Not requireUser: its redirect to /login would throw away what the person was editing.
@@ -11,7 +12,7 @@ export async function profileAction(_state: { error?: string; success?: string }
   try {
     await updateProfile(actor, data);
   } catch (error) {
-    return { error: error instanceof ProfileError ? error.message : "Your profile could not be saved. Please try again." };
+    return { error: actionError(error, ProfileError, "Your profile could not be saved. Please try again.") };
   }
   revalidatePath("/");
   return { success: "Your profile has been updated." };
@@ -21,11 +22,13 @@ export async function profileFieldAction(_state: { error?: string; saved?: strin
   // Not requireUser: its redirect to /login would throw away what the person was editing.
   const actor = await currentUser();
   if (!actor) return { error: SESSION_ENDED };
-  const value = String(data.get("value") ?? "");
+  let value = "";
   try {
+    // Read inside try: a call without form data is an error to report, not a crash.
+    value = String(data.get("value") ?? "");
     await updateProfileField(actor, String(data.get("field") ?? ""), value);
   } catch (error) {
-    return { error: error instanceof ProfileError ? error.message : "This detail could not be saved. Please try again." };
+    return { error: actionError(error, ProfileError, "This detail could not be saved. Please try again.") };
   }
   revalidatePath("/");
   return { saved: value };
