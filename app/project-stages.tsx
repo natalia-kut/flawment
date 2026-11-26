@@ -7,6 +7,7 @@ import TaskDetailsDialog from "./task-details-dialog";
 import styles from "./project-stages.module.css";
 import { useConfirmSubmit } from "@/components/ui/confirm";
 import { BinIcon, PencilIcon } from "@/components/ui/icons";
+import { submitInPlace } from "@/components/ui/submit-in-place";
 
 type Stage = WorkspaceProject["stages"][number];
 
@@ -21,7 +22,7 @@ function StageForm({ projectId, stage, close }: { projectId: number; stage?: Sta
     if (result.success) close();
     return result;
   }, {});
-  return <form action={action} className="workspace-form">
+  return <form action={action} onSubmit={submitInPlace(action)} className="workspace-form">
     <input type="hidden" name="operation" value={stage ? "update" : "create"} />
     <input type="hidden" name="project_id" value={projectId} />
     {stage && <input type="hidden" name="stage_id" value={stage.id} />}

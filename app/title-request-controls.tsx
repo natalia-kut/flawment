@@ -6,6 +6,7 @@ import type { LeadTitleRequests } from "@/lib/job-title-requests/data";
 import type { TeamPerson } from "@/lib/teams/data";
 import JobTitleField from "./job-title-field";
 import styles from "./title-request-controls.module.css";
+import { submitInPlace } from "@/components/ui/submit-in-place";
 
 const dayMonth = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "Europe/Warsaw" });
 
@@ -38,7 +39,7 @@ export default function TitleRequestControls({ person, request, jobTitles }: {
       {request.status === "APPROVED" ? "Approved" : "Declined"}: {request.title}
       {request.decidedAt && <> · {dayMonth.format(new Date(request.decidedAt))}</>}
     </p>}
-    {open ? <form action={action} className={styles.form}>
+    {open ? <form action={action} onSubmit={submitInPlace(action)} className={styles.form}>
       <input type="hidden" name="operation" value="request" /><input type="hidden" name="user_id" value={person.id} />
       <input type="hidden" name="title" value={title} />
       <fieldset disabled={pending}>
