@@ -6,6 +6,13 @@ import { workspaceToday } from "@/lib/time-off/dates";
 import type { Prisma, ProjectRole, ProjectStatus } from "@/src/generated/prisma/client";
 
 export class ProjectError extends Error {}
+export async function canStartProject(actor: Actor, db: Prisma.TransactionClient = prisma) {
+  const user = await db.user.findUnique({
+    where: { id: actor.id, is_active: true },
+    select: { role: true, job_title: { select: { can_lead: true } } },
+  });
+  return user?.role === "SUPER_ADMIN" || Boolean(user?.job_title?.can_lead);
+}
 /** The roles you can give someone; there is one owner, the person who created the project. */
 const assignableRoles: ProjectRole[] = ["COORDINATOR", "CONTRIBUTOR"];
 const statuses: ProjectStatus[] = ["TO_DO", "IN_PROGRESS", "COMPLETED", "ARCHIVED", "CANCELLED"];
@@ -51,10 +58,7 @@ export async function mutateProject(actor: Actor, data: FormData) {
     const operation = field(data, "operation");
     if (operation === "create") {
       // Projects are started by managers (a managerial job title) or a super admin.
-      if (actor.role !== "SUPER_ADMIN") {
-        const user = await tx.user.findUnique({ where: { id: actor.id }, select: { job_title: { select: { can_lead: true } } } });
-        if (!user?.job_title?.can_lead) throw new ProjectError("Only managers can start a project.");
-      }
+      if (!await canStartProject(actor, tx)) throw new ProjectError("Only managers can start a project.");
       return tx.project.create({ data: { ...projectInput(data), owner_id: actor.id, memberships: { create: { user_id: actor.id, role: "OWNER" } } } });
     }
     const projectId = id(field(data, "project_id"));

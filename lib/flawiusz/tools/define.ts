@@ -1,11 +1,12 @@
 import type { z } from "zod";
 import type { AgentEvent } from "@/lib/flawiusz/agent";
+import type { Actor } from "@/lib/rbac";
 
 export type ToolResult<Value = unknown> = { ok: true; value: Value } | { ok: false; error: string };
 
 // The project the user picked with the buttons in this chat: an id, null for
 // all projects, or undefined when they have not picked one.
-export type ToolContext = { chosenProjectId: number | null | undefined };
+export type ToolContext = { chosenProjectId: number | null | undefined; actor?: Actor };
 
 // What a successful call changes in the chat besides the streamed text.
 export type ToolOutcome = {

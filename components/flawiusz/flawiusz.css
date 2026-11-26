@@ -75,12 +75,49 @@
 }
 
 .flawiusz-log.in-hero {
-  max-height: min(62vh, 640px);
+  height: clamp(160px, 32dvh, 320px);
   margin: 0 -8px;
   padding: 14px 8px;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
+
+.flawiusz-full-chat {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--card);
+  color: var(--foreground);
+  overscroll-behavior: contain;
+}
+
+.flawiusz-full-chat[open] { animation: flawiusz-expand 160ms ease-out; }
+.flawiusz-full-chat::backdrop { background: rgb(0 0 0 / 35%); }
+.flawiusz-full-body {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  width: min(100%, 1000px);
+  height: 100%;
+  margin: auto;
+  padding: clamp(12px, 3vw, 36px);
+}
+.flawiusz-full-header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.flawiusz-full-header h2 { margin: 0 auto 0 0; }
+.flawiusz-log.in-full-chat { min-height: 0; overscroll-behavior: contain; }
+.flawiusz-project-plan { margin-top: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.flawiusz-project-plan h3 { margin: 0 0 8px; }
+.flawiusz-project-plan details { margin: 10px 0; }
+.flawiusz-project-plan summary { cursor: pointer; font-weight: 600; }
+.flawiusz-project-plan li + li { margin-top: 10px; }
+.flawiusz-hero-intro { flex-wrap: wrap; }
+@keyframes flawiusz-expand { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .flawiusz-full-chat[open] { animation: none; } }
+@media print { .flawiusz-full-chat { display: none; } }
 
 .flawiusz-hero .flawiusz-composer textarea {
   min-height: 44px;

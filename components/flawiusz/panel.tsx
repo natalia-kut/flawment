@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { ChatLog } from "./chat-log";
 import { Composer } from "./composer";
+import { FullChat } from "./full-chat";
 import type { FlawiuszChat } from "./use-flawiusz-chat";
 import "./flawiusz.css";
 
@@ -20,6 +21,7 @@ export function FlawiuszPanel({
   onOpenTemplate: (templateId: string) => void;
 }) {
   const [hintDismissed, setHintDismissed] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const showHint = !hintDismissed && chat.messages.length === 0;
 
   return (
@@ -60,6 +62,7 @@ export function FlawiuszPanel({
               New chat
             </button>
           )}
+          <button type="button" className="flawiusz-icon-button" aria-haspopup="dialog" onClick={() => setExpanded(true)}>Expand</button>
           <button
             type="button"
             className="flawiusz-icon-button close"
@@ -79,11 +82,15 @@ export function FlawiuszPanel({
             </p>
           </div>
         ) : (
-          <ChatLog chat={chat} className="in-panel" onOpenTemplate={onOpenTemplate} />
+          !expanded && <ChatLog chat={chat} className="in-panel" onOpenTemplate={onOpenTemplate} onOpenProject={() => onOpenChange(false)} />
         )}
 
         <Composer autoFocus={open} chat={chat} placeholder="Ask Flawiusz…" />
       </aside>
+      {open && expanded && <FullChat chat={chat} onClose={() => setExpanded(false)} onOpenTemplate={(id) => {
+        setExpanded(false);
+        onOpenTemplate(id);
+      }} />}
     </>
   );
 }

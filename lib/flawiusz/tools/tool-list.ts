@@ -3,6 +3,7 @@ import { getCurrentDate } from "./date";
 import type { FlawiuszTool, ToolContext, ToolResult } from "./define";
 import { getTemplateFormat, listTemplates, proposeTemplate, saveTemplateTool } from "./documents";
 import { askProject, listProjects } from "./projects";
+import { findPlanningCandidates, getProject, getTask, listTasks, proposeProjectPlan } from "./workspace";
 
 export type { FlawiuszTool, ToolContext, ToolResult } from "./define";
 export type { TemplateProposal } from "./documents";
@@ -12,6 +13,11 @@ export const flawiuszTools: FlawiuszTool[] = [
   getCurrentDate,
   getTemplateFormat,
   listProjects,
+  getProject,
+  listTasks,
+  getTask,
+  findPlanningCandidates,
+  proposeProjectPlan,
   askProject,
   listTemplates,
   proposeTemplate,
