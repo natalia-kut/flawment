@@ -1,5 +1,8 @@
 # Flawment
 
+[![CI](https://github.com/natalia-kut/flawment/actions/workflows/ci.yml/badge.svg)](https://github.com/natalia-kut/flawment/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/natalia-kut/flawment/actions/workflows/codeql.yml/badge.svg)](https://github.com/natalia-kut/flawment/actions/workflows/codeql.yml)
+
 Flawment is an early-stage project management application built with Next.js 16
 (App Router), React 19, TypeScript, Tailwind CSS 4, Prisma 7, and PostgreSQL 17.
 Try it at [flawment.vercel.app](https://flawment.vercel.app).
@@ -11,6 +14,21 @@ Try it at [flawment.vercel.app](https://flawment.vercel.app).
 - **People and teams:** profiles, statuses, job titles and time off.
 - **Flawiusz:** an AI assistant that answers questions about projects, deadlines and
   the team, and creates document templates.
+
+![Dashboard with the Flawiusz assistant, key numbers, a calendar and upcoming tasks](.github/screenshots/dashboard.webp)
+
+<details>
+<summary>More screenshots</summary>
+
+| Project page | Tasks board |
+| --- | --- |
+| ![Project page with progress, status, period and the open tasks](.github/screenshots/project.webp) | ![Tasks board grouped by project, with filters](.github/screenshots/tasks.webp) |
+| **Task page** | **Documents** |
+| ![Task page with a file, a discussion and the details panel](.github/screenshots/task.webp) | ![Weekly update generated from a project's data](.github/screenshots/documents.webp) |
+
+Shown with the sample data from `npm run db:seed`.
+
+</details>
 
 How it all works is in the **[Wiki](https://github.com/natalia-kut/flawment/wiki)**.
 
