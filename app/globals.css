@@ -886,3 +886,7 @@ a.team-card[data-own] { border-color: var(--accent-border); box-shadow: inset 0 
 .danger-button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; padding: 0 15px; border: 1px solid transparent; border-radius: 8px; background: var(--critical); color: #fff; cursor: pointer; font-size: 13px; font-weight: 650; transition: background-color 140ms ease; }
 .danger-button:hover:not(:disabled) { background: color-mix(in srgb, var(--critical) 86%, #000); }
 .danger-button:disabled { cursor: wait; opacity: .6; }
+
+/* While another view loads from the server: the old one fades a little, so the click visibly did something. */
+.main-content[data-navigating] { opacity: .6; cursor: progress; transition: opacity 120ms ease 80ms; }
+@media (prefers-reduced-motion: reduce) { .main-content[data-navigating] { transition: none; } }

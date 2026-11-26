@@ -153,21 +153,27 @@ export default function TasksOverview({ projects, currentUserId, today }: {
   function update(key: keyof TaskFilters, value: string) {
     setFilters((current) => ({ ...current, [key]: value }));
   }
-  // Let the browser glide each card from its old place to its new one.
-  function animate(update: () => void) {
+  // The card gliding to its new place, the only one named for the view transition.
+  const [gliding, setGliding] = useState<number | null>(null);
+  // Let the browser glide a moved card from its old place to its new one.
+  function animate(update: () => void, cardId?: number) {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     // A view transition draws above everything, open dialogs included, so a card
     // moved from the task dialog would fly across it. Under a dialog, just update.
     const dialogOpen = document.querySelector("dialog[open]") !== null;
     if (!document.startViewTransition || reduceMotion || dialogOpen) { update(); return; }
-    document.startViewTransition(() => flushSync(update));
+    // Only the moved card takes part: naming every card made the browser snapshot the whole
+    // board, which took seconds on boards with hundreds of cards.
+    if (cardId !== undefined) flushSync(() => setGliding(cardId));
+    const transition = document.startViewTransition(() => flushSync(update));
+    if (cardId !== undefined) void transition.finished.finally(() => setGliding(null));
   }
   function undoMove(taskId: number) {
     animate(() => setPending((current) => {
       const rest = { ...current };
       delete rest[taskId];
       return rest;
-    }));
+    }), taskId);
   }
   async function move(task: BoardTask, status: TaskStatus, origin?: { x: number; y: number }) {
     if (saving !== null || status === task.status || !task.canChangeStatus) return;
@@ -177,7 +183,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
     animate(() => {
       setPending((current) => ({ ...current, [task.id]: status }));
       setSaving(task.id); setDragging(null); setDropTarget(null);
-    });
+    }, task.id);
     try {
       const data = new FormData();
       data.set("project_id", String(task.projectId));
@@ -372,7 +378,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
                 <h3>{column.label} · {cards.length}</h3>
                 {cards.map((task) => <article key={task.id}
                   className={styles.card + (dragging === task.id ? " " + styles.dragging : "")}
-                  style={{ viewTransitionName: "task-card-" + task.id, viewTransitionClass: "task-card" }}
+                  style={gliding === task.id ? { viewTransitionName: "task-card-" + task.id, viewTransitionClass: "task-card" } : undefined}
                   draggable={task.canChangeStatus && saving === null}
                   aria-busy={saving === task.id}
                   role="button" tabIndex={0} aria-label={"View task: " + task.title}
