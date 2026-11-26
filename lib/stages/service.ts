@@ -36,10 +36,13 @@ export async function mutateStage(actor: Actor, data: FormData) {
       // The foreign key clears task.stage_id and preserves the tasks.
       return tx.projectStage.delete({ where: { id: stageId!, project_id: projectId } });
     }
-    const duplicate = await tx.projectStage.findFirst({
-      where: { project_id: projectId, name: { equals: name, mode: "insensitive" }, ...(stageId ? { id: { not: stageId } } : {}) },
+    // Compared here rather than with `mode: "insensitive"`, an ILIKE in which
+    // `_` and `%` are wildcards ("A_1" would clash with "AB1").
+    const others = await tx.projectStage.findMany({
+      where: { project_id: projectId, ...(stageId ? { id: { not: stageId } } : {}) }, select: { name: true },
     });
-    if (duplicate) throw new StageError("A stage with this name already exists in this project.");
+    const key = name.toLocaleLowerCase("pl");
+    if (others.some((stage) => stage.name.toLocaleLowerCase("pl") === key)) throw new StageError("A stage with this name already exists in this project.");
     const values = { name, description: description || null, deadline: deadline ? new Date(deadline) : null };
     return stageId === null
       ? tx.projectStage.create({ data: { ...values, project_id: projectId } })

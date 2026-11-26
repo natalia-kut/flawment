@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { authHref } from "./return-path";
 
 const cookieName = "flawment_session";
 const lifetime = 60 * 60 * 24 * 7;
@@ -20,9 +21,13 @@ export async function currentUser() {
   return { id, username, first_name, last_name, role, photoVersion: photo_updated_at?.toISOString() ?? null };
 }
 
-export async function requireUser() {
+/**
+ * The signed-in user, or a redirect to /login. A page passes its own address as
+ * `returnTo`, so signing in leads back to it (a shared `/?task=12` link).
+ */
+export async function requireUser(returnTo?: string) {
   const user = await currentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(returnTo ? authHref("/login", returnTo) : "/login");
   return user;
 }
 

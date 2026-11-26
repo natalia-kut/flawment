@@ -40,7 +40,7 @@ export async function updatePerson(actor: Actor, data: FormData) {
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true, is_active: true } });
     if (!user?.is_active) throw new PeopleError("This person no longer has an active account.");
-    if (await tx.user.findFirst({ where: { email: { equals: email, mode: "insensitive" }, id: { not: userId } }, select: { id: true } })) {
+    if (await tx.user.findFirst({ where: { email, id: { not: userId } }, select: { id: true } })) {
       throw new PeopleError("Another account already uses this email.");
     }
 
