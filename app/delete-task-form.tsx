@@ -4,13 +4,14 @@ import { useActionState } from "react";
 import { deleteTaskAction, type TaskState } from "@/lib/tasks/actions";
 import { useConfirmSubmit } from "@/components/ui/confirm";
 import { BinIcon } from "@/components/ui/icons";
+import { OFFLINE, reach } from "@/components/ui/offline";
 
 /** Deletes a task after a confirmation: a small bin, or a text button when there is a `label`. */
 export default function DeleteTaskForm({ projectId, taskId, title, className, label, onDeleted }: {
   projectId: number; taskId: number; title: string; className?: string; label?: string; onDeleted?: () => void;
 }) {
   const [state, action, pending] = useActionState(async (previous: TaskState, data: FormData) => {
-    const result = await deleteTaskAction(previous, data);
+    const result = await reach(() => deleteTaskAction(previous, data), { error: OFFLINE });
     if (result.success) onDeleted?.();
     return result;
   }, {});

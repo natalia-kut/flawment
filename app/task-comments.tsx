@@ -11,6 +11,7 @@ import { LazyRichTextEditor } from "@/components/rich-text/rich-text-field";
 import UserAvatar from "./user-avatar";
 import { PersonButton } from "./people-context";
 import styles from "./task-page.module.css";
+import { useLeaveGuard } from "@/components/ui/unsaved";
 
 type Thread = TaskDetails["comments"][number];
 type Comment = Omit<Thread, "replies">;
@@ -41,19 +42,23 @@ function useCommentAction() {
 }
 
 /** The editor with its buttons; it stays open, text and all, until what it sends is saved. */
-function CommentForm({ label, placeholder, note, initial = "", submit, pending, error, onSubmit, onCancel }: {
+function CommentForm({ label, placeholder, note, initial = "", draft, submit, pending, error, onSubmit, onCancel, onDraft }: {
   label: string; placeholder: string; note?: string; initial?: string; submit: string; pending: boolean; error: string;
-  onSubmit: (body: string) => void; onCancel: () => void;
+  /** Text to start from that is not saved yet (a reply moved here after its comment was removed). */
+  draft?: string;
+  onSubmit: (body: string) => void; onCancel: () => void; onDraft?: (body: string) => void;
 }) {
-  const [body, setBody] = useState(initial);
+  const [body, setBody] = useState(draft ?? initial);
   const tooLong = body.length > MAX_COMMENT_LENGTH;
   const changed = body.trim() !== "" && body.trim() !== initial.trim();
+  // A reload or a link out asks first while there is something unsent.
+  useLeaveGuard(changed);
   const ready = changed && !tooLong && !pending;
   const send = () => { if (ready) onSubmit(body.trim()); };
   return <div className={styles.commentForm} inert={pending}>
     {note && <p className={styles.formNote}>{note}</p>}
-    <LazyRichTextEditor compact autoFocus initial={initial} label={label} placeholder={placeholder}
-      onChange={setBody} onSubmit={send} onEscape={() => { if (body.trim() === initial.trim()) onCancel(); }} />
+    <LazyRichTextEditor compact autoFocus initial={draft ?? initial} label={label} placeholder={placeholder}
+      onChange={(value) => { setBody(value); onDraft?.(value); }} onSubmit={send} onEscape={() => { if (body.trim() === initial.trim()) onCancel(); }} />
     {error && <p className="form-error" role="alert">{error}</p>}
     <div className={styles.formActions}>
       <span className={styles.hint} data-over={tooLong || undefined}>
@@ -103,8 +108,13 @@ function CommentItem({ comment, canDelete, onReply }: { comment: Comment; canDel
 }
 
 /** A comment with its replies. A reply to a reply joins the same thread. */
-function CommentThread({ thread, taskId, canModerate, viewer }: { thread: Thread; taskId: number; canModerate: boolean; viewer: CommentViewer }) {
-  const [replyTo, setReplyTo] = useState<Comment | null>(null);
+function CommentThread({ thread, taskId, canModerate, viewer, onReplyDraft }: {
+  thread: Thread; taskId: number; canModerate: boolean; viewer: CommentViewer;
+  /** Reports the reply being written, so it can outlive this thread if the thread is removed. */
+  onReplyDraft: (body: string) => void;
+}) {
+  const [replyTo, setReplyToState] = useState<Comment | null>(null);
+  const setReplyTo = (comment: Comment | null) => { setReplyToState(comment); if (!comment) onReplyDraft(""); };
   const { pending, error, run } = useCommentAction();
   const item = (comment: Comment) => <CommentItem comment={comment} canDelete={comment.mine || canModerate} onReply={() => setReplyTo(comment)} />;
   return <li className={styles.thread}>
@@ -117,7 +127,7 @@ function CommentThread({ thread, taskId, canModerate, viewer }: { thread: Thread
         <UserAvatar id={viewer.id} firstName={viewer.first_name} lastName={viewer.last_name} photoVersion={viewer.photoVersion} size={30} />
         {/* Not keyed by whom it answers: picking another comment of the thread keeps what is already written. */}
         <CommentForm label="Write a reply" placeholder="Write a reply…" note={"Replying to " + nameOf(replyTo.author)} submit="Reply" pending={pending} error={error}
-          onSubmit={(body) => run("add", { task_id: taskId, parent_id: replyTo.id, body }, () => setReplyTo(null))} onCancel={() => setReplyTo(null)} />
+          onSubmit={(body) => run("add", { task_id: taskId, parent_id: replyTo.id, body }, () => setReplyTo(null))} onCancel={() => setReplyTo(null)} onDraft={onReplyDraft} />
       </div>}
     </div>}
   </li>;
@@ -132,6 +142,22 @@ export default function TaskComments({ taskId, comments, canModerate, viewer }: 
 }) {
   const { pending, error, run } = useCommentAction();
   const [writing, setWriting] = useState(false);
+  // Replies being written, by thread. A thread removed by someone else takes its reply form with it;
+  // the reply then moves to the new-comment box instead of disappearing.
+  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
+  const [orphan, setOrphan] = useState<string | null>(null);
+  const threadKey = comments.map((thread) => thread.id).join(",");
+  const [seenThreads, setSeenThreads] = useState(threadKey);
+  if (threadKey !== seenThreads) {
+    setSeenThreads(threadKey);
+    const present = new Set(comments.map((thread) => thread.id));
+    const lost = Object.entries(replyDrafts).filter(([id, body]) => !present.has(Number(id)) && body.trim());
+    if (lost.length) {
+      setOrphan([orphan, ...lost.map(([, body]) => body)].filter(Boolean).join("\n\n"));
+      setWriting(true);
+    }
+    setReplyDrafts(Object.fromEntries(Object.entries(replyDrafts).filter(([id]) => present.has(Number(id)))));
+  }
   const count = comments.reduce((sum, thread) => sum + (thread.deleted ? 0 : 1) + thread.replies.length, 0);
   const placeholder = `Comment as ${viewer.first_name} ${viewer.last_name}…`;
   return <section className="workspace-card" aria-labelledby="task-discussion-heading">
@@ -139,13 +165,16 @@ export default function TaskComments({ taskId, comments, canModerate, viewer }: 
     {comments.length === 0
       ? <p className={styles.empty}>No comments yet. Start the conversation.</p>
       : <ul className={styles.comments}>
-        {comments.map((thread) => <CommentThread key={thread.id} thread={thread} taskId={taskId} canModerate={canModerate} viewer={viewer} />)}
+        {comments.map((thread) => <CommentThread key={thread.id} thread={thread} taskId={taskId} canModerate={canModerate} viewer={viewer}
+          onReplyDraft={(body) => setReplyDrafts((current) => ({ ...current, [thread.id]: body }))} />)}
       </ul>}
     <div className={styles.composer}>
       <UserAvatar id={viewer.id} firstName={viewer.first_name} lastName={viewer.last_name} photoVersion={viewer.photoVersion} size={36} />
       {writing
-        ? <CommentForm label="Write a comment" placeholder={placeholder} submit="Post comment" pending={pending} error={error}
-          onSubmit={(body) => run("add", { task_id: taskId, body }, () => setWriting(false))} onCancel={() => setWriting(false)} />
+        ? <CommentForm key={orphan ?? "new"} label="Write a comment" placeholder={placeholder} submit="Post comment" pending={pending} error={error}
+          draft={orphan ?? undefined} note={orphan ? "The comment you were replying to was removed, so your reply is here as a new comment." : undefined}
+          onSubmit={(body) => run("add", { task_id: taskId, body }, () => { setWriting(false); setOrphan(null); })}
+          onCancel={() => { setWriting(false); setOrphan(null); }} />
         : <button type="button" className={styles.startComment} onClick={() => setWriting(true)}>{placeholder}</button>}
     </div>
   </section>;

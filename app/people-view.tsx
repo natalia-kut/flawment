@@ -11,6 +11,8 @@ import { isManagerialTitle } from "@/lib/people/job-titles";
 import { useConfirm } from "@/components/ui/confirm";
 import { PencilIcon } from "@/components/ui/icons";
 import { submitInPlace } from "@/components/ui/submit-in-place";
+import { closeOnBackdrop } from "@/components/ui/backdrop";
+import { OFFLINE, offlineSafe, reach } from "@/components/ui/offline";
 
 type Person = PeopleDirectory["people"][number];
 
@@ -59,7 +61,7 @@ export function EditPerson({ person, directory, onClose }: { person: Person; dir
   const titleId = !typedTitle ? "" : matchedTitle ? String(matchedTitle.id) : "new";
   const [lead, setLead] = useState(person.team_lead);
   const [state, action, pending] = useActionState(async (previous: PersonState, data: FormData) => {
-    const result = await personAction(previous, data);
+    const result = await reach(() => personAction(previous, data), { error: OFFLINE });
     if (result.success) onClose();
     return result;
   }, {});
@@ -83,7 +85,7 @@ export function EditPerson({ person, directory, onClose }: { person: Person; dir
     : null;
 
   return <dialog ref={ref} className="project-dialog" aria-labelledby="edit-person-title" onCancel={onClose}
-    onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    {...closeOnBackdrop(onClose)}>
     <div className="project-dialog-content">
       <div className="project-dialog-heading"><h2 id="edit-person-title">{person.first_name} {person.last_name}</h2><button type="button" className="dialog-close" onClick={onClose} aria-label="Close dialog">×</button></div>
       <p>@{person.username}{admin ? " · Super admin" : ""}</p>
@@ -131,7 +133,7 @@ export function EditPerson({ person, directory, onClose }: { person: Person; dir
  * A new title gets this from its name; here a super admin corrects the name's guess.
  */
 function JobTitles({ directory }: { directory: PeopleDirectory }) {
-  const [state, action, pending] = useActionState(jobTitleAction, {});
+  const [state, action, pending] = useActionState(offlineSafe(jobTitleAction), {});
   // Drag a chip into the other group, or click it: both move it across.
   const [dragged, setDragged] = useState<number | null>(null);
   const [over, setOver] = useState<"lead" | "other" | null>(null);

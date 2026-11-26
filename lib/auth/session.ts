@@ -21,6 +21,9 @@ export async function currentUser() {
   return { id, username, first_name, last_name, role, photoVersion: photo_updated_at?.toISOString() ?? null };
 }
 
+/** What a server action says when the session ended while the page was open. */
+export const SESSION_ENDED = "Your session has ended, so this was not saved. Your text is still here: sign in again in another tab, then try again.";
+
 /**
  * The signed-in user, or a redirect to /login. A page passes its own address as
  * `returnTo`, so signing in leads back to it (a shared `/?task=12` link).

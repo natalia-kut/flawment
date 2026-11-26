@@ -7,6 +7,7 @@ import type { TeamPerson } from "@/lib/teams/data";
 import JobTitleField from "./job-title-field";
 import styles from "./title-request-controls.module.css";
 import { submitInPlace } from "@/components/ui/submit-in-place";
+import { OFFLINE, reach } from "@/components/ui/offline";
 
 const dayMonth = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "Europe/Warsaw" });
 
@@ -20,7 +21,7 @@ export default function TitleRequestControls({ person, request, jobTitles }: {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [state, action, pending] = useActionState(async (previous: TitleRequestState, data: FormData) => {
-    const result = await titleRequestAction(previous, data);
+    const result = await reach(() => titleRequestAction(previous, data), { error: OFFLINE });
     if (result.success) { setOpen(false); setTitle(""); }
     return result;
   }, {});

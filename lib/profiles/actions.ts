@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth/session";
+import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { updateProfile, updateProfileField, ProfileError } from "./service";
 
 export async function profileAction(_state: { error?: string; success?: string }, data: FormData): Promise<{ error?: string; success?: string }> {
-  const actor = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const actor = await currentUser();
+  if (!actor) return { error: SESSION_ENDED };
   try {
     await updateProfile(actor, data);
   } catch (error) {
@@ -16,7 +18,9 @@ export async function profileAction(_state: { error?: string; success?: string }
 }
 
 export async function profileFieldAction(_state: { error?: string; saved?: string }, data: FormData): Promise<{ error?: string; saved?: string }> {
-  const actor = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const actor = await currentUser();
+  if (!actor) return { error: SESSION_ENDED };
   const value = String(data.get("value") ?? "");
   try {
     await updateProfileField(actor, String(data.get("field") ?? ""), value);

@@ -6,6 +6,7 @@ import type { DocumentTemplate } from "@/lib/documents/template-schema";
 import type { DocumentProject } from "@/lib/documents/types";
 import DocumentSheet from "./document-sheet";
 import "./documents.css";
+import { closeOnBackdrop } from "@/components/ui/backdrop";
 
 // A template rendered with one of the user's projects, before it is saved.
 export default function TemplatePreviewDialog({
@@ -50,9 +51,7 @@ export default function TemplatePreviewDialog({
       aria-label={`Preview of ${template.name}`}
       className="template-preview-dialog"
       onCancel={onClose}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+      {...closeOnBackdrop(onClose)}
       ref={ref}
     >
       <header className="template-preview-header">

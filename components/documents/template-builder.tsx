@@ -29,6 +29,8 @@ import {
   type DocumentProject,
 } from "@/lib/documents/types";
 import DocumentSheet, { type BlockFrame } from "./document-sheet";
+import { OFFLINE, reach } from "@/components/ui/offline";
+import { useGuardedClose, useLeaveGuard } from "@/components/ui/unsaved";
 
 type BuilderProps = {
   // The template being edited, or a built-in/blank starting point for a new one.
@@ -417,7 +419,8 @@ export default function TemplateBuilder({
   onSaved,
 }: BuilderProps) {
   const editingId = source.isBuiltIn ? null : source.id;
-  const [name, setName] = useState(source.isBuiltIn && source.name ? `${source.name} (copy)` : source.name);
+  const initialName = source.isBuiltIn && source.name ? `${source.name} (copy)` : source.name;
+  const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(source.description);
   const [blocks, setBlocks] = useState(source.blocks);
   const [showStatus, setShowStatus] = useState(source.showStatus);
@@ -428,6 +431,11 @@ export default function TemplateBuilder({
   const [dropTarget, setDropTarget] = useState<{ index: number; before: boolean } | null>(null);
   const [error, setError] = useState("");
   const [isSaving, startSaving] = useTransition();
+  // Cancel, a reload or a link out asks first once something has changed.
+  const dirty = name !== initialName || description !== source.description || showStatus !== source.showStatus
+    || showName !== source.showName || JSON.stringify(blocks) !== JSON.stringify(source.blocks);
+  const cancel = useGuardedClose(dirty, onCancel);
+  useLeaveGuard(dirty && !isSaving);
 
   const project = projects.find((item) => item.id === projectId) ?? projects.at(0);
   // A saved project template stays in its project; new templates go to the selected one.
@@ -500,7 +508,7 @@ export default function TemplateBuilder({
   function handleSave() {
     setError("");
     startSaving(async () => {
-      const result = await saveTemplate(editingId, { name, description, blocks, showStatus, showName }, project?.id ?? null, source.version);
+      const result = await reach(() => saveTemplate(editingId, { name, description, blocks, showStatus, showName }, project?.id ?? null, source.version), { ok: false as const, error: OFFLINE });
       if (result.ok) onSaved(result.value);
       else setError(result.error);
     });
@@ -615,7 +623,7 @@ export default function TemplateBuilder({
           />
         </div>
         <div className="heading-actions">
-          <button className="secondary-button" disabled={isSaving} onClick={onCancel} type="button">
+          <button className="secondary-button" disabled={isSaving} onClick={cancel} type="button">
             Cancel
           </button>
           <button

@@ -9,6 +9,8 @@ import details from "@/components/ui/details-dialog.module.css";
 import TaskDetailsDialog from "./task-details-dialog";
 import { submitInPlace } from "@/components/ui/submit-in-place";
 import { useBaseFields } from "@/components/ui/use-base-fields";
+import { useGuardedClose, useLeaveGuard } from "@/components/ui/unsaved";
+import { OFFLINE, reach } from "@/components/ui/offline";
 
 /**
  * Create or edit a project in the same in-place style as a task: the name is
@@ -37,14 +39,16 @@ export default function ProjectDetailsForm({ project, onClose, onSaved, deletion
   const notice = clashed.length ? `Someone else changed the ${clashed.map((key) => key.replace("_", " ")).join(", ")} meanwhile. Saving keeps your version.` : "";
 
   const [state, action, pending] = useActionState(async (previous: Awaited<ReturnType<typeof projectAction>>, data: FormData) => {
-    const result = await projectAction(previous, data);
+    const result = await reach(() => projectAction(previous, data), { error: OFFLINE });
     if (result.success) { clearClashed(); onSaved(result.projectId); }
     return result;
   }, {});
+  const close = useGuardedClose(dirty, onClose);
+  useLeaveGuard(dirty);
   const formId = "project-details-" + (project?.id ?? "new");
   const canSave = creating ? fields.name.trim() !== "" : dirty;
 
-  return <TaskDetailsDialog title={project?.name ?? "New project"} onClose={onClose} heading={
+  return <TaskDetailsDialog title={project?.name ?? "New project"} onClose={close} heading={
     // A textarea so long names wrap like a heading; Enter must not add a line break.
     <textarea form={formId} name="name" className={details.titleInput} aria-label="Project name" placeholder="Project name"
       required maxLength={120} rows={1} value={fields.name}
@@ -77,7 +81,7 @@ export default function ProjectDetailsForm({ project, onClose, onSaved, deletion
         <div className="dialog-actions">
           {deletion && <button type="submit" form={deletion.formId} className={`text-button danger ${details.detailsDelete}`}>Delete project</button>}
           {creating
-            ? <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
+            ? <button type="button" className="secondary-button" onClick={close}>Cancel</button>
             : dirty && <button type="button" className="secondary-button" onClick={discard}>Discard</button>}
           <button className="primary-button" disabled={!canSave || pending}>
             {pending ? "Saving…" : creating ? "Create project" : "Save changes"}

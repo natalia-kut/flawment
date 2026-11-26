@@ -1,12 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth/session";
+import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { mutateStage, StageError } from "./service";
 
 export type StageState = { error?: string; success?: boolean };
 export async function stageAction(_state: StageState, data: FormData): Promise<StageState> {
-  const actor = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const actor = await currentUser();
+  if (!actor) return { error: SESSION_ENDED };
   try {
     await mutateStage(actor, data);
     revalidatePath("/");

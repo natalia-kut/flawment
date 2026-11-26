@@ -18,6 +18,7 @@ import PageHeader from "@/components/page-header";
 import EmailText from "./email-text";
 import { useConfirmSubmit } from "@/components/ui/confirm";
 import { submitInPlace } from "@/components/ui/submit-in-place";
+import { OFFLINE, offlineSafe, reach } from "@/components/ui/offline";
 
 type Person = { id: number; first_name: string; last_name: string; photoVersion: string | null };
 
@@ -38,7 +39,7 @@ export default function ProfileView({ user, today }: { today: string; user: {
   const [photoError, setPhotoError] = useState("");
   const confirmSubmit = useConfirmSubmit();
   const [state, action, pending] = useActionState(async (previous: Awaited<ReturnType<typeof profileAction>>, data: FormData) => {
-    const result = await profileAction(previous, data);
+    const result = await reach(() => profileAction(previous, data), { error: OFFLINE });
     setPhoto(null);
     setPhotoInputKey((k) => k + 1);
     return result;
@@ -183,7 +184,7 @@ function InlineField({ field, label, value, icon, type = "text", placeholder, ma
   const input = useRef<HTMLInputElement>(null);
   const cancelled = useRef(false);
   const [state, action, pending] = useActionState(async (previous: Awaited<ReturnType<typeof profileFieldAction>>, data: FormData) => {
-    const result = await profileFieldAction(previous, data);
+    const result = await reach(() => profileFieldAction(previous, data), { error: OFFLINE });
     if (!result.error) setEditing(false);
     return result;
   }, {});
@@ -233,7 +234,7 @@ function InlineField({ field, label, value, icon, type = "text", placeholder, ma
 function InlineSkills({ skills }: { skills: string[] }) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
-  const [state, action, pending] = useActionState(profileFieldAction, {});
+  const [state, action, pending] = useActionState(offlineSafe(profileFieldAction), {});
   function save(next: string[]) {
     const data = new FormData();
     data.set("field", "skills");

@@ -16,6 +16,7 @@ import { SIDEBAR_COOKIE } from "@/lib/ui/sidebar";
 import PageHeader from "@/components/page-header";
 import { ConfirmProvider } from "@/components/ui/confirm";
 import { PeopleProvider } from "./people-context";
+import { confirmLeave } from "@/components/ui/unsaved";
 
 const navigation = [
   "Dashboard",
@@ -80,7 +81,8 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
     for (const key of ["project", "task", "in", "overdue", "mine", "team", "tab"]) params.delete(key);
     if (item === "Dashboard") params.delete("view");
     else params.set("view", item.toLowerCase());
-    router.push(params.size ? "/?" + params.toString() : "/");
+    // Unsaved work on the page (a description being edited, a dialog with changes) asks first.
+    void confirmLeave().then((ok) => { if (ok) router.push(params.size ? "/?" + params.toString() : "/"); });
   }
 
   function openTemplate(templateId: string) {

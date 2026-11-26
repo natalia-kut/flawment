@@ -18,6 +18,7 @@ import type { LeadTitleRequests, Promotion } from "@/lib/job-title-requests/data
 import { useConfirmSubmit } from "@/components/ui/confirm";
 import EmptyState from "@/components/ui/empty-state";
 import { submitInPlace } from "@/components/ui/submit-in-place";
+import { OFFLINE, reach } from "@/components/ui/offline";
 
 /** For a team lead: their job title requests by person, and the titles to pick from. */
 type Lead = { requests: LeadTitleRequests["byPerson"]; jobTitles: { id: number; name: string }[] };
@@ -124,7 +125,7 @@ function TeamTile({ team, own, admin }: { team: Team; own: boolean; admin: boole
 
 function useTeamForm(onSuccess?: () => void) {
   return useActionState(async (previous: TeamState, data: FormData) => {
-    const result = await teamAction(previous, data);
+    const result = await reach(() => teamAction(previous, data), { error: OFFLINE });
     if (result.success) onSuccess?.();
     return result;
   }, {});

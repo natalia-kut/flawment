@@ -8,6 +8,7 @@ import { daySpan, formatRange } from "@/lib/time-off/dates";
 import type { AbsenceType } from "@/src/generated/prisma/enums";
 import { useConfirmSubmit } from "@/components/ui/confirm";
 import { submitInPlace } from "@/components/ui/submit-in-place";
+import { OFFLINE, offlineSafe, reach } from "@/components/ui/offline";
 
 type Entry = { id: number; type: AbsenceType; start_date: string; end_date: string; note: string | null };
 
@@ -37,7 +38,7 @@ function AddTimeOff({ today }: { today: string }) {
   const empty = { type: "VACATION" as AbsenceType, start: today, end: today, note: "" };
   const [fields, setFields] = useState(empty);
   const [state, action, pending] = useActionState(async (previous: TimeOffState, data: FormData) => {
-    const result = await timeOffAction(previous, data);
+    const result = await reach(() => timeOffAction(previous, data), { error: OFFLINE });
     if (result.success) setFields(empty);
     return result;
   }, {});
@@ -74,7 +75,7 @@ function AddTimeOff({ today }: { today: string }) {
 }
 
 function TimeOffItem({ entry, today }: { entry: Entry; today: string }) {
-  const [state, action, pending] = useActionState(timeOffAction, {});
+  const [state, action, pending] = useActionState(offlineSafe(timeOffAction), {});
   const confirmSubmit = useConfirmSubmit();
   const days = daySpan(entry.start_date, entry.end_date);
   const now = entry.start_date <= today && entry.end_date >= today;
