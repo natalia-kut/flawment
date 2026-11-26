@@ -13,6 +13,7 @@ import { PencilIcon } from "@/components/ui/icons";
 import { submitInPlace } from "@/components/ui/submit-in-place";
 import { closeOnBackdrop } from "@/components/ui/backdrop";
 import { OFFLINE, offlineSafe, reach } from "@/components/ui/offline";
+import { NAME_PATTERN, NAME_RULE } from "@/lib/auth/names";
 
 type Person = PeopleDirectory["people"][number];
 
@@ -93,8 +94,8 @@ export function EditPerson({ person, directory, onClose }: { person: Person; dir
         <input type="hidden" name="user_id" value={person.id} />
         <fieldset disabled={pending}>
           <div className="form-row">
-            <label>First name<input name="first_name" required maxLength={60} defaultValue={person.first_name} /></label>
-            <label>Last name<input name="last_name" required maxLength={60} defaultValue={person.last_name} /></label>
+            <label>First name<input name="first_name" required maxLength={80} pattern={NAME_PATTERN} title={NAME_RULE} defaultValue={person.first_name} /></label>
+            <label>Last name<input name="last_name" required maxLength={80} pattern={NAME_PATTERN} title={NAME_RULE} defaultValue={person.last_name} /></label>
           </div>
           <label>Email<input name="email" type="email" required maxLength={254} defaultValue={person.email} /></label>
           <input type="hidden" name="job_title_id" value={titleId} />
@@ -103,7 +104,11 @@ export function EditPerson({ person, directory, onClose }: { person: Person; dir
             hint={titleId === "new" && <>&ldquo;{typedTitle}&rdquo; will be added as a new job title.</>} />
           {admin ? <p className="field-help">Super admins are not part of a team.</p> : <>
             <label>Team
-              <select name="team_id" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+              <select name="team_id" value={teamId} onChange={(e) => {
+                setTeamId(e.target.value);
+                // Moving to another team ends a lead role, as on the Teams page; back to their own team restores it.
+                setLead(e.target.value === String(person.team_id ?? "") && person.team_lead);
+              }}>
                 <option value="">No team</option>
                 {directory.teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>

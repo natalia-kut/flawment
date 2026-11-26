@@ -2,6 +2,7 @@ import type { Actor } from "@/lib/rbac";
 import type { Prisma } from "@/src/generated/prisma/client";
 import { isManagerialTitle } from "./job-titles";
 import { serializable } from "@/lib/transaction";
+import { isValidName, NAME_RULE } from "@/lib/auth/names";
 
 export class PeopleError extends Error {}
 
@@ -34,11 +35,13 @@ export async function updatePerson(actor: Actor, data: FormData) {
   if (userId === null) throw new PeopleError("Choose a person.");
   const first_name = clean(data.get("first_name")), last_name = clean(data.get("last_name"));
   const email = clean(data.get("email")).toLowerCase();
-  if (!first_name || !last_name || first_name.length > 60 || last_name.length > 60) throw new PeopleError("Enter a first and last name (up to 60 characters each).");
+  // The same rule as registration, so an account made there can always be edited here.
+  if (!first_name || !last_name || first_name.length > 80 || last_name.length > 80) throw new PeopleError("Enter a first and last name (up to 80 characters each).");
+  if (!isValidName(first_name) || !isValidName(last_name)) throw new PeopleError(NAME_RULE);
   if (!EMAIL.test(email) || email.length > 254) throw new PeopleError("Enter a valid email address.");
 
   return serializable(async (tx) => {
-    const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true, is_active: true } });
+    const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true, is_active: true, team_id: true } });
     if (!user?.is_active) throw new PeopleError("This person no longer has an active account.");
     if (await tx.user.findFirst({ where: { email, id: { not: userId } }, select: { id: true } })) {
       throw new PeopleError("Another account already uses this email.");
@@ -60,6 +63,8 @@ export async function updatePerson(actor: Actor, data: FormData) {
 
     // A team has one lead: a new one takes over from whoever led it.
     if (wantsLead) await tx.user.updateMany({ where: { team_id: teamId!, team_lead: true, id: { not: userId } }, data: { team_lead: false } });
+    // A waiting job title suggestion came from the old team's lead: it ends with the move.
+    if (teamId !== user.team_id) await tx.jobTitleRequest.deleteMany({ where: { user_id: userId, status: "PENDING" } });
     return tx.user.update({
       where: { id: userId },
       data: { first_name, last_name, email, job_title_id: jobTitle?.id ?? null, team_id: teamId, team_lead: wantsLead },

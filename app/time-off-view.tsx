@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import PageHeader from "@/components/page-header";
 import { timeOffAction, type TimeOffState } from "@/lib/time-off/actions";
 import { absenceTypeLabels } from "@/lib/time-off/labels";
-import { daySpan, formatRange } from "@/lib/time-off/dates";
+import { addDays, daySpan, formatRange } from "@/lib/time-off/dates";
 import type { AbsenceType } from "@/src/generated/prisma/enums";
 import { useConfirmSubmit } from "@/components/ui/confirm";
 import { submitInPlace } from "@/components/ui/submit-in-place";
@@ -56,7 +56,7 @@ function AddTimeOff({ today }: { today: string }) {
         </label>)}
       </div>
       <div className="form-row">
-        <label>First day<input name="start_date" type="date" required value={fields.start}
+        <label>First day<input name="start_date" type="date" required min={addDays(today, -30)} value={fields.start}
           onChange={(e) => setFields((f) => ({ ...f, start: e.target.value, end: f.end < e.target.value ? e.target.value : f.end }))} /></label>
         <label>Last day<input name="end_date" type="date" required min={fields.start} value={fields.end}
           onChange={(e) => setFields((f) => ({ ...f, end: e.target.value }))} /></label>

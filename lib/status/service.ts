@@ -11,15 +11,16 @@ export async function setStatus(actor: Actor, data: FormData, now = new Date()) 
   }
   const text = String(data.get("text") ?? "").trim().replace(/\s+/g, " ");
   const emoji = String(data.get("emoji") ?? "").trim();
-  const clearAfter = String(data.get("clear_after") ?? "never") as ClearAfter;
+  const clearAfter = String(data.get("clear_after") ?? "never") as ClearAfter | "keep";
   if (text.length > 80) throw new StatusError("Keep your status under 80 characters.");
   // One emoji, possibly built from several code points (flags, skin tones, ZWJ sequences).
   if ([...new Intl.Segmenter().segment(emoji)].length > 1 || emoji.length > 16) throw new StatusError("Choose a single emoji.");
-  if (!Object.hasOwn(clearAfterOptions, clearAfter)) throw new StatusError("Choose when to clear your status.");
+  // "keep": editing a status leaves its end time as it was, so fixing a typo does not extend it.
+  if (clearAfter !== "keep" && !Object.hasOwn(clearAfterOptions, clearAfter)) throw new StatusError("Choose when to clear your status.");
   if (!text && !emoji) throw new StatusError("Write a status or pick an emoji.");
   return prisma.user.update({
     where: { id: actor.id },
-    data: { status_emoji: emoji || null, status_text: text || null, status_expires_at: statusExpiry(clearAfter, now) },
+    data: { status_emoji: emoji || null, status_text: text || null, ...(clearAfter === "keep" ? {} : { status_expires_at: statusExpiry(clearAfter, now) }) },
     select: { id: true },
   });
 }

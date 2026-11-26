@@ -45,7 +45,16 @@ export async function mutateTitleRequest(actor: Actor, data: FormData) {
     if (!request || request.status !== "PENDING") throw new TitleRequestError("This request has already been dealt with.");
 
     if (operation === "cancel") {
-      if (request.requested_by !== actor.id) throw new TitleRequestError("You can only withdraw your own requests.");
+      // The person's lead now may withdraw it too: a request does not stay stuck when the lead changes.
+      if (request.requested_by !== actor.id) {
+        const [me, person] = await Promise.all([
+          tx.user.findUnique({ where: { id: actor.id }, select: { team_id: true, team_lead: true } }),
+          tx.user.findUnique({ where: { id: request.user_id }, select: { team_id: true } }),
+        ]);
+        if (!me?.team_lead || me.team_id === null || me.team_id !== person?.team_id) {
+          throw new TitleRequestError("Only the person's team lead can withdraw this request.");
+        }
+      }
       return tx.jobTitleRequest.delete({ where: { id: requestId }, select: { id: true } });
     }
     if (actor.role !== "SUPER_ADMIN") throw new TitleRequestError("Only administrators can approve or decline requests.");

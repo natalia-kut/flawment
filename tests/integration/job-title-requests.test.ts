@@ -65,7 +65,7 @@ test("team leads suggest job titles for their people and a super admin decides",
 
     // A lead withdraws their own request; a declined one leaves the title alone.
     const withdrawn = await request(lead, peer.id, `${prefix} Tester`);
-    await assert.rejects(mutateTitleRequest(peer, form({ operation: "cancel", request_id: withdrawn.id })), /your own requests/);
+    await assert.rejects(mutateTitleRequest(peer, form({ operation: "cancel", request_id: withdrawn.id })), /team lead can withdraw/);
     await mutateTitleRequest(lead, form({ operation: "cancel", request_id: withdrawn.id }));
     assert.equal(await prisma.jobTitleRequest.count({ where: { id: withdrawn.id } }), 0);
     const declined = await request(lead, peer.id, `${prefix} Tester`);

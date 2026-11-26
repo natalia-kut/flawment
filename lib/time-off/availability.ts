@@ -2,7 +2,13 @@ import type { AbsenceType } from "@/src/generated/prisma/enums";
 import { addDays, formatShortDay, formatRange } from "./dates";
 
 /** How far ahead an upcoming absence is worth a warning (e.g. when adding someone to a project). */
-const LOOKAHEAD_DAYS = 14;
+export const LOOKAHEAD_DAYS = 14;
+/**
+ * How far ahead absences are read, so that back-to-back ranges starting after the lookahead
+ * still join the one in it ("until 20 Dec", not "until 10 Dec"). Only the joined range that
+ * starts within the lookahead is ever shown (see `availability`), never what lies beyond.
+ */
+const CHAIN_DAYS = 366;
 
 /** `type` is filled in only when the viewer may know why someone is away. */
 type DayRange = { start: string; end: string; type?: AbsenceType };
@@ -42,9 +48,15 @@ export function availability(ranges: DayRange[], today: string): Availability {
   return { state: "soon", from: next.start, to: next.end, label: `Away ${formatRange(next.start, next.end)}`, ...reasons };
 }
 
-/** Prisma filter for the absences that can affect `availability` on `today`. */
+/** Prisma filter for the absences that can affect `availability` on `today`, touching ranges included. */
 export function relevantAbsences(today: string) {
-  return { end_date: { gte: new Date(today) }, start_date: { lte: new Date(addDays(today, LOOKAHEAD_DAYS)) } };
+  return { end_date: { gte: new Date(today) }, start_date: { lte: new Date(addDays(today, CHAIN_DAYS)) } };
+}
+
+/** Joined absences that start within the lookahead: what colleagues may know about. */
+export function upcomingRanges(ranges: DayRange[], today: string) {
+  const horizon = addDays(today, LOOKAHEAD_DAYS);
+  return mergeRanges(ranges).filter((range) => range.end >= today && range.start <= horizon);
 }
 
 export const absenceSelect = (today: string) => ({ where: relevantAbsences(today), select: { start_date: true, end_date: true, type: true } }) as const;

@@ -61,10 +61,18 @@ export async function getPromotions(today: string) {
   const since = new Date(Date.parse(month + "-01") - 86_400_000);
   const approved = await prisma.jobTitleRequest.findMany({
     where: { status: "APPROVED", decided_at: { gte: since }, user: { is_active: true } },
-    orderBy: { decided_at: "desc" }, select: { id: true, user_id: true, title: true, decided_at: true },
+    orderBy: { decided_at: "desc" },
+    select: { id: true, user_id: true, title: true, decided_at: true, user: { select: { job_title: { select: { name: true } } } } },
   });
-  return approved.filter((r) => workspaceDay(r.decided_at!).startsWith(month))
-    .map((r) => ({ id: r.id, personId: r.user_id, title: r.title }));
+  // One entry per person: their latest approved change, and only while it is still their
+  // title (not one changed again since), spelled as in the list rather than as typed.
+  const seen = new Set<number>();
+  return approved.filter((r) => workspaceDay(r.decided_at!).startsWith(month)).flatMap((r) => {
+    if (seen.has(r.user_id)) return [];
+    seen.add(r.user_id);
+    const current = r.user.job_title?.name;
+    return current && current.toLowerCase() === r.title.toLowerCase() ? [{ id: r.id, personId: r.user_id, title: current }] : [];
+  });
 }
 
 export type PendingTitleRequest = Awaited<ReturnType<typeof getPendingTitleRequests>>[number];

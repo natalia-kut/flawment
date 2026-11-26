@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useRef, useState, type ReactNode } from "react";
+import { startTransition, useActionState, useEffect, useOptimistic, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { profileAction, profileFieldAction } from "@/lib/profiles/actions";
 import type { ProfileField } from "@/lib/profiles/service";
@@ -235,27 +235,32 @@ function InlineSkills({ skills }: { skills: string[] }) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const [state, action, pending] = useActionState(offlineSafe(profileFieldAction), {});
+  // The list as it will be once the saves in flight land: each change builds on it, not on the
+  // saved list. Pasting "A, B, C" saves A and B, and the C left in the box must not drop them.
+  const [shown, show] = useOptimistic(skills, (_current, next: string[]) => next);
   function save(next: string[]) {
     const data = new FormData();
     data.set("field", "skills");
     data.set("value", next.join(","));
-    startTransition(() => action(data));
+    startTransition(() => { show(next); action(data); });
   }
   function add(values: string[]) {
-    const next = [...skills];
+    const next = [...shown];
     for (const value of values) {
       const skill = value.trim().replace(/\s+/g, " ").slice(0, 30);
       if (skill && next.length < MAX_SKILLS && !next.some((s) => s.toLowerCase() === skill.toLowerCase())) next.push(skill);
     }
-    if (next.length !== skills.length) save(next);
+    if (next.length !== shown.length) save(next);
   }
   return <div className="profile-skills-inline">
     <ul className="skill-list" aria-labelledby="skills-label">
-      {skills.map((skill) => <li key={skill} className="skill-chip">{skill}
-        <button type="button" disabled={pending} onClick={() => save(skills.filter((s) => s !== skill))} aria-label={`Remove ${skill}`}>×</button>
+      {shown.map((skill) => <li key={skill} className="skill-chip">{skill}
+        <button type="button" disabled={pending} onClick={() => save(shown.filter((s) => s !== skill))} aria-label={`Remove ${skill}`}>×</button>
       </li>)}
-      {skills.length < MAX_SKILLS && <li>{adding
-        ? <input className="skill-add-input" value={draft} maxLength={30} autoFocus disabled={pending} aria-label="Add a skill" placeholder="Skill, then Enter"
+      {shown.length < MAX_SKILLS && <li>{adding
+        // No maxLength: a pasted list is longer than one skill (each is cut to 30 characters), and the box
+        // stays enabled while saving, so it does not lose focus and save its leftover a second time.
+        ? <input className="skill-add-input" value={draft} autoFocus aria-label="Add a skill" placeholder="Skill, then Enter"
           onChange={(e) => {
             // Typing or pasting a comma turns everything before it into skills.
             const parts = e.target.value.split(",");
@@ -266,7 +271,7 @@ function InlineSkills({ skills }: { skills: string[] }) {
             if (e.key === "Escape") { setDraft(""); setAdding(false); }
           }}
           onBlur={() => { if (draft.trim()) add([draft]); setDraft(""); setAdding(false); }} />
-        : <button type="button" className="skill-add" onClick={() => setAdding(true)}>+ {skills.length ? "Add skill" : "Add your skills"}</button>}
+        : <button type="button" className="skill-add" onClick={() => setAdding(true)}>+ {shown.length ? "Add skill" : "Add your skills"}</button>}
       </li>}
     </ul>
     {state.error && <p className="form-error" role="alert">{state.error}</p>}
