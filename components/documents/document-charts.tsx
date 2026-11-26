@@ -1,3 +1,6 @@
+import PaceChart from "./pace-chart";
+import StageRoadmap from "./stage-roadmap";
+import TeamPlanChart from "./team-plan-chart";
 import {
   addDays,
   countByStatus,
@@ -6,25 +9,19 @@ import {
   formatDay,
   isOpen,
   isOverdue,
-  projectPace,
 } from "@/lib/documents/engine";
 import type { ChartKind } from "@/lib/documents/template-schema";
 import {
-  taskPriorities,
-  taskPriorityLabels,
   taskStatuses,
   taskStatusLabels,
   type DocumentProject,
   type DocumentTask,
-  type TaskStatus,
 } from "@/lib/documents/types";
 
 // Inline SVG charts: vector in the exported PDF and no client-side library needed.
 // Colors come from CSS classes in documents.css (.fill-<status>, .swatch-<status>).
 
 type ChartProps = { project: DocumentProject; today: string };
-
-const openStatuses = ["TO_DO", "IN_PROGRESS", "IN_REVIEW"] as const satisfies readonly TaskStatus[];
 
 const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 const monthName = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" });
@@ -78,49 +75,6 @@ function StatusBreakdown({ project }: ChartProps) {
           </li>
         ))}
       </ul>
-    </>
-  );
-}
-
-function ProgressVsTime({ project, today }: ChartProps) {
-  const { progress, elapsed } = projectPace(project, today);
-  const rows = [
-    { label: "Tasks completed", value: progress, className: "fill-completed" },
-    ...(elapsed === null ? [] : [{ label: "Time elapsed", value: elapsed, className: "fill-neutral" }]),
-  ];
-  const left = 118;
-  const width = 640 - left - 46;
-
-  let verdict = "The project has no end date, so progress cannot be compared with the schedule.";
-  if (elapsed !== null) {
-    const gap = progress - elapsed;
-    verdict =
-      Math.abs(gap) < 5
-        ? "Completion is keeping pace with the schedule."
-        : gap > 0
-          ? `Completion is ${gap} points ahead of the time elapsed.`
-          : `Completion is ${-gap} points behind the time elapsed.`;
-  }
-
-  return (
-    <>
-      <svg className="chart" viewBox={`0 0 640 ${rows.length * 34 + 6}`} role="img" aria-label="Progress compared with time elapsed">
-        {rows.map((row, index) => {
-          const y = index * 34 + 8;
-          return (
-            <g key={row.label}>
-              <title>{`${row.label}: ${row.value}%`}</title>
-              <text className="chart-label" x={0} y={y + 12}>{row.label}</text>
-              <rect className="chart-track" x={left} y={y} width={width} height={18} rx={4} />
-              {row.value > 0 && (
-                <rect className={row.className} x={left} y={y} width={Math.max((width * row.value) / 100, 4)} height={18} rx={4} />
-              )}
-              <text className="chart-value" x={640} y={y + 13} textAnchor="end">{row.value}%</text>
-            </g>
-          );
-        })}
-      </svg>
-      <p className="chart-caption">{verdict}</p>
     </>
   );
 }
@@ -264,70 +218,6 @@ function Timeline({ project, today }: ChartProps) {
   );
 }
 
-function Workload({ project, today }: ChartProps) {
-  const people = project.members.map((member) => ({ id: member.person.id, name: member.person.name }));
-  const unassigned = project.tasks.filter((task) => isOpen(task) && !task.assignee);
-  const rows = [
-    ...people.map((person) => ({ ...person, tasks: project.tasks.filter((task) => isOpen(task) && task.assignee?.id === person.id) })),
-    ...(unassigned.length > 0 ? [{ id: 0, name: "Unassigned", tasks: unassigned }] : []),
-  ].sort((a, b) => b.tasks.length - a.tasks.length);
-
-  const max = Math.max(...rows.map((row) => row.tasks.length), 1);
-  if (rows.length === 0) return <Empty>This project has no members yet.</Empty>;
-
-  const left = 150;
-  const labelX = 640 - 96;
-  const width = labelX - left - 14;
-  const unit = width / max;
-
-  return (
-    <>
-      <Legend
-        items={openStatuses.map((status) => ({
-          key: status,
-          label: taskStatusLabels[status],
-          className: `swatch-${status.toLowerCase()}`,
-        }))}
-      />
-      <svg className="chart" viewBox={`0 0 640 ${rows.length * 26}`} role="img" aria-label="Open tasks per person">
-        {rows.map((row, index) => {
-          const y = index * 26 + 4;
-          const overdue = row.tasks.filter((task) => isOverdue(task, today)).length;
-          let offset = left;
-          return (
-            <g key={row.id}>
-              <text className={`chart-label${row.id === 0 ? " muted" : ""}`} x={0} y={y + 12}>{row.name}</text>
-              {openStatuses.map((status) => {
-                const count = row.tasks.filter((task) => task.status === status).length;
-                if (count === 0) return null;
-                const segment = { x: offset, width: Math.max(count * unit - 2, 2) };
-                offset += count * unit;
-                return (
-                  <rect
-                    className={`fill-${status.toLowerCase()}`}
-                    height={16}
-                    key={status}
-                    rx={3}
-                    width={segment.width}
-                    x={segment.x}
-                    y={y}
-                  >
-                    <title>{`${row.name} — ${taskStatusLabels[status]}: ${count}`}</title>
-                  </rect>
-                );
-              })}
-              <text className="chart-value" x={labelX} y={y + 12}>
-                {row.tasks.length} open
-                {overdue > 0 && <tspan className="chart-late-text"> · {overdue} late</tspan>}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-    </>
-  );
-}
-
 function DeadlineWeeks({ project, today }: ChartProps) {
   const open = project.tasks.filter((task) => isOpen(task) && task.deadline !== null);
   const mondayOf = (day: string) => addDays(day, -((new Date(utc(day)).getUTCDay() + 6) % 7));
@@ -419,68 +309,19 @@ function DeadlineWeeks({ project, today }: ChartProps) {
   );
 }
 
-// Light-to-dark terracotta ramp for counts; the lightest steps keep dark text.
-const heatRamp = ["#f6dccb", "#edb995", "#e2925f", "#d65325", "#a83d1a", "#7a2a10"];
-
-function PriorityMatrix({ project }: ChartProps) {
-  if (project.tasks.length === 0) return <Empty>This project has no tasks yet.</Empty>;
-
-  const count = (priority: string, status: string) =>
-    project.tasks.filter((task) => task.priority === priority && task.status === status).length;
-  const max = Math.max(...taskPriorities.flatMap((priority) => taskStatuses.map((status) => count(priority, status))), 1);
-  const priorities = [...taskPriorities].reverse();
-
-  return (
-    <>
-      <table className="heatmap">
-        <thead>
-          <tr>
-            <th />
-            {taskStatuses.map((status) => (
-              <th key={status}>{taskStatusLabels[status]}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {priorities.map((priority) => (
-            <tr key={priority}>
-              <th>{taskPriorityLabels[priority]}</th>
-              {taskStatuses.map((status) => {
-                const value = count(priority, status);
-                const step = value === 0 ? -1 : Math.min(Math.ceil((value / max) * heatRamp.length) - 1, heatRamp.length - 1);
-                return (
-                  <td
-                    className={step >= 3 ? "dark" : undefined}
-                    key={status}
-                    style={step >= 0 ? { background: heatRamp[step] } : undefined}
-                    title={`${taskPriorityLabels[priority]} · ${taskStatusLabels[status]}: ${value}`}
-                  >
-                    {value || "·"}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="chart-caption">Number of tasks per priority and status — darker cells hold more tasks.</p>
-    </>
-  );
-}
-
 export default function DocumentChart({ kind, project, today }: ChartProps & { kind: ChartKind }) {
   switch (kind) {
     case "status":
       return <StatusBreakdown project={project} today={today} />;
-    case "progressVsTime":
-      return <ProgressVsTime project={project} today={today} />;
     case "timeline":
       return <Timeline project={project} today={today} />;
-    case "workload":
-      return <Workload project={project} today={today} />;
+    case "pace":
+      return <PaceChart project={project} today={today} />;
+    case "stageRoadmap":
+      return <StageRoadmap project={project} today={today} />;
+    case "teamPlan":
+      return <TeamPlanChart project={project} today={today} />;
     case "deadlineWeeks":
       return <DeadlineWeeks project={project} today={today} />;
-    case "priorityMatrix":
-      return <PriorityMatrix project={project} today={today} />;
   }
 }

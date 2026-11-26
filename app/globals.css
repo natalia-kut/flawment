@@ -239,6 +239,7 @@ a:focus-visible {
 }
 
 .page-header-description {
+  white-space: pre-line;
   margin: 8px 0 0;
   color: var(--muted);
   line-height: 1.6;
@@ -300,19 +301,6 @@ h1 {
   margin: 24px auto;
   padding: 32px;
   text-align: center;
-}
-
-.placeholder-mark {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  margin-bottom: 16px;
-  border-radius: 14px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 21px;
-  font-weight: 700;
 }
 
 .placeholder-panel h2 {
@@ -464,7 +452,6 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { background-color: va
 .workspace-form textarea { min-height: 80px; resize: vertical; }
 .workspace-form :is(input, select, textarea):focus-visible { outline: 3px solid var(--accent-border); outline-offset: 2px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.projects-workspace .danger-button { border: 1px solid var(--critical-border); border-radius: 8px; min-height: 42px; padding: 8px 15px; background: var(--critical-soft); color: var(--critical); cursor: pointer; font-weight: 600; }
 .workspace-form button:disabled, .workspace-form fieldset:disabled button, .compact-form fieldset:disabled button { opacity: .55; cursor: wait; }
 .form-error { color: var(--critical); font-size: 14px; }
 .form-success { color: var(--success-strong); font-size: 14px; }
@@ -501,7 +488,6 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { background-color: va
 .breadcrumb-separator { color: var(--text-faint); }
 
 .project-empty-state { padding: 70px 24px; text-align: center; border: 1px dashed var(--border-hover); border-radius: 16px; }
-.project-empty-state > span { font-size: 44px; color: var(--accent); }
 .project-empty-state h2 { margin: 16px 0 10px; font-size: 26px; }
 .project-empty-state p { margin-bottom: 24px; color: var(--muted); }
 .member-identity { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
@@ -667,7 +653,8 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { background-color: va
 .profile-facts dt { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
 .profile-facts dd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 600; }
 .mini-people { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.mini-people li { display: flex; align-items: center; gap: 8px; }
+.mini-person { display: flex; align-items: center; gap: 8px; }
+.mini-person strong { font-weight: inherit; }
 .profile-next-off { display: grid; gap: 3px; margin-bottom: 14px; padding: 12px 14px; border-left: 4px solid var(--type-color); border-radius: 8px; background: var(--surface-sunken); }
 .profile-next-off small { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; }
 .profile-next-off strong { font-size: 15px; }
@@ -854,6 +841,10 @@ a.team-card:hover { box-shadow: 0 10px 26px -16px #39220f55; transform: translat
 .move-warning > div { display: flex; gap: 8px; margin-left: auto; }
 
 /* ---- Person details dialog ---- */
+/* A name or a face that opens a profile: looks like the text around it, and underlines when pointed at. */
+.person-link { min-width: 0; padding: 0; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: inherit; cursor: pointer; }
+.person-link:hover strong { text-decoration: underline; text-underline-offset: 2px; }
+.person-link:has(> .user-avatar:only-child), .avatar-stack .person-link { display: inline-flex; flex: none; border-radius: 50%; }
 .person-dialog-identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .person-dialog-identity h2 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; overflow-wrap: break-word; }
 .project-dialog-content .person-dialog-identity p { margin: 4px 0 0; }
@@ -890,3 +881,8 @@ a.team-card:hover { box-shadow: 0 10px 26px -16px #39220f55; transform: translat
 a.team-card[data-own] { border-color: var(--accent-border); box-shadow: inset 0 3px 0 var(--accent); }
 .your-team-badge { align-self: flex-start; margin-bottom: -6px; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); font-size: 11px; font-weight: 700; }
 .not-in-team-note { margin: 0 0 24px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--muted); font-size: 14px; }
+
+/* Confirms something that cannot be undone: the one solid red button. */
+.danger-button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; padding: 0 15px; border: 1px solid transparent; border-radius: 8px; background: var(--critical); color: #fff; cursor: pointer; font-size: 13px; font-weight: 650; transition: background-color 140ms ease; }
+.danger-button:hover:not(:disabled) { background: color-mix(in srgb, var(--critical) 86%, #000); }
+.danger-button:disabled { cursor: wait; opacity: .6; }

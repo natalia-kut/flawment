@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { saveTemplate } from "@/lib/documents/actions";
 import {
+  activityPeriods,
   assignmentFilterOptions,
   blockTypeOptions,
   chartKindOptions,
@@ -189,6 +190,7 @@ function TitleField({ value, onChange }: { value: string; onChange: (value: stri
   return <VariableText label="Section title" maxLength={templateLimits.title} onChange={onChange} value={value} />;
 }
 
+const periodOptions = activityPeriods.map((days) => ({ key: String(days), label: `Last ${days} days` }));
 const statusOptions = taskStatuses.map((status) => ({ key: status, label: taskStatusLabels[status] }));
 const priorityOptions = taskPriorities.map((priority) => ({ key: priority, label: taskPriorityLabels[priority] }));
 
@@ -237,6 +239,28 @@ function BlockEditor({ block, onChange }: { block: TemplateBlock; onChange: (blo
           />
         </>
       );
+    case "insights":
+      return (
+        <>
+          <TitleField onChange={(title) => onChange({ ...block, title })} value={block.title} />
+          <p className="builder-hint">Late and unowned work, deadlines during someone&apos;s time off, stages at risk. Written from the project&apos;s data.</p>
+        </>
+      );
+    case "activity":
+      return (
+        <>
+          <TitleField onChange={(title) => onChange({ ...block, title })} value={block.title} />
+          <SelectField
+            label="Period"
+            onChange={(days) => onChange({ ...block, days: activityPeriods.find((period) => String(period) === days) ?? 7 })}
+            options={periodOptions}
+            value={String(block.days)}
+          />
+          <p className="builder-hint">Comments are only counted; what they say stays in the app.</p>
+        </>
+      );
+    case "fileTable":
+      return <TitleField onChange={(title) => onChange({ ...block, title })} value={block.title} />;
     case "chart":
       return (
         <>

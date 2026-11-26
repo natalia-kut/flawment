@@ -1,0 +1,5 @@
+Report,Owner,Source,Runs
+Daily sales,Finance,ERP,daily
+Stock levels,Warehouse,WMS,hourly
+Service visits,Operations,CRM,weekly
+Margin by customer,Finance,ERP,monthly

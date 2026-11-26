@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import TaskDetailsDialog from "./task-details-dialog";
+import TaskDetailsDialog, { TaskDialogColumns } from "./task-details-dialog";
 import TaskDetailsForm from "./task-details-form";
 import { formatTaskDeadline, taskPriorityLabels, taskStatusLabels } from "@/lib/tasks/labels";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -15,8 +15,11 @@ import { changeTaskStatusAction } from "@/lib/tasks/actions";
 import styles from "./tasks-board.module.css";
 import details from "@/components/ui/details-dialog.module.css";
 import controls from "@/components/ui/filter-bar.module.css";
+import RichText from "@/components/rich-text/rich-text";
 import ProgressBar from "@/components/ui/progress-bar";
 import PageHeader from "@/components/page-header";
+import { PersonButton } from "./people-context";
+import EmptyState from "@/components/ui/empty-state";
 import { celebrate } from "@/components/ui/confetti";
 
 const PROJECT_STORAGE_KEY = "flawment.tasks.project";
@@ -201,6 +204,22 @@ export default function TasksOverview({ projects, currentUserId, today }: {
       setSaving(null);
     }
   }
+  const createForm = creatingIn !== null && <TaskDetailsForm
+    project={creatable.find((p) => creatingIn === "choose" ? String(p.id) === chosenProjectId : p.id === creatingIn.projectId) ?? creatable[0]}
+    initialStatus={creatingIn === "choose" ? undefined : creatingIn.status}
+    projectChoices={creatingIn === "choose" ? creatable : undefined} showOpenProject={false} onClose={() => setCreatingIn(null)}
+    onSaved={() => { setMessage("Task added."); setCreatingIn(null); router.refresh(); }} />;
+  // No tasks anywhere: search and filters would have nothing to work on, so only the way to start is shown.
+  if (allTasks.length === 0) return <div className={styles.page}>
+    <PageHeader title="Tasks" />
+    {creatable.length > 0
+      ? <EmptyState art="tasks" title="No tasks yet"
+        action={<button className="primary-button" onClick={() => setCreatingIn("choose")}><span aria-hidden="true">+</span> Create your first task</button>}>
+        Add a task, give it to someone and follow it across the board.</EmptyState>
+      : <EmptyState art="tasks" title="No tasks yet" action={<Link className="primary-button" href="/?view=projects">Go to projects</Link>}>
+        {projects.length > 0 ? "Tasks from your projects will show up here." : "Tasks belong to projects. Once you have a project, its tasks will show up here."}</EmptyState>}
+    {createForm}
+  </div>;
   return <div className={styles.page}>
     {/* Grouped by project, each project adds its own tasks; otherwise a project is picked in the form. */}
     <PageHeader title="Tasks" actions={creatable.length > 0 && (grouping === "person" || tasks.length === 0) &&
@@ -294,8 +313,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
       {singleProject && <ProgressBar label={selectedProject?.name ?? "Project"} percent={scopeProgress.percent} caption={scopeProgress.done + "/" + scopeProgress.total + " done"} />}
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}
-    {allTasks.length === 0 ? <section className="workspace-card"><h2>No tasks yet</h2><p>Create tasks inside a project to get started.</p><Link href="/?view=projects">Open projects</Link></section>
-      : tasks.length === 0
+    {tasks.length === 0
         // Nothing matches: keep the board's shape, with every status column empty.
         ? <section className={styles.group} aria-label="No tasks match your filters">
           <div className={styles.columns}>
@@ -387,22 +405,15 @@ export default function TasksOverview({ projects, currentUserId, today }: {
           </div>}
         </section>;
       })}
-    {creatingIn !== null && <TaskDetailsForm
-      project={creatable.find((p) => creatingIn === "choose" ? String(p.id) === chosenProjectId : p.id === creatingIn.projectId) ?? creatable[0]}
-      initialStatus={creatingIn === "choose" ? undefined : creatingIn.status}
-      projectChoices={creatingIn === "choose" ? creatable : undefined} showOpenProject={false} onClose={() => setCreatingIn(null)}
-      onSaved={() => { setMessage("Task added."); setCreatingIn(null); router.refresh(); }} />}
+    {createForm}
     {detailsTask && (detailsProject && detailsSource?.canEdit
       // Whoever may edit the task (its coordinators, or the contributor who added it) edits it right here.
       ? <TaskDetailsForm key={detailsSource.id} project={detailsProject} task={detailsSource}
         overdue={isTaskOverdue(detailsTask, today)} onClose={closeDetails}
         onSaved={() => { setMessage('Saved "' + detailsSource.title + '".'); closeDetails(); router.refresh(); }} />
       : <TaskDetailsDialog title={detailsTask.title} onClose={closeDetails}>
-        <p className={details.detailsContext}>{detailsTask.projectName} · {detailsTask.stageName}</p>
-        <p className={detailsTask.description ? details.detailsDescription : details.detailsEmpty}>
-          {detailsTask.description || "No description yet."}
-        </p>
-        <dl className={details.detailsFacts}>
+        <p className={details.detailsContext}><Link href={"/?project=" + detailsTask.projectId}>{detailsTask.projectName}</Link> · {detailsTask.stageName}</p>
+        <TaskDialogColumns side={<dl className={details.detailsFacts}>
           <div><dt>Status</dt><dd>{detailsTask.canChangeStatus
             ? <select className={details.detailsStatus} aria-label={"Status for " + detailsTask.title} value={detailsTask.status}
               disabled={saving !== null} onChange={(event) => {
@@ -413,14 +424,16 @@ export default function TasksOverview({ projects, currentUserId, today }: {
             </select>
             : taskStatusLabels[detailsTask.status]}</dd></div>
           <div><dt>Priority</dt><dd><span className={styles.badge} data-priority={detailsTask.priority}>{taskPriorityLabels[detailsTask.priority]}</span></dd></div>
-          <div><dt>Assigned to</dt><dd>{detailsTask.assigneeName}</dd></div>
+          <div><dt>Assigned to</dt><dd><PersonButton id={detailsTask.assignedTo} name={detailsTask.assigneeName}><strong>{detailsTask.assigneeName}</strong></PersonButton></dd></div>
           <div><dt>Deadline</dt><dd className={isTaskOverdue(detailsTask, today) ? styles.lateText : undefined}>
             {formatTaskDeadline(detailsTask.deadline)}{isTaskOverdue(detailsTask, today) ? " · overdue" : ""}
           </dd></div>
-        </dl>
+        </dl>}>
+          {detailsTask.description ? <RichText text={detailsTask.description} /> : <p className={details.detailsEmpty}>No description yet.</p>}
+        </TaskDialogColumns>
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="dialog-actions">
-          <Link className="secondary-button" href={"/?project=" + detailsTask.projectId}>Open project</Link>
+          <Link className={"secondary-button " + details.detailsOpen} href={"/?task=" + detailsTask.id}>Open task page</Link>
         </div>
       </TaskDetailsDialog>)}
   </div>;

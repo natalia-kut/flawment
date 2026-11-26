@@ -1,0 +1,32 @@
+/* A file shown over the page: its name and actions on top, the file in all the rest. */
+dialog.dialog { width: min(1200px, calc(100vw - 32px)); height: calc(100dvh - 48px); overflow: hidden; outline: none; }
+.layout { display: flex; flex-direction: column; height: 100%; }
+.header { display: flex; flex: none; align-items: center; flex-wrap: wrap; gap: .5rem 1rem; padding: .9rem 1.1rem; border-bottom: 1px solid var(--border); }
+.title { flex: 1; min-width: 10rem; }
+.title h2 { overflow: hidden; font-size: 1.05rem; font-weight: 650; white-space: nowrap; text-overflow: ellipsis; }
+.title p { margin: .1rem 0 0; font-size: .78rem; color: var(--muted); }
+.steps { display: flex; align-items: center; gap: .2rem; font-size: .8rem; color: var(--muted); }
+.steps button:disabled { opacity: .35; cursor: default; }
+.header :global(.secondary-button) { min-height: 36px; }
+/* On a phone the way out stays in the corner, with the rest on a line of its own. */
+@media (max-width: 560px) { .header > :is(.steps, :global(.secondary-button)) { order: 1; } .steps { margin-right: auto; } }
+
+.body { position: relative; flex: 1; min-height: 0; background: var(--background); }
+.image { padding: 1rem; object-fit: contain; }
+.frame { display: block; width: 100%; height: 100%; background: #fff; border: 0; }
+.message { display: grid; place-items: center; height: 100%; margin: 0; padding: 1.5rem; text-align: center; color: var(--muted); }
+.textScroll { height: 100%; overflow: auto; background: #fff; }
+.text { margin: 0; padding: 1.25rem 1.5rem; font-family: var(--font-geist-mono), monospace; font-size: .85rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sheets { display: flex; flex-direction: column; height: 100%; }
+.tabs { display: flex; flex: none; gap: .3rem; padding: .5rem 1rem; overflow-x: auto; border-bottom: 1px solid var(--border); }
+.tabs button { flex: none; padding: .3rem .8rem; font: inherit; font-size: .8rem; font-weight: 600; color: var(--muted); background: none; border: 0; border-radius: 1rem; cursor: pointer; }
+.tabs button:hover { color: var(--foreground); }
+.tabs button[aria-pressed=true] { color: var(--accent-strong); background: var(--accent-soft); }
+.tableScroll { flex: 1; min-height: 0; overflow: auto; background: #fff; }
+.table { font-size: .83rem; border-collapse: separate; border-spacing: 0; }
+.table :is(td, th) { padding: .35rem .7rem; text-align: left; vertical-align: top; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.table td { min-width: 4rem; max-width: 24rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Row numbers stay in view while the table scrolls sideways. */
+.table th { position: sticky; left: 0; min-width: 2.75rem; font-size: .72rem; font-weight: 500; text-align: right; color: var(--text-subtle); background: var(--background); }
+.table tr:first-child td { font-weight: 650; }
+.note { flex: none; margin: 0; padding: .6rem 1.1rem; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--border); }

@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { can, type Actor } from "@/lib/rbac";
-import type { TaskPriority, TaskStatus } from "@/src/generated/prisma/client";
+import { normalizeNewlines } from "@/lib/rich-text/markdown";
+import { MAX_DESCRIPTION_LENGTH } from "./limits";
+import type { Task, TaskPriority, TaskStatus } from "@/src/generated/prisma/client";
 
 export class TaskError extends Error {}
 
 const text = (data: FormData, key: string) => String(data.get(key) ?? "").trim();
 const priorities: TaskPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
-function recordId(value: string) {
+export function recordId(value: string) {
   if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value))) {
     throw new TaskError("Invalid record ID.");
   }
@@ -24,28 +26,63 @@ export async function updateTask(actor: Actor, data: FormData) {
   return saveTask(actor, data, true);
 }
 
-async function saveTask(actor: Actor, data: FormData, editing: boolean) {
-  const taskId = editing ? recordId(text(data, "task_id")) : null;
+const patchable = ["title", "description", "priority", "deadline", "assigned_to", "stage_id"];
+
+/**
+ * Changes only the fields in the form, so a page that was open for a while does not
+ * overwrite what someone else changed since. The status has its own rules: `changeTaskStatus`.
+ */
+export async function patchTask(actor: Actor, data: FormData) {
+  if (!patchable.some((key) => data.has(key))) throw new TaskError("There is nothing to change.");
+  return saveTask(actor, data, true, true);
+}
+
+/** The task's own values, with the submitted ones over them: a whole form out of a partial one. */
+function completeForm(data: FormData, task: Task) {
+  const current: Record<string, string> = {
+    title: task.title, description: task.description ?? "", priority: task.priority, status: task.status,
+    deadline: task.deadline?.toISOString().slice(0, 10) ?? "",
+    assigned_to: task.assigned_to?.toString() ?? "", stage_id: task.stage_id?.toString() ?? "",
+  };
+  const whole = new FormData();
+  for (const [key, value] of Object.entries(current)) whole.set(key, patchable.includes(key) && data.has(key) ? text(data, key) : value);
+  return whole;
+}
+
+/** When a task is finished or reopened, its completion date follows; otherwise it stays as it was. */
+function completion(status: TaskStatus, previous?: TaskStatus) {
+  if (status === previous) return {};
+  return { completed_at: status === "COMPLETED" ? new Date() : null };
+}
+
+function readFields(data: FormData, editing: boolean) {
   // A new task starts in the board column it was created from, or "To do".
   const status = (text(data, "status") || (editing ? "" : "TO_DO")) as TaskStatus;
   if (!taskStatuses.includes(status)) throw new TaskError("Choose a valid task status.");
-  const projectId = recordId(text(data, "project_id"));
   const stageValue = text(data, "stage_id");
   const stageId = stageValue ? recordId(stageValue) : null;
   const title = text(data, "title");
-  const description = text(data, "description");
+  // Forms submit line breaks as \r\n.
+  const description = normalizeNewlines(text(data, "description"));
   const priority = text(data, "priority") as TaskPriority;
   const deadline = text(data, "deadline");
   const assignedValue = text(data, "assigned_to");
   const assignedTo = assignedValue ? recordId(assignedValue) : null;
   if (!title || title.length > 150) throw new TaskError("Enter a title between 1 and 150 characters.");
-  if (description.length > 5000) throw new TaskError("Description must not exceed 5000 characters.");
+  if (description.length > MAX_DESCRIPTION_LENGTH) throw new TaskError(`Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters, formatting included.`);
   if (!priorities.includes(priority)) throw new TaskError("Choose a valid priority.");
   if (deadline && (!/^\d{4}-\d{2}-\d{2}$/.test(deadline) ||
       Number.isNaN(Date.parse(deadline)) ||
       new Date(deadline).toISOString().slice(0, 10) !== deadline)) {
     throw new TaskError("Enter a valid deadline.");
   }
+  return { status, stageId, title, description, priority, deadline, assignedTo };
+}
+
+async function saveTask(actor: Actor, data: FormData, editing: boolean, partial = false) {
+  const taskId = editing ? recordId(text(data, "task_id")) : null;
+  const projectId = recordId(text(data, "project_id"));
+  const submitted = partial ? null : readFields(data, editing);
 
   return prisma.$transaction(async (tx) => {
     const project = await tx.project.findUnique({
@@ -57,14 +94,17 @@ async function saveTask(actor: Actor, data: FormData, editing: boolean) {
     }
     const manages = can(role, "tasks:manage", actor.role);
     const existing = taskId === null ? null
-      : await tx.task.findFirst({ where: { id: taskId, project_id: projectId }, select: { created_by: true, assigned_to: true } });
+      : await tx.task.findFirst({ where: { id: taskId, project_id: projectId } });
     if (taskId !== null && !existing) throw new TaskError("This task is no longer available in this project.");
     // Contributors edit the tasks they added, and hand work only to themselves.
     if (!manages && existing && existing.created_by !== actor.id) throw new TaskError("You can only edit tasks you added.");
+    const { status, stageId, title, description, priority, deadline, assignedTo } =
+      submitted ?? readFields(completeForm(data, existing!), true);
     if (!manages && assignedTo !== null && assignedTo !== actor.id && assignedTo !== existing?.assigned_to) {
       throw new TaskError("You can assign tasks only to yourself.");
     }
-    if (assignedTo !== null) {
+    // An assignee left as they were is not checked again: renaming a task must not fail because they since left.
+    if (assignedTo !== null && !(partial && assignedTo === existing?.assigned_to)) {
       const member = await tx.projectMembership.findUnique({
         where: { project_id_user_id: { project_id: projectId, user_id: assignedTo } },
         include: { user: { select: { is_active: true, role: true } } },
@@ -77,6 +117,7 @@ async function saveTask(actor: Actor, data: FormData, editing: boolean) {
       throw new TaskError("Choose a stage from this project.");
     }
     const values = {
+      ...completion(status, existing?.status),
       stage_id: stageId,
       title, description: description || null, priority,
       deadline: deadline ? new Date(deadline) : null,
@@ -140,8 +181,8 @@ export async function changeTaskStatus(actor: Actor, data: FormData) {
     if (!allowed) throw new TaskError("You do not have permission to change this task status.");
     const changed = await tx.task.updateMany({
       where: { id: taskId, project_id: projectId, status: expected },
-      data: { status },
+      data: { status, ...completion(status, expected) },
     });
-    if (changed.count !== 1) throw new TaskError("This task changed. Refresh the board and try again.");
+    if (changed.count !== 1) throw new TaskError("Someone changed this task in the meantime. Check its status and try again.");
   }, { isolationLevel: "Serializable" });
 }

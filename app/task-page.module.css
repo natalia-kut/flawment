@@ -1,0 +1,97 @@
+/* A task's own page: its text and discussion on the left, its facts on the right. */
+.page { container-type: inline-size; min-width: 0; }
+.page :is(select, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* An editable title takes the whole row, so it wraps like a heading. */
+.page :global(.page-header-text) { flex: 1; }
+
+/* Text that turns into a field when you point at it, as in the task dialog. */
+.title { display: block; width: calc(100% + 1rem + 2px); margin-left: calc(-.5rem - 1px); padding: 0 .5rem; font: inherit; letter-spacing: inherit; color: inherit; background: transparent; border: 1px solid transparent; border-radius: .5rem; resize: none; field-sizing: content; transition: border-color 140ms ease, background-color 140ms ease; }
+.title { margin-block: -1px; overflow-wrap: anywhere; }
+.title:hover { border-color: var(--border-strong); }
+.title:focus { outline: none; background: #fff; border-color: var(--accent-border); }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) clamp(19rem, 24%, 24rem); align-items: start; gap: 1.25rem; }
+.main { display: grid; grid-area: 1 / 1; gap: 1.25rem; min-width: 0; }
+.main h2 { margin-bottom: .6rem; font-size: 1.15rem; }
+/* Comes first in the document, so on a phone the facts are right under the title. */
+.facts { position: sticky; top: 1.5rem; display: grid; grid-area: 1 / 2; gap: 1.1rem; }
+@container (max-width: 52rem) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .main, .facts { grid-area: auto; }
+  .facts { position: static; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); }
+  .factsHeading, .facts > :global(.form-error), .history { grid-column: 1 / -1; }
+}
+
+.factsHeading { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+.factsHeading h2 { margin: 0; font-size: 1.15rem; }
+.saved { font-size: .8rem; color: var(--muted); }
+.facts > :global(.form-error) { margin: 0; color: var(--critical); }
+.fact { display: grid; align-content: start; gap: .35rem; min-width: 0; }
+.label { font-family: var(--font-geist-mono), monospace; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.value { display: flex; align-items: center; min-height: 2.25rem; font-size: .9rem; font-weight: 600; overflow-wrap: anywhere; }
+.facts :is(select, input) { width: 100%; min-width: 0; height: 2.4rem; padding: 0 .7rem; font: inherit; font-size: .875rem; font-weight: 600; color: var(--foreground); background: #fff; border: 1px solid var(--border-strong); border-radius: .5rem; }
+.facts select { cursor: pointer; }
+.late { font-style: normal; letter-spacing: 0; text-transform: none; font-weight: 600; color: var(--critical); }
+.person { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+.person strong { font-weight: inherit; }
+.away { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .75rem; margin-top: .5rem; }
+span.profileLink { display: none; }
+button.profileLink { font-size: .8rem; font-weight: 600; color: var(--accent-strong); }
+button.profileLink:hover { text-decoration: underline; }
+
+/* Same colours as the board and a project's task list. */
+.priority { display: inline-block; width: .5rem; height: .5rem; margin-left: .45rem; background: var(--warning); border-radius: 50%; }
+.priority[data-priority=HIGH], .priority[data-priority=URGENT] { background: var(--critical); }
+.priority[data-priority=LOW] { background: var(--border-strong); }
+.facts select.status { border-color: transparent; }
+span.status { padding: .2rem .65rem; font-size: .8rem; border-radius: 1rem; }
+.facts .status { color: var(--text-secondary); background-color: var(--surface-sunken); }
+.facts .status[data-status=IN_PROGRESS], .facts .status[data-status=IN_REVIEW] { color: var(--warning-strong); background-color: var(--warning-soft); }
+.facts .status[data-status=COMPLETED] { color: var(--success-strong); background-color: var(--success-soft); }
+.facts .status[data-status=CANCELLED] { color: var(--muted); background-color: transparent; border: 1px dashed var(--border-strong); }
+/* The open list is plain: only the chosen status carries its colour. */
+.status option { color: var(--foreground); background: #fff; }
+
+.history { padding-top: 1rem; border-top: 1px solid var(--border); }
+.history p { margin: 0 0 .25rem; font-size: .8rem; }
+.history form { margin: .6rem 0 0 -2px; }
+
+/* More specific than the card's own muted paragraphs: this text is the content. */
+/* Lines stay readable on a wide screen. */
+.main p.text { max-width: 80ch; margin: 0; line-height: 1.6; color: var(--foreground); white-space: pre-wrap; overflow-wrap: anywhere; }
+.main p.empty { margin: 0; font-style: italic; color: var(--text-subtle); }
+.formActions { display: flex; align-items: center; justify-content: flex-end; gap: .6rem; margin-top: .6rem; }
+.hint { margin-right: auto; font-size: .78rem; color: var(--text-subtle); }
+.hint[data-over] { color: var(--critical); }
+.formActions button { flex: none; white-space: nowrap; }
+/* No keyboard shortcuts on a phone, and no room to mention them. */
+@container (max-width: 30rem) { .hint:not([data-over]) { display: none; } }
+
+.comments { display: grid; gap: 1.1rem; margin: 0; padding: 0; list-style: none; }
+.comment, .composer, .replyForm { display: flex; align-items: flex-start; gap: .8rem; }
+.comment[aria-busy=true] { opacity: .6; }
+.commentBody { flex: 1; min-width: 0; }
+.commentHeading { position: relative; display: flex; align-items: center; flex-wrap: wrap; gap: 0 .5rem; min-height: 1.75rem; padding-right: 4rem; font-size: .8rem; color: var(--muted); }
+.commentHeading strong { font-size: .9rem; color: var(--foreground); }
+.commentBody > div { max-width: 80ch; }
+.commentBody > .commentForm, .commentBody > .commentHeading { max-width: none; }
+.reply { margin-top: .15rem; color: var(--muted); }
+/* A thread line under the avatar ties replies to their comment. */
+.replies { display: grid; gap: 1rem; margin: .7rem 0 0 1.1rem; padding-left: 1.6rem; border-left: 2px solid var(--border); }
+@container (max-width: 30rem) { .replies { margin-left: .4rem; padding-left: .8rem; } }
+/* Wait until the comment is pointed at or focused, like the other row icons. */
+.commentActions { position: absolute; top: 0; right: 0; display: flex; opacity: 0; transition: opacity 120ms ease; }
+.commentActions :global(.icon-button) { width: 28px; height: 28px; }
+.comment:hover .commentActions, .comment:focus-within .commentActions { opacity: 1; }
+@media (hover: none) { .commentActions { opacity: 1; } }
+
+.composer { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+.commentForm { flex: 1; min-width: 0; }
+.commentForm > p.formNote { margin: 0 0 .35rem; font-size: .8rem; }
+.commentForm[inert] { opacity: .6; }
+/* Looks like the field it opens; the editor itself loads on the first click. */
+.startComment { flex: 1; min-width: 0; min-height: 4.5rem; padding: .65rem .8rem; font: inherit; font-size: .95rem; text-align: left; color: var(--text-subtle); background: #fff; border: 1px solid var(--border-strong); border-radius: .7rem; cursor: text; display: flex; align-items: flex-start; transition: border-color 140ms ease; }
+.startComment:hover { border-color: var(--border-hover); }
+.commentForm > :global(.form-error) { margin: .5rem 0 0; color: var(--critical); }
+
+@media (prefers-reduced-motion: reduce) { .title, .commentActions { transition: none; } }

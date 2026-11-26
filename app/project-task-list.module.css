@@ -8,10 +8,17 @@
 .row { padding: .55rem .75rem; border-bottom: 1px solid var(--border); border-radius: .5rem; transition: background-color 120ms ease; }
 .row:hover { background: var(--background); }
 .main { min-width: 0; }
-.open { display: grid; width: 100%; padding: 0; font: inherit; color: inherit; text-align: left; background: none; border: 0; cursor: pointer; }
+.open { display: grid; width: 100%; padding: 0; font: inherit; color: inherit; text-align: left; text-decoration: none; background: none; border: 0; cursor: pointer; }
 .open:hover .title, .open:focus-visible .title { color: var(--accent-strong); }
 .title { display: flex; align-items: center; gap: .5rem; overflow: hidden; font-size: .95rem; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
 .detail { display: block; overflow: hidden; margin-left: 1rem; font-size: .8rem; color: var(--muted); white-space: nowrap; text-overflow: ellipsis; }
+/* Done and cancelled: a line that unfolds. */
+.closed { margin-top: .4rem; }
+.fold { display: flex; align-items: center; gap: .5rem; width: 100%; padding: .6rem .75rem; font: inherit; font-size: .85rem; font-weight: 600; color: var(--muted); text-align: left; background: none; border: 0; border-radius: .5rem; cursor: pointer; }
+.fold > :global(.role-badge) { border-radius: 999px; }
+.fold:hover { color: var(--foreground); background: var(--background); }
+.fold svg { flex: none; transition: transform 160ms ease; }
+.fold[aria-expanded=true] svg { transform: rotate(90deg); }
 .detail:empty { display: none; }
 .assignee { overflow: hidden; font-size: .85rem; white-space: nowrap; text-overflow: ellipsis; }
 .assignee[data-empty] { color: var(--muted); font-style: italic; }
@@ -36,4 +43,4 @@
   .row { grid-template-columns: minmax(0, 1fr) auto auto; row-gap: .3rem; }
   .main { grid-column: 1 / -1; }
 }
-@media (prefers-reduced-motion: reduce) { .row, .delete { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .row, .delete, .fold svg { transition: none; } }

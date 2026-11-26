@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import PageHeader from "@/components/page-header";
@@ -8,16 +8,15 @@ import { teamAction, type TeamState } from "@/lib/teams/actions";
 import type { TeamPerson, TeamsOverview } from "@/lib/teams/data";
 import UserAvatar from "./user-avatar";
 import AvailabilityBadge from "./availability-badge";
-import { StatusText } from "./status-dialog";
-import { yearsLabel } from "@/lib/time-off/dates";
+import PersonDialog, { CelebrationBadge } from "./person-dialog";
 import type { PeopleDirectory } from "@/lib/people/data";
 import { EditPerson } from "./people-view";
-import EmailText from "./email-text";
 import TitleRequestControls from "./title-request-controls";
 import styles from "./team-view.module.css";
 import ThisMonth from "./this-month";
 import type { LeadTitleRequests, Promotion } from "@/lib/job-title-requests/data";
 import { useConfirmSubmit } from "@/components/ui/confirm";
+import EmptyState from "@/components/ui/empty-state";
 
 /** For a team lead: their job title requests by person, and the titles to pick from. */
 type Lead = { requests: LeadTitleRequests["byPerson"]; jobTitles: { id: number; name: string }[] };
@@ -58,18 +57,21 @@ function TeamsIndex({ overview, directory, month, promotions }: { overview: Team
   const teamName = (id: number | null) => overview.teams.find((t) => t.id === id)?.name;
   const [creating, setCreating] = useState(false);
   const admin = overview.canManage;
+  const noTeams = overview.teams.length === 0;
   return <>
-    <PageHeader title="Teams" actions={admin && <button className="primary-button" onClick={() => setCreating(true)}><span aria-hidden="true">+</span> New team</button>} />
-    {!admin && overview.myTeamId === null && <p className="not-in-team-note">You are not in a team yet. Your administrator will add you to one.</p>}
+    {/* With no teams yet, the empty page has the button instead. */}
+    <PageHeader title="Teams" actions={admin && !noTeams && <button className="primary-button" onClick={() => setCreating(true)}><span aria-hidden="true">+</span> New team</button>} />
+    {!admin && !noTeams && overview.myTeamId === null && <p className="not-in-team-note">You are not in a team yet. Your administrator will add you to one.</p>}
     {creating && <CreateTeam onDone={() => setCreating(false)} />}
     {/* A super admin finishes setting new people up; everyone else just meets them. */}
     {/* A super admin's work comes first; then the month's good news, for everyone. */}
     {directory && <NewHires directory={directory} />}
     <ThisMonth newPeople={overview.people.filter((p) => p.joinedOn.startsWith(month))} teamName={teamName}
       promotions={promotions.flatMap((r) => overview.people.filter((p) => p.id === r.personId).map((person) => ({ person, title: r.title })))} />
-    {overview.teams.length === 0 && !creating
-      ? <section className="project-empty-state"><span aria-hidden="true">◎</span><h2>No teams yet</h2>
-        <p>{admin ? "Create teams that mirror your company, then open one to add people." : "Your administrator has not set up any teams yet."}</p></section>
+    {noTeams && !creating
+      ? <EmptyState art="teams" title="No teams yet"
+        action={admin && <button className="primary-button" onClick={() => setCreating(true)}><span aria-hidden="true">+</span> Create your first team</button>}>
+        {admin ? "Create teams that mirror your company, then open one to add people." : "Your administrator has not set up any teams yet."}</EmptyState>
       : <ul className="team-grid">{overview.teams.map((team) => <TeamTile key={team.id} team={team} own={team.id === overview.myTeamId} admin={admin} />)}</ul>}
   </>;
 }
@@ -269,13 +271,6 @@ function MemberControls({ person, currentLead }: { person: TeamPerson; currentLe
 
 /* ---------- Shared pieces ---------- */
 
-/** "🎂 Birthday today" or "🎉 3 years today": shown on the day only. */
-function CelebrationBadge({ person }: { person: TeamPerson }) {
-  if (person.birthday?.inDays === 0) return <span className="celebration-badge">🎂 Birthday today</span>;
-  if (person.anniversary?.inDays === 0) return <span className="celebration-badge">🎉 {yearsLabel(person.anniversary.years)} today</span>;
-  return null;
-}
-
 const SKILLS_ON_CARD = 2;
 
 /** The essentials at a glance; the whole card opens the details. */
@@ -301,53 +296,6 @@ function PersonCard({ person, you = false, onOpen }: { person: TeamPerson; you?:
       </span>}
     </button>
   </li>;
-}
-
-/** Everything about one person: status, birthday, how to reach them, all their skills. */
-function PersonDialog({ person, you, onClose, manage }: { person: TeamPerson; you: boolean; onClose: () => void; manage?: ReactNode }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const dialog = ref.current!;
-    dialog.showModal();
-    return () => dialog.close();
-  }, []);
-  const contact = [
-    { label: "Email", value: <a href={`mailto:${person.email}`}><EmailText email={person.email} /></a>, wide: true },
-    person.phone && { label: "Phone", value: <a href={`tel:${person.phone.replace(/[^\d+]/g, "")}`}>{person.phone}</a> },
-    person.location && { label: "Location", value: person.location },
-    person.workingHours && { label: "Working hours", value: person.workingHours },
-    person.birthday && { label: "Birthday", value: person.birthday.label },
-    { label: "With us since", value: person.anniversary?.inDays === 0 ? `${person.joined} · ${yearsLabel(person.anniversary.years)} today 🎉`
-      : person.anniversary ? `${person.joined} · ${yearsLabel(person.anniversary.years - 1)}` : person.joined },
-  ].filter(Boolean) as { label: string; value: ReactNode; wide?: boolean }[];
-  return <dialog ref={ref} className="project-dialog person-dialog" aria-labelledby="person-dialog-title" onCancel={onClose}
-    onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <div className="project-dialog-content">
-      <div className="project-dialog-heading">
-        <div className="person-dialog-identity">
-          <UserAvatar id={person.id} firstName={person.first_name} lastName={person.last_name} photoVersion={person.photoVersion} size={64} />
-          <div>
-            <h2 id="person-dialog-title">{person.first_name} {person.last_name}{you && <span className="role-badge you-badge">You</span>}<CelebrationBadge person={person} /></h2>
-            <p>{[person.jobTitle, person.pronouns].filter(Boolean).join(" · ") || "No job title"}</p>
-          </div>
-        </div>
-        <button type="button" className="dialog-close" onClick={onClose} aria-label="Close dialog">×</button>
-      </div>
-      <div className="person-card-badges">
-        {person.availability ? <AvailabilityBadge availability={person.availability} /> : <span className="availability-badge available">Available</span>}
-        {person.teamLead && <span className="role-badge">Team lead</span>}
-        {person.status && <StatusText status={person.status} withUntil />}
-      </div>
-      <dl className="person-dialog-facts">
-        {contact.map((item) => <div key={item.label} className={item.wide ? "wide" : undefined}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}
-      </dl>
-      {person.skills.length > 0 && <section className="person-dialog-skills">
-        <h3>Skills</h3>
-        <ul className="skill-list">{person.skills.map((s) => <li key={s} className="skill-chip">{s}</li>)}</ul>
-      </section>}
-      {manage}
-    </div>
-  </dialog>;
 }
 
 function WarningIcon() {

@@ -24,6 +24,7 @@
 .rows li[data-kind=promotion] { --tint: var(--success-soft); --ring: color-mix(in srgb, var(--success) 40%, transparent); }
 .face { position: relative; flex: none; border-radius: 50%; box-shadow: 0 0 0 2px var(--ring); }
 .emoji { position: absolute; right: -6px; bottom: -5px; font-size: 15px; line-height: 1; }
+.text > button { justify-self: start; }
 .text { display: grid; flex: 1; min-width: 0; }
 .text strong { font-size: 14px; }
 .text small { overflow: hidden; font-size: 12px; color: var(--text-secondary); white-space: nowrap; text-overflow: ellipsis; }

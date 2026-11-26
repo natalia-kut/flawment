@@ -27,12 +27,6 @@ export function addDays(day: string, days: number) {
   return new Date(toUtc(day) + days * dayMs).toISOString().slice(0, 10);
 }
 
-// The date (YYYY-MM-DD) in this machine's time zone.
-export function localDay(date = new Date()) {
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
-}
-
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
   month: "short",
@@ -44,7 +38,14 @@ export function formatDay(day: string | null) {
   return day ? dateFormatter.format(toUtc(day)) : "—";
 }
 
-function plural(count: number, word: string) {
+const shortDayFormatter = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+
+/** "3 Dec", for sentences about the near future. */
+export function formatShortDay(day: string) {
+  return shortDayFormatter.format(toUtc(day));
+}
+
+export function plural(count: number, word: string) {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
@@ -60,12 +61,12 @@ function isDueSoon(task: DocumentTask, today: string) {
   return isOpen(task) && task.deadline !== null && task.deadline >= today && task.deadline <= addDays(today, 14);
 }
 
-function isHighPriority(task: DocumentTask) {
+export function isHighPriority(task: DocumentTask) {
   return task.priority === "HIGH" || task.priority === "URGENT";
 }
 
 export function describeTiming(task: DocumentTask, today: string) {
-  if (task.status === "COMPLETED") return "Done";
+  if (task.status === "COMPLETED") return task.completedOn ? `Done ${formatShortDay(task.completedOn)}` : "Done";
   if (task.status === "CANCELLED") return "Cancelled";
   if (!task.deadline) return "No deadline";
 
@@ -81,13 +82,16 @@ export function countByStatus(project: DocumentProject) {
   return counts;
 }
 
+/** How many points completion may trail the time elapsed before the project is at risk. */
+export const BEHIND_POINTS = 15;
+
 function scheduleHealth(project: DocumentProject, today: string, progress: number, elapsed: number | null, overdue: number) {
   if (project.status !== "IN_PROGRESS" && project.status !== "TO_DO") return projectStatusLabels[project.status];
   if (today < project.startDate) return "Not started";
 
   const openTasks = project.tasks.filter(isOpen).length;
   if (project.endDate && today > project.endDate && openTasks > 0) return "Past deadline";
-  if (overdue > 0 || (elapsed !== null && progress < elapsed - 15)) return "At risk";
+  if (overdue > 0 || (elapsed !== null && progress < elapsed - BEHIND_POINTS)) return "At risk";
   return "On track";
 }
 
@@ -142,6 +146,7 @@ export function buildVariables(project: DocumentProject, today: string): Record<
     scheduleHealth: scheduleHealth(project, today, progress, elapsed, overdue),
     totalTasks: String(tasks.length),
     completedTasks: String(completed),
+    completedWeek: String(tasks.filter((task) => task.completedOn !== null && task.completedOn > addDays(today, -7) && task.completedOn <= today).length),
     openTasks: String(open.length),
     overdueTasks: String(overdue),
     dueSoon: String(tasks.filter((task) => isDueSoon(task, today)).length),
@@ -203,6 +208,11 @@ export function selectTasks(
       taskPriorities.indexOf(b.priority) - taskPriorities.indexOf(a.priority) || byDeadline(a, b),
     status: (a, b) => taskStatuses.indexOf(a.status) - taskStatuses.indexOf(b.status) || byDeadline(a, b),
     title: (a, b) => a.title.localeCompare(b.title),
+    // As on the roadmap: by the stage's deadline, with tasks outside any stage last.
+    stage: (a, b) =>
+      Number(!a.stage) - Number(!b.stage) ||
+      (a.stage?.deadline ?? "9999-12-31").localeCompare(b.stage?.deadline ?? "9999-12-31") ||
+      (a.stage?.id ?? 0) - (b.stage?.id ?? 0) || byDeadline(a, b),
   };
 
   rows.sort(comparators[sort]);

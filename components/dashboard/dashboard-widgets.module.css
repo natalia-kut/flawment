@@ -71,6 +71,9 @@
 /* Centred and wrapping, so a short team leaves no empty space on one side. */
 .team { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px 14px; margin: 0; padding: 0; list-style: none; }
 .member { display: grid; justify-items: center; align-content: start; gap: 4px; width: 6rem; text-align: center; }
+/* The ring and the name open the person's profile. */
+.memberLink { display: grid; justify-items: center; gap: 4px; max-width: 100%; }
+button.memberLink:hover .memberName { text-decoration: underline; }
 .ringWrap { position: relative; display: inline-flex; }
 .ring { width: 72px; height: 72px; }
 /* Away today: the ring steps back, a moon says why. */

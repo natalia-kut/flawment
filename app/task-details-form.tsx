@@ -5,7 +5,9 @@ import { useActionState, useState } from "react";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { createTaskAction, updateTaskAction, type TaskState } from "@/lib/tasks/actions";
 import { taskPriorityLabels, taskStatusLabels } from "@/lib/tasks/labels";
-import TaskDetailsDialog from "./task-details-dialog";
+import TaskDetailsDialog, { TaskDialogColumns } from "./task-details-dialog";
+import RichTextField from "@/components/rich-text/rich-text-field";
+import { normalizeNewlines } from "@/lib/rich-text/markdown";
 import { celebrate } from "@/components/ui/confetti";
 import styles from "./tasks-board.module.css";
 import details from "@/components/ui/details-dialog.module.css";
@@ -35,11 +37,13 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
   const project = projectChoices?.find((choice) => choice.id === projectId) ?? initialProject;
   const choosingProject = creating && !!projectChoices && projectChoices.length > 1;
   const initial = {
-    title: task?.title ?? "", description: task?.description ?? "", status: (task?.status ?? initialStatus) as string,
+    title: task?.title ?? "", description: normalizeNewlines(task?.description ?? ""), status: (task?.status ?? initialStatus) as string,
     priority: (task?.priority ?? "MEDIUM") as string, assigned_to: task?.assignedTo?.toString() ?? "",
     deadline: task?.deadline ?? "", stage_id: task?.stageId?.toString() ?? "",
   };
   const [fields, setFields] = useState(initial);
+  // Discarding starts the description afresh too: its editor keeps its own text.
+  const [discards, setDiscards] = useState(0);
   const dirty = (Object.keys(initial) as (keyof typeof initial)[]).some((key) => fields[key] !== initial[key]);
   const update = (key: keyof typeof initial, value: string) => setFields((current) => ({ ...current, [key]: value }));
 
@@ -68,8 +72,12 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
       <input type="hidden" name="project_id" value={project.id} />
       {task && <input type="hidden" name="task_id" value={task.id} />}
       <fieldset className={details.detailsFieldset} disabled={pending}>
-        {choosingProject
-          ? <label className={details.detailsWide}><span>Project</span>
+        {!choosingProject && <p className={details.detailsContext}>
+          {/* Leaving drops what is not saved yet, so the ways out wait until there is nothing to lose. */}
+          {showOpenProject && !dirty ? <Link href={"/?project=" + project.id}>{project.name}</Link> : project.name}
+        </p>}
+        <TaskDialogColumns side={<><div className={details.detailsFacts}>
+          {choosingProject && <label><span>Project</span>
             {/* People and stages belong to a project, so switching clears them. */}
             <select value={project.id} onChange={(e) => {
               setProjectId(Number(e.target.value));
@@ -77,11 +85,7 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
             }}>
               {projectChoices!.map((choice) => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
             </select>
-          </label>
-          : <p className={details.detailsContext}>{project.name}</p>}
-        <textarea name="description" className={details.descriptionInput} aria-label="Description" maxLength={5000}
-          placeholder="Add a description…" value={fields.description} onChange={(e) => update("description", e.target.value)} />
-        <div className={details.detailsFacts}>
+          </label>}
           {/* A new task starts in the column it was created from ("To do" from elsewhere), and can be changed here. */}
           <label><span>Status</span>
             <select name="status" value={fields.status} onChange={(e) => update("status", e.target.value)}>
@@ -97,13 +101,13 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
             <select name="assigned_to" value={fields.assigned_to} onChange={(e) => update("assigned_to", e.target.value)}>
               <option value="">Unassigned</option>
               {project.members.filter((member) => project.canManageTasks || member.id === project.viewerId || String(member.id) === initial.assigned_to)
-                .map((member) => <option key={member.id} value={member.id}>{member.first_name} {member.last_name}{member.availability ? ` · ${member.availability.state === "away" ? "out of office" : "away soon"}` : ""}</option>)}
+                .map((member) => <option key={member.id} value={member.id}>{member.first_name} {member.last_name}</option>)}
             </select>
           </label>
           <label><span>Deadline{overdue && !dirty && <em className={styles.lateText}> · overdue</em>}</span>
             <input name="deadline" type="date" value={fields.deadline} onChange={(e) => update("deadline", e.target.value)} />
           </label>
-          <label className={creating ? undefined : details.detailsWide}><span>Stage</span>
+          <label><span>Stage</span>
             <select name="stage_id" value={fields.stage_id} onChange={(e) => update("stage_id", e.target.value)}>
               <option value="">No stage</option>
               {project.stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
@@ -112,13 +116,16 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
         </div>
         {assignee?.availability && <p className="availability-note" role="status">
           Heads up: {assignee.first_name} {assignee.availability.state === "away" ? "is" : "will be"} {assignee.availability.label.charAt(0).toLowerCase() + assignee.availability.label.slice(1)}.
-        </p>}
+        </p>}</>}>
+          <RichTextField key={discards} name="description" label="Description" placeholder="Add a description…"
+            value={fields.description} startEditing={creating} onChange={(value) => update("description", value)} />
+        </TaskDialogColumns>
         {state.error && <p className="form-error" role="alert">{state.error}</p>}
         <div className="dialog-actions">
-          {showOpenProject && <Link className="secondary-button" href={"/?project=" + project.id}>Open project</Link>}
+          {task && !dirty && <Link className={"secondary-button " + details.detailsOpen} href={"/?task=" + task.id}>Open task page</Link>}
           {creating
             ? <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
-            : dirty && <button type="button" className="secondary-button" onClick={() => setFields(initial)}>Discard</button>}
+            : dirty && <button type="button" className="secondary-button" onClick={() => { setFields(initial); setDiscards((count) => count + 1); }}>Discard</button>}
           <button className="primary-button" disabled={!canSave || pending}>
             {pending ? "Saving…" : creating ? "Create task" : "Save changes"}
           </button>

@@ -101,7 +101,8 @@ export async function getWorkspaceProjects() {
         stages: project.stages.map((stage) => ({
           id: stage.id, name: stage.name, description: stage.description,
           deadline: stage.deadline?.toISOString().slice(0, 10) ?? "",
-          taskCount: project.tasks.filter((task) => task.stage_id === stage.id).length,
+          // Cancelled work is not left to do, so it does not count.
+          taskCount: project.tasks.filter((task) => task.stage_id === stage.id && task.status !== "CANCELLED").length,
           doneCount: project.tasks.filter((task) => task.stage_id === stage.id && task.status === "COMPLETED").length,
         })),
         tasks: project.tasks.map((task) => ({
