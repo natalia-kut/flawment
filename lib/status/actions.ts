@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { setStatus, StatusError } from "./service";
+import { actionError } from "@/lib/action-error";
 
 export type StatusState = { error?: string; success?: boolean };
 
@@ -13,7 +14,7 @@ export async function statusAction(_state: StatusState, data: FormData): Promise
   try {
     await setStatus(actor, data);
   } catch (error) {
-    return { error: error instanceof StatusError ? error.message : "Your status could not be saved. Please try again." };
+    return { error: actionError(error, StatusError, "Your status could not be saved. Please try again.") };
   }
   revalidatePath("/");
   return { success: true };

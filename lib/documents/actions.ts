@@ -8,6 +8,7 @@ import { getDocumentProjects, toCustomTemplate } from "./data";
 import { workspaceToday } from "@/lib/time-off/dates";
 import { parseTemplateInput, templateLimits, type DocumentTemplate } from "./template-schema";
 import type { DocumentProject } from "./types";
+import { actionError } from "@/lib/action-error";
 
 type ActionResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -72,8 +73,8 @@ export async function saveTemplate(
       ? await prisma.documentTemplate.update({ where: { id, ...ownTemplates(user) }, data })
       : await prisma.documentTemplate.create({ data: { ...data, owner_id: user.id, project_id: projectId } });
     return { ok: true, value: toCustomTemplate(record) };
-  } catch {
-    return { ok: false, error: "The template could not be saved. Try again." };
+  } catch (error) {
+    return { ok: false, error: actionError(error, null, "The template could not be saved. Try again.") };
   }
 }
 
@@ -90,8 +91,8 @@ export async function renameTemplate(templateId: string, name: string): Promise<
     const changed = await prisma.documentTemplate.updateMany({ where: { id, ...ownTemplates(user) }, data: { name: trimmed } });
     if (changed.count !== 1) return { ok: false, error: "This template no longer exists." };
     return { ok: true, value: toCustomTemplate(await prisma.documentTemplate.findUniqueOrThrow({ where: { id } })) };
-  } catch {
-    return { ok: false, error: "The template could not be renamed. Try again." };
+  } catch (error) {
+    return { ok: false, error: actionError(error, null, "The template could not be renamed. Try again.") };
   }
 }
 
@@ -119,8 +120,8 @@ export async function copyTemplate(templateId: string, projectId: number): Promi
       },
     });
     return { ok: true, value: toCustomTemplate(record) };
-  } catch {
-    return { ok: false, error: "The template could not be copied. Try again." };
+  } catch (error) {
+    return { ok: false, error: actionError(error, null, "The template could not be copied. Try again.") };
   }
 }
 
@@ -134,8 +135,8 @@ export async function deleteTemplate(templateId: string): Promise<ActionResult<n
   try {
     await prisma.documentTemplate.delete({ where: { id, ...ownTemplates(user) } });
     return { ok: true, value: null };
-  } catch {
-    return { ok: false, error: "The template could not be deleted. Try again." };
+  } catch (error) {
+    return { ok: false, error: actionError(error, null, "The template could not be deleted. Try again.") };
   }
 }
 

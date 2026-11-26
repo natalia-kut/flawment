@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { mutateTimeOff, TimeOffError } from "./service";
 import { workspaceToday } from "./dates";
+import { actionError } from "@/lib/action-error";
 
 export type TimeOffState = { error?: string; success?: string };
 
@@ -16,7 +17,7 @@ export async function timeOffAction(_state: TimeOffState, data: FormData): Promi
   } catch (error) {
     // The page may be out of date (someone else changed or removed this): show what is saved now.
     revalidatePath("/");
-    return { error: error instanceof TimeOffError ? error.message : "Your time off could not be saved. Please try again." };
+    return { error: actionError(error, TimeOffError, "Your time off could not be saved. Please try again.") };
   }
   revalidatePath("/");
   return { success: data.get("operation") === "delete" ? "Time off removed." : "Time off added." };

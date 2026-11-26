@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { mutateStage, StageError } from "./service";
+import { actionError } from "@/lib/action-error";
 
 export type StageState = { error?: string; success?: boolean };
 export async function stageAction(_state: StageState, data: FormData): Promise<StageState> {
@@ -14,6 +15,6 @@ export async function stageAction(_state: StageState, data: FormData): Promise<S
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    return { error: error instanceof StageError ? error.message : "Could not save the stage. Refresh and try again." };
+    return { error: actionError(error, StageError, "Could not save the stage. Refresh and try again.") };
   }
 }
