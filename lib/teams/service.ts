@@ -39,7 +39,9 @@ export async function mutateTeam(actor: Actor, data: FormData) {
       if (!user?.is_active || user.role === "SUPER_ADMIN") throw new TeamError("Choose an active standard user.");
       checkShownTeam(data, user.team_id);
       if (teamId !== null && !await tx.team.findUnique({ where: { id: teamId }, select: { id: true } })) throw new TeamError("This team no longer exists.");
-      // Leading one team says nothing about the next.
+      // Leading one team says nothing about the next, and a waiting job title suggestion
+      // came from the old team's lead: both end with the move.
+      if (teamId !== user.team_id) await tx.jobTitleRequest.deleteMany({ where: { user_id: userId, status: "PENDING" } });
       return tx.user.update({ where: { id: userId }, data: { team_id: teamId, team_lead: false }, select: { id: true } });
     }
     if (operation === "lead") {

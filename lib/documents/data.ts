@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { plainText } from "@/lib/rich-text/markdown";
 import { requireUser } from "@/lib/auth/session";
 import { visibleProjects } from "@/lib/rbac";
-import { mergeRanges, relevantAbsences, toRanges } from "@/lib/time-off/availability";
+import { relevantAbsences, toRanges, upcomingRanges } from "@/lib/time-off/availability";
 import { addDays, workspaceDay, workspaceToday } from "@/lib/time-off/dates";
 import { MAX_ACTIVITY_DAYS } from "./activity";
 import { builtInTemplates } from "./built-in-templates";
@@ -69,7 +69,8 @@ export async function getDocumentProjects(): Promise<DocumentProject[]> {
       person: visiblePerson(membership.user),
       role: membership.role,
       joinedAt: toDay(membership.joined_at),
-      absences: mergeRanges(toRanges(membership.user.absences)).map(({ start, end }) => ({ start, end })),
+      // Only the time off colleagues may know about (within the lookahead), joined with what touches it.
+      absences: upcomingRanges(toRanges(membership.user.absences), today).map(({ start, end }) => ({ start, end })),
     })),
     stages: project.stages.map(toStage),
     tasks: project.tasks.map((task) => ({

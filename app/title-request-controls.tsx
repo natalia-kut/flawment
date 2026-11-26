@@ -31,7 +31,8 @@ export default function TitleRequestControls({ person, request, jobTitles }: {
     <span aria-hidden="true">⏳</span>
     <p>Suggested <strong>{request.title}</strong>. Waiting for an administrator to approve it.</p>
     <input type="hidden" name="operation" value="cancel" /><input type="hidden" name="request_id" value={request.id} />
-    {request.mine && <button className="text-button" disabled={pending}>Withdraw</button>}
+    {/* Shown to the person's lead, who may withdraw it even if an earlier lead suggested it. */}
+    <button className="text-button" disabled={pending}>Withdraw</button>
     {state.error && <p className="form-error" role="alert">{state.error}</p>}
   </form>;
 

@@ -14,7 +14,8 @@ export default function StatusDialog({ status, onClose }: { status: Status | nul
   const ref = useRef<HTMLDialogElement>(null);
   const [emoji, setEmoji] = useState(status?.emoji ?? "");
   const [text, setText] = useState(status?.text ?? "");
-  const [clearAfter, setClearAfter] = useState<ClearAfter>("today");
+  // Editing keeps the current end time (or "Don't clear"); a new status starts at "Today".
+  const [clearAfter, setClearAfter] = useState<ClearAfter | "keep">(!status ? "today" : status.until ? "keep" : "never");
   const [pickingEmoji, setPickingEmoji] = useState(false);
   const [state, action, pending] = useActionState(async (previous: StatusState, data: FormData) => {
     const result = await reach(() => statusAction(previous, data), { error: OFFLINE });
@@ -54,15 +55,18 @@ export default function StatusDialog({ status, onClose }: { status: Status | nul
           </div>
 
           <label>Clear after
-            <select name="clear_after" value={clearAfter} onChange={(e) => setClearAfter(e.target.value as ClearAfter)}>
+            <select name="clear_after" value={clearAfter} onChange={(e) => setClearAfter(e.target.value as ClearAfter | "keep")}>
+              {status?.until && <option value="keep">Keep ({(status.untilLabel ?? "as set").toLowerCase()})</option>}
               {Object.entries(clearAfterOptions).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
           {state.error && <p className="form-error" role="alert">{state.error}</p>}
           <div className="dialog-actions">
-            {status && <button type="submit" name="operation" value="clear" className="secondary-button status-clear-button" formNoValidate>Clear status</button>}
+            {/* Save comes first in the markup: Enter in the text field presses the form's first submit
+                button, which must save, not clear. CSS puts the buttons back in their visual order. */}
+            <button type="submit" name="operation" value="set" className="primary-button status-save-button" disabled={!text.trim() && !emoji}>{pending ? "Saving…" : "Save"}</button>
             <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
-            <button type="submit" name="operation" value="set" className="primary-button" disabled={!text.trim() && !emoji}>{pending ? "Saving…" : "Save"}</button>
+            {status && <button type="submit" name="operation" value="clear" className="secondary-button status-clear-button" formNoValidate>Clear status</button>}
           </div>
         </fieldset>
       </form>

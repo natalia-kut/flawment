@@ -30,7 +30,8 @@ export async function mutateTimeOff(actor: Actor, data: FormData, today: string)
   if (end < start) throw new TimeOffError("The last day cannot be before the first day.");
   if (daySpan(start, end) > MAX_DAYS) throw new TimeOffError("Time off can last up to a year at a time.");
   // Fixing the recent past (a forgotten sick day) is fine; rewriting old history is not.
-  if (end < addDays(today, -30)) throw new TimeOffError("Time off can be added up to 30 days back.");
+  // The first day counts: checking only the last one let an entry start almost a year back.
+  if (start < addDays(today, -30)) throw new TimeOffError("Time off can be added up to 30 days back.");
   if (note.length > 200) throw new TimeOffError("Keep the note under 200 characters.");
 
   return serializable(async (tx) => {

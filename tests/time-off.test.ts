@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { availability, mergeRanges } from "../lib/time-off/availability";
+import { availability, mergeRanges, upcomingRanges } from "../lib/time-off/availability";
 import { daySpan, daysUntilBirthday, formatBirthday, formatMonthTick, formatRange, formatShortDay, nextAnniversary, todaysCelebrations, workspaceToday } from "../lib/time-off/dates";
 import { activeStatus, statusExpiry, workspaceMidnight } from "../lib/status/status";
 
@@ -74,4 +74,13 @@ test("dates show the year when it is not the current one", () => {
   assert.equal(formatMonthTick("2026-02-01", true), "Feb 2026");
   assert.equal(formatMonthTick("2026-05-01", false), "May");
   assert.equal(formatMonthTick("2027-01-01", false), "Jan 2027");
+});
+
+test("back-to-back time off reads as one absence even past the lookahead", () => {
+  const today = "2026-11-25";
+  const chain = [{ start: "2026-11-24", end: "2026-12-10" }, { start: "2026-12-11", end: "2026-12-20" }];
+  const away = availability(chain, today);
+  assert.equal(away?.state === "away" ? away.until : null, "2026-12-20");
+  // Later, separate time off is not shared: only what starts within the lookahead.
+  assert.deepEqual(upcomingRanges([...chain, { start: "2027-03-01", end: "2027-03-05" }], today).map((r) => [r.start, r.end]), [["2026-11-24", "2026-12-20"]]);
 });
