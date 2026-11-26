@@ -10,6 +10,7 @@ import styles from "./people-view.module.css";
 import { isManagerialTitle } from "@/lib/people/job-titles";
 import { useConfirm } from "@/components/ui/confirm";
 import { PencilIcon } from "@/components/ui/icons";
+import { submitInPlace } from "@/components/ui/submit-in-place";
 
 type Person = PeopleDirectory["people"][number];
 
@@ -86,7 +87,7 @@ export function EditPerson({ person, directory, onClose }: { person: Person; dir
     <div className="project-dialog-content">
       <div className="project-dialog-heading"><h2 id="edit-person-title">{person.first_name} {person.last_name}</h2><button type="button" className="dialog-close" onClick={onClose} aria-label="Close dialog">×</button></div>
       <p>@{person.username}{admin ? " · Super admin" : ""}</p>
-      <form action={action} className="workspace-form">
+      <form action={action} onSubmit={submitInPlace(action)} className="workspace-form">
         <input type="hidden" name="user_id" value={person.id} />
         <fieldset disabled={pending}>
           <div className="form-row">

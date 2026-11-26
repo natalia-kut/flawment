@@ -17,6 +17,7 @@ import StatusDialog, { StatusText } from "./status-dialog";
 import PageHeader from "@/components/page-header";
 import EmailText from "./email-text";
 import { useConfirmSubmit } from "@/components/ui/confirm";
+import { submitInPlace } from "@/components/ui/submit-in-place";
 
 type Person = { id: number; first_name: string; last_name: string; photoVersion: string | null };
 
@@ -186,10 +187,17 @@ function InlineField({ field, label, value, icon, type = "text", placeholder, ma
     if (!result.error) setEditing(false);
     return result;
   }, {});
+  // Escape puts the old value back, so an error about the typed one no longer applies.
+  const [dismissed, setDismissed] = useState<typeof state | null>(null);
+  const error = dismissed === state ? undefined : state.error;
+  // A refused value stays in the field (no form reset), with the focus back in it to correct.
+  useEffect(() => {
+    if (state.error) input.current?.focus();
+  }, [state]);
 
   function finish() {
     if (pending) return;
-    if (cancelled.current) { cancelled.current = false; setEditing(false); return; }
+    if (cancelled.current) { cancelled.current = false; setDismissed(state); setEditing(false); return; }
     if (input.current && input.current.value.trim() !== value) input.current.form?.requestSubmit();
     else setEditing(false);
   }
@@ -201,11 +209,11 @@ function InlineField({ field, label, value, icon, type = "text", placeholder, ma
       {value ? <span className="contact-value">{display(value)}</span> : <span className="muted-value">Add {label.toLowerCase()}</span>}
       <svg className="inline-field-pencil" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" /></svg>
     </button>
-    {state.error && <p className="form-error" role="alert">{state.error}</p>}
+    {error && <p className="form-error" role="alert">{error}</p>}
   </li>;
 
   return <li>
-    <form action={action} className="inline-field-form">
+    <form action={action} onSubmit={submitInPlace(action)} className="inline-field-form">
       <input type="hidden" name="field" value={field} />
       <ContactIcon>{icon}</ContactIcon>
       <input ref={input} name="value" type={type} defaultValue={value} placeholder={placeholder} max={max} min={type === "date" ? "1900-01-01" : undefined}
@@ -217,7 +225,7 @@ function InlineField({ field, label, value, icon, type = "text", placeholder, ma
         }} />
     </form>
     {hint && <p className="field-help">{hint}</p>}
-    {state.error && <p className="form-error" role="alert">{state.error}</p>}
+    {error && <p className="form-error" role="alert">{error}</p>}
   </li>;
 }
 

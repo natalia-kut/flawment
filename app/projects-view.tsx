@@ -23,6 +23,7 @@ import Tabs from "@/components/ui/tabs";
 import { useConfirmSubmit } from "@/components/ui/confirm";
 import EmptyState from "@/components/ui/empty-state";
 import people from "./project-people.module.css";
+import { submitInPlace } from "@/components/ui/submit-in-place";
 
 function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, className = "workspace-form", id }: {
   children?: ReactNode; operation: string; projectId?: number; id?: string;
@@ -33,7 +34,7 @@ function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, class
     if (result.success) onSuccess?.(result.projectId);
     return result;
   }, {});
-  return <form id={id} action={action} className={className} onSubmit={onSubmit}>
+  return <form id={id} action={action} className={className} onSubmit={submitInPlace(action, onSubmit)}>
     <input type="hidden" name="operation" value={operation} />
     {projectId && <input type="hidden" name="project_id" value={projectId} />}
     <fieldset disabled={pending}>{children}</fieldset>
@@ -49,7 +50,7 @@ function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, class
  */
 function RoleSelect({ canNameCoordinators, value = "CONTRIBUTOR", saveOnChange = false }: { canNameCoordinators: boolean; value?: ProjectRole; saveOnChange?: boolean }) {
   const roles: ProjectRole[] = canNameCoordinators ? ["CONTRIBUTOR", "COORDINATOR"] : ["CONTRIBUTOR"];
-  return <label>{saveOnChange ? "Role" : "Project role"}<select name="role" defaultValue={value}
+  return <label>{saveOnChange ? "Role" : "Project role"}<select key={value} name="role" defaultValue={value}
     onChange={saveOnChange ? (event) => event.currentTarget.form?.requestSubmit() : undefined}>
     {roles.map((role) => <option key={role} value={role}>{projectRoleLabels[role]}</option>)}
   </select></label>;

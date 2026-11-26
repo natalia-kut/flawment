@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent, type InputHTMLAttributes } from "react";
+import { useActionState, useEffect, useRef, useState, type FormEvent, type InputHTMLAttributes } from "react";
 import { login, register } from "@/lib/auth/actions";
 import { EMAIL_RULE, isValidEmail } from "@/lib/auth/email";
 import { NAME_PATTERN, NAME_RULE } from "@/lib/auth/names";
 import { authHref } from "@/lib/auth/return-path";
 import styles from "./auth-form.module.css";
+import { submitInPlace } from "@/components/ui/submit-in-place";
 
 type Errors = Record<string, string>;
 
@@ -90,14 +91,8 @@ export default function AuthForm({ mode, next }: { mode: "login" | "register"; n
       if (message) found[input.name] = message;
     }
     setErrors(found);
-    // Sent from here rather than by the form's action: React resets a form
-    // after its action runs, which would empty every field when the server
-    // refuses (an email already registered, a wrong password). The form's
-    // action stays for browsers without JavaScript.
-    event.preventDefault();
     const first = inputs.find((input) => found[input.name]);
-    if (first) first.focus();
-    else startTransition(() => action(new FormData(event.currentTarget)));
+    if (first) { event.preventDefault(); first.focus(); }
   }
 
   const field = { onCheck: check } as const;
@@ -109,7 +104,7 @@ export default function AuthForm({ mode, next }: { mode: "login" | "register"; n
       <h1>{registering ? "Create an account" : "Welcome back"}</h1>
       <p className={styles.lead}>{registering ? "Join your team's projects and work on them together." : "Sign in to your projects."}</p>
       {/* noValidate: our messages replace the browser's bubbles; the same rules still apply. */}
-      <form ref={formRef} action={action} onSubmit={validateAll} noValidate className={"workspace-form " + styles.form}>
+      <form ref={formRef} action={action} onSubmit={submitInPlace(action, validateAll)} noValidate className={"workspace-form " + styles.form}>
         <input type="hidden" name="next" value={next} />
         {registering && <>
           <div className="form-row">

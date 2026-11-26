@@ -7,6 +7,7 @@ import { absenceTypeLabels } from "@/lib/time-off/labels";
 import { daySpan, formatRange } from "@/lib/time-off/dates";
 import type { AbsenceType } from "@/src/generated/prisma/enums";
 import { useConfirmSubmit } from "@/components/ui/confirm";
+import { submitInPlace } from "@/components/ui/submit-in-place";
 
 type Entry = { id: number; type: AbsenceType; start_date: string; end_date: string; note: string | null };
 
@@ -42,7 +43,7 @@ function AddTimeOff({ today }: { today: string }) {
   }, {});
   const days = fields.start && fields.end && fields.end >= fields.start ? daySpan(fields.start, fields.end) : 0;
 
-  return <form action={action} className="workspace-card time-off-form">
+  return <form action={action} onSubmit={submitInPlace(action)} className="workspace-card time-off-form">
     <input type="hidden" name="operation" value="create" />
     <h2>Add time off</h2>
     <p className="field-help">Colleagues see only that you are away. Your team lead also sees the type; your note stays private.</p>

@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { statusAction, type StatusState } from "@/lib/status/actions";
 import { clearAfterOptions, statusPresets, type ClearAfter, type Status } from "@/lib/status/status";
+import { submitInPlace } from "@/components/ui/submit-in-place";
 
 const EMOJIS = ["💬", "🍽️", "☕", "🚗", "📅", "🎯", "🏠", "🤒", "🌴", "✈️", "🎧", "🔕"];
 
@@ -30,7 +31,7 @@ export default function StatusDialog({ status, onClose }: { status: Status | nul
     <div className="project-dialog-content">
       <div className="project-dialog-heading"><h2 id="status-dialog-title">Set a status</h2><button type="button" className="dialog-close" onClick={onClose} aria-label="Close dialog">×</button></div>
       <p>Let people know what you are up to right now. It clears itself when you choose.</p>
-      <form action={action} className="workspace-form">
+      <form action={action} onSubmit={submitInPlace(action)} className="workspace-form">
         <fieldset disabled={pending}>
           <input type="hidden" name="emoji" value={emoji} />
           <div className="status-input">

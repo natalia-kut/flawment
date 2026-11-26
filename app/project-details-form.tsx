@@ -6,6 +6,7 @@ import { projectAction } from "@/lib/projects/actions";
 import { projectStatusLabels } from "@/lib/projects/labels";
 import details from "@/components/ui/details-dialog.module.css";
 import TaskDetailsDialog from "./task-details-dialog";
+import { submitInPlace } from "@/components/ui/submit-in-place";
 
 /**
  * Create or edit a project in the same in-place style as a task: the name is
@@ -47,7 +48,7 @@ export default function ProjectDetailsForm({ project, onClose, onSaved, deletion
       onChange={(e) => update("name", e.target.value.replace(/\n/g, " "))}
       onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} />
   }>
-    <form id={formId} action={action}>
+    <form id={formId} action={action} onSubmit={submitInPlace(action)}>
       <input type="hidden" name="operation" value={creating ? "create" : "update"} />
       {project && <input type="hidden" name="project_id" value={project.id} />}
       <fieldset className={details.detailsFieldset} disabled={pending}>

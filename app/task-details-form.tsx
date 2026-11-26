@@ -11,6 +11,7 @@ import { normalizeNewlines } from "@/lib/rich-text/markdown";
 import { celebrate } from "@/components/ui/confetti";
 import styles from "./tasks-board.module.css";
 import details from "@/components/ui/details-dialog.module.css";
+import { submitInPlace } from "@/components/ui/submit-in-place";
 
 type Task = WorkspaceProject["tasks"][number];
 
@@ -68,7 +69,7 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
       onChange={(e) => update("title", e.target.value.replace(/\n/g, " "))}
       onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} />
   }>
-    <form id={formId} action={action}>
+    <form id={formId} action={action} onSubmit={submitInPlace(action)}>
       <input type="hidden" name="project_id" value={project.id} />
       {task && <input type="hidden" name="task_id" value={task.id} />}
       <fieldset className={details.detailsFieldset} disabled={pending}>

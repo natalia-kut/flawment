@@ -17,6 +17,7 @@ import ThisMonth from "./this-month";
 import type { LeadTitleRequests, Promotion } from "@/lib/job-title-requests/data";
 import { useConfirmSubmit } from "@/components/ui/confirm";
 import EmptyState from "@/components/ui/empty-state";
+import { submitInPlace } from "@/components/ui/submit-in-place";
 
 /** For a team lead: their job title requests by person, and the titles to pick from. */
 type Lead = { requests: LeadTitleRequests["byPerson"]; jobTitles: { id: number; name: string }[] };
@@ -131,7 +132,7 @@ function useTeamForm(onSuccess?: () => void) {
 
 function CreateTeam({ onDone }: { onDone: () => void }) {
   const [state, action, pending] = useTeamForm(onDone);
-  return <form action={action} className="workspace-card create-team-form">
+  return <form action={action} onSubmit={submitInPlace(action)} className="workspace-card create-team-form">
     <input type="hidden" name="operation" value="create" />
     <fieldset disabled={pending}>
       <label>Team name<input name="name" required maxLength={80} autoFocus placeholder="e.g. Frontend" /></label>
@@ -181,7 +182,7 @@ function TeamActions({ team }: { team: Team }) {
   const [renameState, rename, renamePending] = useTeamForm(() => setRenaming(false));
   const [deleteState, remove, deletePending] = useTeamForm(() => router.push("/?view=team"));
   const confirmSubmit = useConfirmSubmit();
-  if (renaming) return <form action={rename} className="team-rename">
+  if (renaming) return <form action={rename} onSubmit={submitInPlace(rename)} className="team-rename">
     <input type="hidden" name="operation" value="rename" /><input type="hidden" name="team_id" value={team.id} />
     <fieldset disabled={renamePending}>
       <input name="name" defaultValue={team.name} required maxLength={80} aria-label="Team name" autoFocus />
@@ -213,7 +214,7 @@ function AddMember({ team, people, teams }: { team: Team; people: TeamPerson[]; 
   const selected = candidates.find((p) => String(p.id) === selectedId);
   const moving = selected?.teamId != null ? selected : null;
   if (candidates.length === 0) return null;
-  return <form action={action} className="workspace-card add-member-form">
+  return <form action={action} onSubmit={submitInPlace(action)} className="workspace-card add-member-form">
     <input type="hidden" name="operation" value="assign" /><input type="hidden" name="team_id" value={team.id} />
     <fieldset disabled={pending}>
       <label>Add to {team.name}
