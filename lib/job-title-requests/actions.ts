@@ -1,13 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth/session";
+import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { mutateTitleRequest, TitleRequestError } from "./service";
 
 export type TitleRequestState = { error?: string; success?: boolean };
 
 export async function titleRequestAction(_state: TitleRequestState, data: FormData): Promise<TitleRequestState> {
-  const actor = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const actor = await currentUser();
+  if (!actor) return { error: SESSION_ENDED };
   try {
     await mutateTitleRequest(actor, data);
   } catch (error) {

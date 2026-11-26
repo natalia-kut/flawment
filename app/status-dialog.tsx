@@ -4,6 +4,8 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { statusAction, type StatusState } from "@/lib/status/actions";
 import { clearAfterOptions, statusPresets, type ClearAfter, type Status } from "@/lib/status/status";
 import { submitInPlace } from "@/components/ui/submit-in-place";
+import { closeOnBackdrop } from "@/components/ui/backdrop";
+import { OFFLINE, reach } from "@/components/ui/offline";
 
 const EMOJIS = ["💬", "🍽️", "☕", "🚗", "📅", "🎯", "🏠", "🤒", "🌴", "✈️", "🎧", "🔕"];
 
@@ -15,7 +17,7 @@ export default function StatusDialog({ status, onClose }: { status: Status | nul
   const [clearAfter, setClearAfter] = useState<ClearAfter>("today");
   const [pickingEmoji, setPickingEmoji] = useState(false);
   const [state, action, pending] = useActionState(async (previous: StatusState, data: FormData) => {
-    const result = await statusAction(previous, data);
+    const result = await reach(() => statusAction(previous, data), { error: OFFLINE });
     if (result.success) onClose();
     return result;
   }, {});
@@ -27,7 +29,7 @@ export default function StatusDialog({ status, onClose }: { status: Status | nul
   }, []);
 
   return <dialog ref={ref} className="project-dialog status-dialog" aria-labelledby="status-dialog-title"
-    onCancel={onClose} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    onCancel={onClose} {...closeOnBackdrop(onClose)}>
     <div className="project-dialog-content">
       <div className="project-dialog-heading"><h2 id="status-dialog-title">Set a status</h2><button type="button" className="dialog-close" onClick={onClose} aria-label="Close dialog">×</button></div>
       <p>Let people know what you are up to right now. It clears itself when you choose.</p>

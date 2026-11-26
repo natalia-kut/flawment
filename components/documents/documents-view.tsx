@@ -12,6 +12,8 @@ import "./documents.css";
 import Link from "next/link";
 import PageHeader from "@/components/page-header";
 import EmptyState from "@/components/ui/empty-state";
+import { closeOnBackdrop } from "@/components/ui/backdrop";
+import { OFFLINE, reach } from "@/components/ui/offline";
 
 type DocumentsViewProps = {
   projects: DocumentProject[];
@@ -68,9 +70,7 @@ function ConfirmDialog({ tone, title, children, confirmLabel, busyLabel, busy, o
       aria-labelledby="confirm-dialog-title"
       className={`confirm-dialog ${tone}`}
       onCancel={onClose}
-      onClick={(event) => {
-        if (event.target === event.currentTarget && !busy) onClose();
-      }}
+      {...closeOnBackdrop(() => { if (!busy) onClose(); })}
       ref={ref}
     >
       <span aria-hidden="true" className="confirm-dialog-icon">
@@ -114,6 +114,15 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
   const [renaming, setRenaming] = useState(false);
   const [, startRenaming] = useTransition();
 
+  // Templates saved elsewhere (another tab, Flawiusz) arrive with a refresh. Taken in at once,
+  // but not while the builder is open: closing it would throw away the template being built.
+  const incomingKey = initialTemplates.map((template) => template.id + "@" + (template.version ?? "")).join(",");
+  const [seenKey, setSeenKey] = useState(incomingKey);
+  if (incomingKey !== seenKey && !builderSource) {
+    setSeenKey(incomingKey);
+    setTemplates(initialTemplates);
+  }
+
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0];
   // Custom templates show up only in their own project, or everywhere when they have none.
   const projectTemplates = templates.filter(
@@ -143,7 +152,7 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
     replace({ ...template, name });
     setError("");
     startRenaming(async () => {
-      const result = await renameTemplate(template.id, name);
+      const result = await reach(() => renameTemplate(template.id, name), { ok: false as const, error: OFFLINE });
       if (result.ok) replace(result.value);
       else {
         replace(template);
@@ -157,7 +166,7 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
     setError("");
     setNotice("");
     startCopying(async () => {
-      const result = await copyTemplate(id, target.id);
+      const result = await reach(() => copyTemplate(id, target.id), { ok: false as const, error: OFFLINE });
       setCopyTarget(null);
       if (!result.ok) {
         setError(result.error);
@@ -181,7 +190,7 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
   function handleDelete() {
     const id = selectedTemplate.id;
     startDeleting(async () => {
-      const result = await deleteTemplate(id);
+      const result = await reach(() => deleteTemplate(id), { ok: false as const, error: OFFLINE });
       if (!result.ok) {
         setConfirmingDelete(false);
         setError(result.error);

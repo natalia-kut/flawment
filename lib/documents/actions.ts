@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth/session";
+import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { visibleProjects, type Actor } from "@/lib/rbac";
 import type { Prisma } from "@/src/generated/prisma/client";
 import { getDocumentProjects, toCustomTemplate } from "./data";
@@ -37,7 +37,9 @@ export async function saveTemplate(
   projectId: number | null = null,
   expectedVersion?: string,
 ): Promise<ActionResult<DocumentTemplate>> {
-  const user = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const user = await currentUser();
+  if (!user) return { ok: false, error: SESSION_ENDED };
   const parsed = parseTemplateInput(input);
   if (!parsed.ok) return parsed;
 
@@ -77,7 +79,9 @@ export async function saveTemplate(
 
 /** Changes only the name, so renaming from an old page cannot bring back old content. */
 export async function renameTemplate(templateId: string, name: string): Promise<ActionResult<DocumentTemplate>> {
-  const user = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const user = await currentUser();
+  if (!user) return { ok: false, error: SESSION_ENDED };
   const id = parseCustomId(templateId);
   if (id === null) return { ok: false, error: "Built-in templates cannot be changed." };
   const trimmed = String(name ?? "").trim();
@@ -92,7 +96,9 @@ export async function renameTemplate(templateId: string, name: string): Promise<
 }
 
 export async function copyTemplate(templateId: string, projectId: number): Promise<ActionResult<DocumentTemplate>> {
-  const user = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const user = await currentUser();
+  if (!user) return { ok: false, error: SESSION_ENDED };
   const id = parseCustomId(templateId);
   if (id === null) return { ok: false, error: "Built-in templates are already available in every project." };
 
@@ -119,7 +125,9 @@ export async function copyTemplate(templateId: string, projectId: number): Promi
 }
 
 export async function deleteTemplate(templateId: string): Promise<ActionResult<null>> {
-  const user = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const user = await currentUser();
+  if (!user) return { ok: false, error: SESSION_ENDED };
   const id = parseCustomId(templateId);
   if (id === null) return { ok: false, error: "Built-in templates cannot be deleted." };
 

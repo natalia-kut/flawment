@@ -24,13 +24,15 @@ import { useConfirmSubmit } from "@/components/ui/confirm";
 import EmptyState from "@/components/ui/empty-state";
 import people from "./project-people.module.css";
 import { submitInPlace } from "@/components/ui/submit-in-place";
+import { closeOnBackdrop } from "@/components/ui/backdrop";
+import { OFFLINE, reach } from "@/components/ui/offline";
 
 function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, className = "workspace-form", id }: {
   children?: ReactNode; operation: string; projectId?: number; id?: string;
   onSubmit?: FormEventHandler<HTMLFormElement>; onSuccess?: (projectId?: number) => void; className?: string;
 }) {
   const [state, action, pending] = useActionState(async (previous: Awaited<ReturnType<typeof projectAction>>, data: FormData) => {
-    const result = await projectAction(previous, data);
+    const result = await reach(() => projectAction(previous, data), { error: OFFLINE });
     if (result.success) onSuccess?.(result.projectId);
     return result;
   }, {});
@@ -89,7 +91,7 @@ function ProjectDialog({ title, description, onClose, children }: {
     };
   }, []);
   return <dialog ref={ref} className="project-dialog" aria-labelledby="project-dialog-title" aria-describedby="project-dialog-description"
-    onCancel={onClose} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    onCancel={onClose} {...closeOnBackdrop(onClose)}>
     <div className="project-dialog-content">
       <div className="project-dialog-heading"><h2 id="project-dialog-title">{title}</h2><button type="button" className="dialog-close" onClick={onClose} aria-label="Close dialog">×</button></div>
       <p id="project-dialog-description">{description}</p>

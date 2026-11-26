@@ -2,6 +2,7 @@
 
 import { createContext, use, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import styles from "./confirm.module.css";
+import { closeOnBackdrop } from "@/components/ui/backdrop";
 
 export type ConfirmOptions = {
   title: string;
@@ -43,7 +44,7 @@ function ConfirmDialog({ request, onAnswer }: { request: Request; onAnswer: (ok:
   // Cancel is focused first: these actions cannot be undone, so Enter should not do them.
   return <dialog ref={ref} className={styles.dialog} aria-labelledby="confirm-title" aria-describedby={message ? "confirm-message" : undefined}
     onCancel={(event) => { event.preventDefault(); onAnswer(false); }}
-    onClick={(event) => { if (event.target === event.currentTarget) onAnswer(false); }}>
+    {...closeOnBackdrop(() => onAnswer(false))}>
     <div className={styles.body}>
       <span className={styles.icon} data-danger={danger || undefined} aria-hidden="true">{danger ? "!" : "?"}</span>
       <div>

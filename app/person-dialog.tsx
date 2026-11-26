@@ -8,6 +8,7 @@ import UserAvatar from "./user-avatar";
 import AvailabilityBadge from "./availability-badge";
 import { StatusText } from "./status-dialog";
 import EmailText from "./email-text";
+import { closeOnBackdrop } from "@/components/ui/backdrop";
 
 /** "🎂 Birthday today" or "🎉 3 years today": shown on the day only. */
 export function CelebrationBadge({ person }: { person: TeamPerson }) {
@@ -40,7 +41,7 @@ export default function PersonDialog({ person, you, team, onClose, manage }: {
       : person.anniversary && person.anniversary.years > 1 ? `${person.joined} · ${yearsLabel(person.anniversary.years - 1)}` : person.joined },
   ].filter(Boolean) as { label: string; value: ReactNode; wide?: boolean }[];
   return <dialog ref={ref} className="project-dialog person-dialog" aria-labelledby="person-dialog-title" onCancel={onClose}
-    onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    {...closeOnBackdrop(onClose)}>
     <div className="project-dialog-content">
       <div className="project-dialog-heading">
         <div className="person-dialog-identity">

@@ -8,6 +8,8 @@ import { titleRequestAction, type TitleRequestState } from "@/lib/job-title-requ
 import UserAvatar from "./user-avatar";
 import dashboard from "./dashboard.module.css";
 import styles from "./admin-panels.module.css";
+import { closeOnBackdrop } from "@/components/ui/backdrop";
+import { OFFLINE, reach } from "@/components/ui/offline";
 
 export type AdminData = { requests: PendingTitleRequest[]; people: TeamPerson[]; teams: { id: number; name: string; members: TeamPerson[] }[] };
 
@@ -80,7 +82,7 @@ function RequestDialog({ request: r, today, onClose }: { request: PendingTitleRe
     return () => dialog.close();
   }, []);
   const [state, action, pending] = useActionState(async (previous: TitleRequestState, data: FormData) => {
-    const result = await titleRequestAction(previous, data);
+    const result = await reach(() => titleRequestAction(previous, data), { error: OFFLINE });
     if (result.success) onClose();
     return result;
   }, {});
@@ -93,7 +95,7 @@ function RequestDialog({ request: r, today, onClose }: { request: PendingTitleRe
     startTransition(() => action(data));
   }
   return <dialog ref={ref} className={styles.dialog} aria-labelledby={`request-${r.id}-title`} onCancel={onClose}
-    onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    {...closeOnBackdrop(onClose)}>
     <div className={styles.dialogHead}>
       <UserAvatar id={r.personId} firstName={r.firstName} lastName={r.lastName} photoVersion={r.photoVersion} size={44} />
       <div>

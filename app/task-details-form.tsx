@@ -13,6 +13,8 @@ import styles from "./tasks-board.module.css";
 import details from "@/components/ui/details-dialog.module.css";
 import { submitInPlace } from "@/components/ui/submit-in-place";
 import { useBaseFields } from "@/components/ui/use-base-fields";
+import { useGuardedClose, useLeaveGuard } from "@/components/ui/unsaved";
+import { OFFLINE, reach } from "@/components/ui/offline";
 
 type Task = WorkspaceProject["tasks"][number];
 
@@ -54,7 +56,7 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
   const notice = clashed.length ? `Someone else changed the ${clashed.map((key) => fieldLabels[key]).join(", ")} meanwhile. Saving keeps your version.` : "";
 
   const [state, action, pending] = useActionState(async (previous: TaskState, data: FormData) => {
-    const result = await (creating ? createTaskAction : updateTaskAction)(previous, data);
+    const result = await reach(() => (creating ? createTaskAction : updateTaskAction)(previous, data), { error: OFFLINE });
     if (result.success && !creating && data.get("status") === "COMPLETED" && base.status !== "COMPLETED") {
       // Burst from the button that saved it (the focused submitter), or the middle of the screen.
       const box = document.activeElement instanceof HTMLElement ? document.activeElement.getBoundingClientRect() : null;
@@ -63,11 +65,14 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
     if (result.success) { clearClashed(); onSaved(); }
     return result;
   }, {});
+  // Closing (Escape, ×, the backdrop, Cancel) or leaving the page asks first while something is unsaved.
+  const close = useGuardedClose(dirty, onClose);
+  useLeaveGuard(dirty);
   const formId = "task-details-" + (task?.id ?? "new");
   const assignee = project.members.find((member) => String(member.id) === fields.assigned_to);
   const canSave = creating ? fields.title.trim() !== "" : dirty;
 
-  return <TaskDetailsDialog title={task?.title ?? "New task"} onClose={onClose} focusFirstField={creating} heading={
+  return <TaskDetailsDialog title={task?.title ?? "New task"} onClose={close} focusFirstField={creating} heading={
     // A textarea so long titles wrap like a heading; Enter must not add a line break.
     <textarea form={formId} name="title" className={details.titleInput} aria-label="Task title" placeholder="Task title"
       required maxLength={150} rows={1} value={fields.title}
@@ -132,7 +137,7 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
         <div className="dialog-actions">
           {task && !dirty && <Link className={"secondary-button " + details.detailsOpen} href={"/?task=" + task.id}>Open task page</Link>}
           {creating
-            ? <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
+            ? <button type="button" className="secondary-button" onClick={close}>Cancel</button>
             : dirty && <button type="button" className="secondary-button" onClick={() => { discard(); setDiscards((count) => count + 1); }}>Discard</button>}
           <button className="primary-button" disabled={!canSave || pending}>
             {pending ? "Saving…" : creating ? "Create task" : "Save changes"}

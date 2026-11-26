@@ -21,6 +21,7 @@ import TaskFiles from "./task-files";
 import UserAvatar from "./user-avatar";
 import { PersonButton } from "./people-context";
 import styles from "./task-page.module.css";
+import { useLeaveGuard } from "@/components/ui/unsaved";
 
 type Task = WorkspaceProject["tasks"][number];
 type Values = {
@@ -172,11 +173,19 @@ export default function TaskPage({ project, task, details, viewer, today }: {
   const stage = project.stages.find((item) => String(item.id) === values.stage_id);
   const descriptionDirty = descriptionDraft !== null && descriptionDraft.trim() !== values.description;
   const descriptionTooLong = (descriptionDraft?.length ?? 0) > MAX_DESCRIPTION_LENGTH;
+  // A reload, closing the tab or a link out asks first while the description or the title is unsaved.
+  useLeaveGuard(descriptionDirty || (titleDraft !== null && titleDraft.trim() !== values.title));
   function saveDescription() {
     // The draft stays until it is saved, so a failed save loses nothing.
-    if (descriptionDirty && !descriptionTooLong && !saving) save("description", descriptionDraft.trim(), {
+    if (!descriptionDirty || descriptionTooLong || saving) return;
+    const sent = descriptionDraft.trim();
+    save("description", sent, {
       expected: descriptionBase ?? values.description,
-      onSuccess: () => setDescriptionDraft(null),
+      // Text typed while it was saving stays open in the editor instead of being dropped.
+      onSuccess: () => {
+        setDescriptionDraft((draft) => (draft === null || draft.trim() === sent ? null : draft));
+        setDescriptionBase(sent);
+      },
       onConflict: () => setDescriptionBase(null),
     });
   }

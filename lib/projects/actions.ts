@@ -1,12 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth/session";
+import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { mutateProject, ProjectError } from "./service";
 
 export type ProjectState = { error?: string; success?: string; projectId?: number };
 export async function projectAction(_state: ProjectState, data: FormData): Promise<ProjectState> {
-  const actor = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const actor = await currentUser();
+  if (!actor) return { error: SESSION_ENDED };
   try {
     const result = await mutateProject(actor, data);
     revalidatePath("/");

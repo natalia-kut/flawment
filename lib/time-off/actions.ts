@@ -1,14 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth/session";
+import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { mutateTimeOff, TimeOffError } from "./service";
 import { workspaceToday } from "./dates";
 
 export type TimeOffState = { error?: string; success?: string };
 
 export async function timeOffAction(_state: TimeOffState, data: FormData): Promise<TimeOffState> {
-  const actor = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const actor = await currentUser();
+  if (!actor) return { error: SESSION_ENDED };
   try {
     await mutateTimeOff(actor, data, workspaceToday());
   } catch (error) {

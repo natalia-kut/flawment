@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth/session";
+import { currentUser, SESSION_ENDED } from "@/lib/auth/session";
 import { createTask, updateTask, patchTask, deleteTask, changeTaskStatus, TaskConflictError, TaskError } from "./service";
 import { addComment, editComment, deleteComment } from "./comments";
 
@@ -9,7 +9,9 @@ import { addComment, editComment, deleteComment } from "./comments";
 export type TaskState = { error?: string; success?: boolean; conflict?: boolean };
 
 export async function createTaskAction(_state: TaskState, data: FormData): Promise<TaskState> {
-  const actor = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const actor = await currentUser();
+  if (!actor) return { error: SESSION_ENDED };
   try {
     await createTask(actor, data);
     revalidatePath("/");
@@ -20,7 +22,9 @@ export async function createTaskAction(_state: TaskState, data: FormData): Promi
 }
 
 export async function updateTaskAction(_state: TaskState, data: FormData): Promise<TaskState> {
-  const actor = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const actor = await currentUser();
+  if (!actor) return { error: SESSION_ENDED };
   try {
     await updateTask(actor, data);
     revalidatePath("/");
@@ -33,7 +37,9 @@ export async function updateTaskAction(_state: TaskState, data: FormData): Promi
 }
 
 export async function patchTaskAction(data: FormData): Promise<TaskState> {
-  const actor = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const actor = await currentUser();
+  if (!actor) return { error: SESSION_ENDED };
   try {
     await patchTask(actor, data);
     revalidatePath("/");
@@ -47,7 +53,9 @@ export async function patchTaskAction(data: FormData): Promise<TaskState> {
 const commentOperations = { add: addComment, edit: editComment, delete: deleteComment };
 
 export async function commentAction(operation: keyof typeof commentOperations, data: FormData): Promise<TaskState> {
-  const actor = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const actor = await currentUser();
+  if (!actor) return { error: SESSION_ENDED };
   try {
     if (!Object.hasOwn(commentOperations, operation)) throw new TaskError("Unknown comment operation.");
     await commentOperations[operation](actor, data);
@@ -59,7 +67,9 @@ export async function commentAction(operation: keyof typeof commentOperations, d
 }
 
 export async function deleteTaskAction(_state: TaskState, data: FormData): Promise<TaskState> {
-  const actor = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const actor = await currentUser();
+  if (!actor) return { error: SESSION_ENDED };
   try {
     await deleteTask(actor, data);
     revalidatePath("/");
@@ -71,7 +81,9 @@ export async function deleteTaskAction(_state: TaskState, data: FormData): Promi
 }
 
 export async function changeTaskStatusAction(data: FormData): Promise<TaskState> {
-  const actor = await requireUser();
+  // Not requireUser: its redirect to /login would throw away what the person was editing.
+  const actor = await currentUser();
+  if (!actor) return { error: SESSION_ENDED };
   try {
     await changeTaskStatus(actor, data);
     revalidatePath("/");

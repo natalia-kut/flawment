@@ -7,6 +7,7 @@ import { formatSize } from "@/lib/files/limits";
 import { decodeText, MAX_PREVIEW_CHARACTERS, MAX_PREVIEW_COLUMNS, MAX_PREVIEW_ROWS, parseCsv, previewKind } from "@/lib/files/preview";
 import { useModal } from "@/components/ui/use-modal";
 import styles from "./file-preview.module.css";
+import { closeOnBackdrop } from "@/components/ui/backdrop";
 
 type TaskFile = TaskDetails["files"][number];
 type Sheet = { name: string; rows: string[][]; more: boolean };
@@ -134,7 +135,7 @@ export default function FilePreview({ files, file, onShow, onClose }: {
   };
   const arrow = (path: ReactNode) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{path}</svg>;
   return <dialog ref={ref} className={"project-dialog " + styles.dialog} aria-label={file.name} tabIndex={-1}
-    onCancel={onClose} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+    onCancel={onClose} {...closeOnBackdrop(onClose)}
     onKeyDown={(event) => {
       // Inside a scrolling table or text the arrows scroll.
       if ((event.target as HTMLElement).getAttribute("role") === "region") return;

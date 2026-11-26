@@ -8,6 +8,7 @@ import styles from "./project-stages.module.css";
 import { useConfirmSubmit } from "@/components/ui/confirm";
 import { BinIcon, PencilIcon } from "@/components/ui/icons";
 import { submitInPlace } from "@/components/ui/submit-in-place";
+import { OFFLINE, offlineSafe, reach } from "@/components/ui/offline";
 
 type Stage = WorkspaceProject["stages"][number];
 
@@ -18,7 +19,7 @@ function StageForm({ projectId, stage, close }: { projectId: number; stage?: Sta
     name: stage?.name ?? "", description: stage?.description ?? "", deadline: stage?.deadline ?? "",
   });
   const [state, action, pending] = useActionState(async (previous: StageState, data: FormData) => {
-    const result = await stageAction(previous, data);
+    const result = await reach(() => stageAction(previous, data), { error: OFFLINE });
     if (result.success) close();
     return result;
   }, {});
@@ -38,7 +39,7 @@ function StageForm({ projectId, stage, close }: { projectId: number; stage?: Sta
 }
 
 function DeleteStage({ projectId, stage }: { projectId: number; stage: Stage }) {
-  const [state, action, pending] = useActionState(stageAction, {});
+  const [state, action, pending] = useActionState(offlineSafe(stageAction), {});
   const confirmSubmit = useConfirmSubmit();
   return <form action={action} onSubmit={confirmSubmit({ title: `Delete the “${stage.name}” stage?`, message: "Its tasks are kept, just without a stage.", confirm: "Delete stage" })}>
     <input type="hidden" name="operation" value="delete" />
