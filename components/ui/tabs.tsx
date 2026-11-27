@@ -24,6 +24,8 @@ export default function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
   }
 
   function onKeyDown(event: KeyboardEvent) {
+    // Alt+Left is the browser's Back, Ctrl/Meta+arrows are text and window shortcuts: not ours.
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     const index = tabs.indexOf(open);
     const next = event.key === "ArrowRight" ? (index + 1) % tabs.length
       : event.key === "ArrowLeft" ? (index - 1 + tabs.length) % tabs.length
@@ -36,7 +38,9 @@ export default function Tabs({ label, tabs }: { label: string; tabs: Tab[] }) {
 
   return <>
     <div className={styles.tabs} role="tablist" aria-label={label} ref={list} onKeyDown={onKeyDown}>
-      {tabs.map((tab) => <button key={tab.key} type="button" role="tab" id={"tab-" + tab.key} aria-controls={"tabpanel-" + tab.key}
+      {tabs.map((tab) => <button key={tab.key} type="button" role="tab" id={"tab-" + tab.key}
+        // Only the open tab's panel exists, so only it is pointed at.
+        aria-controls={tab === open ? "tabpanel-" + tab.key : undefined}
         aria-selected={tab === open} tabIndex={tab === open ? 0 : -1} onClick={() => select(tab.key)}>
         {tab.label}{tab.count !== undefined && <span className={styles.count}>{tab.count}</span>}
       </button>)}

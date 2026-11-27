@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ComponentProps, type ReactNode } from "react";
 import Link from "next/link";
 import SessionWatch from "./session-watch";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -67,6 +67,26 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
   const [requestedTemplateId, setRequestedTemplateId] = useState<string | null>(null);
   const chat = useFlawiuszChat();
   const [collapsed, setCollapsed] = useState(sidebarCollapsed);
+
+  // Each view has its own tab title (also what the route announcer reads and history shows):
+  // the project or task by name, otherwise the view.
+  const projectId = search.get("project"), taskId = search.get("task");
+  const openProject = projectId ? workspace.projects.find((project) => String(project.id) === projectId) : undefined;
+  const openTask = taskId ? workspace.projects.flatMap((project) => project.tasks).find((item) => String(item.id) === taskId) : undefined;
+  const viewTitle = openTask?.title ?? openProject?.name
+    ?? (accountView === "profile" ? "My profile" : accountView === "time-off" ? "Time off" : activePage ?? "Page not found");
+  useEffect(() => { document.title = `${viewTitle} | Flawment`; }, [viewTitle]);
+  // After moving to another view, the keyboard starts at its heading, not back at the sidebar.
+  const viewKey = [view, projectId, taskId].join("|");
+  const shownView = useRef(viewKey);
+  useEffect(() => {
+    if (shownView.current === viewKey) return;
+    shownView.current = viewKey;
+    const heading = document.querySelector<HTMLElement>("#main-content h1");
+    if (!heading) return;
+    heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
+  }, [viewKey]);
   // A view comes from the server, which takes a moment: the clicked item is marked at once,
   // and the page shows it is loading, instead of nothing happening until it arrives.
   const [navigating, startNavigation] = useTransition();
@@ -104,6 +124,8 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
     <ConfirmProvider>
     <PeopleProvider people={directory.people} teams={directory.teams} currentUserId={user.id}>
     <SessionWatch userId={user.id} statusEnds={[user.status?.until ?? null, ...directory.people.map((person) => person.status?.until ?? null)]} />
+    {/* First stop for the keyboard: past the sidebar straight to the page. */}
+    <a className="skip-link" href="#main-content">Skip to content</a>
     <div className="app-shell" data-sidebar={collapsed ? "collapsed" : "expanded"}>
       <aside className="sidebar">
         <div className="sidebar-top">
@@ -141,7 +163,7 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
         </div>
       </aside>
 
-      <main className="main-content" aria-busy={navigating || undefined} data-navigating={navigating || undefined}>
+      <main id="main-content" tabIndex={-1} className="main-content" aria-busy={navigating || undefined} data-navigating={navigating || undefined}>
         {accountView === "profile" ? profile : accountView === "time-off" ? timeOff : activePage === "Team" ? team : activePage === "People" ? people : activePage === "Documents" ? (
           // Remount when Flawiusz asks to open a template, so the page selects it.
           <RequestedTemplateContext value={requestedTemplateId} key={requestedTemplateId ?? "documents"}>

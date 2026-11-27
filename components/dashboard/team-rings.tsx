@@ -58,7 +58,8 @@ export default function TeamRings({ tasks, currentUserKey, people: details = new
         const note = [away && `out of office until ${formatShortDay(away.until)}`, festive === "birthday" && "birthday today", festive === "anniversary" && "work anniversary today"].filter(Boolean).join(", ");
         return <li key={person.key} className={styles.member} data-away={away ? true : undefined} data-festive={festive ?? undefined}
           aria-label={`${person.name}: ${person.open} open, ${person.done} of ${person.total} done${person.overdue ? `, ${person.overdue} overdue` : ""}${note ? `; ${note}` : ""}`}>
-          <PersonButton id={Number(person.key)} name={person.name} className={styles.memberLink}>
+          {/* The name starts with what the ring shows ("You"), so voice control can find it. */}
+          <PersonButton id={Number(person.key)} name={person.key === currentUserKey ? `You (${person.name})` : person.name} className={styles.memberLink}>
           <span className={styles.ringWrap}>
           <svg viewBox="0 0 72 72" className={styles.ring} aria-hidden="true">
             {festive && <circle cx="36" cy="36" r="34" className={styles.festiveRing} data-kind={festive} />}

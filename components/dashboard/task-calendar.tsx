@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { taskStatusLabels } from "@/lib/tasks/labels";
 import styles from "./dashboard-widgets.module.css";
 import type { CalendarTimeOff } from "@/lib/time-off/calendar";
@@ -16,6 +16,7 @@ const MAX_DOTS = 3;
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 const dayName = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+const weekdayName = new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: "UTC" });
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const iso = (year: number, month: number, day: number) => `${year}-${pad(month + 1)}-${pad(day)}`;
@@ -45,6 +46,30 @@ export default function TaskCalendar({ tasks, today, timeOff = [], onOpenTask }:
   const lead = (first.getUTCDay() + 6) % 7; // Monday = 0
   const cells = [...Array(lead).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
+  // One tab stop for the whole month: the selected day (or the 1st when it is in another month).
+  // Arrow keys, Home and End move between days, across months too.
+  const grid = useRef<HTMLDivElement>(null);
+  const moved = useRef(false);
+  const tabbable = selected.startsWith(iso(shown.year, shown.month, 1).slice(0, 7)) ? selected : iso(shown.year, shown.month, 1);
+  useEffect(() => {
+    if (!moved.current) return;
+    moved.current = false;
+    grid.current?.querySelector<HTMLButtonElement>(`[data-date="${selected}"]`)?.focus();
+  }, [selected, shown]);
+  function onGridKeyDown(event: KeyboardEvent) {
+    const shift = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[event.key];
+    const current = new Date(tabbable + "T00:00:00Z");
+    const weekday = (current.getUTCDay() + 6) % 7;
+    const days = shift ?? (event.key === "Home" ? -weekday : event.key === "End" ? 6 - weekday : null);
+    if (days === null || event.altKey || event.ctrlKey || event.metaKey) return;
+    event.preventDefault();
+    current.setUTCDate(current.getUTCDate() + days);
+    const next = current.toISOString().slice(0, 10);
+    moved.current = true;
+    setSelected(next);
+    setShown({ year: current.getUTCFullYear(), month: current.getUTCMonth() });
+  }
+
   function step(delta: number) {
     setShown(({ year: y, month: m }) => {
       const next = new Date(Date.UTC(y, m + delta, 1));
@@ -64,8 +89,10 @@ export default function TaskCalendar({ tasks, today, timeOff = [], onOpenTask }:
         {(shown.year !== year || shown.month !== month - 1) &&
           <button type="button" className={styles.todayButton} onClick={() => { setShown({ year, month: month - 1 }); setSelected(today); }}>Today</button>}
       </div>
-      <div className={styles.grid} role="grid" aria-label={"Deadlines in " + monthName.format(first)}>
-        {WEEKDAYS.map((day) => <span key={day} className={styles.weekday} role="columnheader">{day}</span>)}
+      {/* A group of day buttons, not an ARIA grid: a grid needs rows, which this layout does not have. */}
+      <div className={styles.grid} role="group" aria-label={"Deadlines in " + monthName.format(first) + ". Use the arrow keys to move between days."}
+        ref={grid} onKeyDown={onGridKeyDown}>
+        {WEEKDAYS.map((day) => <span key={day} className={styles.weekday} aria-hidden="true">{day}</span>)}
         {cells.map((day, index) => {
           if (day === null) return <span key={"empty-" + index} />;
           const date = iso(shown.year, shown.month, day);
@@ -75,10 +102,11 @@ export default function TaskCalendar({ tasks, today, timeOff = [], onOpenTask }:
           const mine = off.find((entry) => entry.mine);
           const others = off.filter((entry) => !entry.mine).length;
           const offLabel = [mine && `you are off (${absenceTypeLabels[mine.type]})`, others && `${others} of your team away`].filter(Boolean).join(", ");
-          return <button key={date} type="button" role="gridcell" className={styles.day}
+          return <button key={date} type="button" className={styles.day} data-date={date} tabIndex={date === tabbable ? 0 : -1}
             data-today={date === today || undefined} data-selected={date === selected || undefined} data-late={late || undefined}
             data-off={mine ? mine.type : undefined}
-            aria-selected={date === selected} aria-label={`${dayName.format(new Date(date + "T00:00:00Z"))}: ${due.length} ${due.length === 1 ? "task" : "tasks"} due${offLabel ? `; ${offLabel}` : ""}`}
+            // The name starts with the visible number, so voice control ("click 12") finds it.
+            aria-pressed={date === selected} aria-label={`${day}, ${weekdayName.format(new Date(date + "T00:00:00Z"))}: ${due.length} ${due.length === 1 ? "task" : "tasks"} due${offLabel ? `; ${offLabel}` : ""}`}
             onClick={() => setSelected(date)}>
             {others > 0 && <span className={styles.teamOff} aria-hidden="true">
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" /></svg>{others}

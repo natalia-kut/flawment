@@ -16,7 +16,7 @@ export default function TaskDetailsDialog({ title, heading, focusFirstField = fa
     <div className="project-dialog-content">
       <div className="project-dialog-heading">
         {heading ?? <h2>{title}</h2>}
-        <button type="button" className="dialog-close" onClick={onClose} aria-label="Close task details">×</button>
+        <button type="button" className="dialog-close" onClick={onClose} aria-label={"Close " + title}>×</button>
       </div>
       {children}
     </div>

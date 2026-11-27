@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { TaskDetails } from "@/lib/tasks/details";
 import { commentAction } from "@/lib/tasks/actions";
 import { MAX_COMMENT_LENGTH } from "@/lib/tasks/limits";
@@ -142,6 +142,9 @@ export default function TaskComments({ taskId, comments, canModerate, viewer }: 
 }) {
   const { pending, error, run } = useCommentAction();
   const [writing, setWriting] = useState(false);
+  // After posting, the keyboard lands back on "Comment as …", not on the page body.
+  const startButton = useRef<HTMLButtonElement>(null);
+  const backToStart = () => requestAnimationFrame(() => startButton.current?.focus());
   // Replies being written, by thread. A thread removed by someone else takes its reply form with it;
   // the reply then moves to the new-comment box instead of disappearing.
   const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
@@ -173,9 +176,9 @@ export default function TaskComments({ taskId, comments, canModerate, viewer }: 
       {writing
         ? <CommentForm key={orphan ?? "new"} label="Write a comment" placeholder={placeholder} submit="Post comment" pending={pending} error={error}
           draft={orphan ?? undefined} note={orphan ? "The comment you were replying to was removed, so your reply is here as a new comment." : undefined}
-          onSubmit={(body) => run("add", { task_id: taskId, body }, () => { setWriting(false); setOrphan(null); })}
+          onSubmit={(body) => run("add", { task_id: taskId, body }, () => { setWriting(false); setOrphan(null); backToStart(); })}
           onCancel={() => { setWriting(false); setOrphan(null); }} />
-        : <button type="button" className={styles.startComment} onClick={() => setWriting(true)}>{placeholder}</button>}
+        : <button ref={startButton} type="button" className={styles.startComment} onClick={() => setWriting(true)}>{placeholder}</button>}
     </div>
   </section>;
 }

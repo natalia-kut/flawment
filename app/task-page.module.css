@@ -59,9 +59,9 @@ span.status { padding: .2rem .65rem; font-size: .8rem; border-radius: 1rem; }
 /* More specific than the card's own muted paragraphs: this text is the content. */
 /* Lines stay readable on a wide screen. */
 .main p.text { max-width: 80ch; margin: 0; line-height: 1.6; color: var(--foreground); white-space: pre-wrap; overflow-wrap: anywhere; }
-.main p.empty { margin: 0; font-style: italic; color: var(--text-subtle); }
+.main p.empty { margin: 0; font-style: italic; color: var(--muted); }
 .formActions { display: flex; align-items: center; justify-content: flex-end; gap: .6rem; margin-top: .6rem; }
-.hint { margin-right: auto; font-size: .78rem; color: var(--text-subtle); }
+.hint { margin-right: auto; font-size: .78rem; color: var(--muted); }
 .hint[data-over] { color: var(--critical); }
 .formActions button { flex: none; white-space: nowrap; }
 /* No keyboard shortcuts on a phone, and no room to mention them. */
@@ -90,7 +90,7 @@ span.status { padding: .2rem .65rem; font-size: .8rem; border-radius: 1rem; }
 .commentForm > p.formNote { margin: 0 0 .35rem; font-size: .8rem; }
 .commentForm[inert] { opacity: .6; }
 /* Looks like the field it opens; the editor itself loads on the first click. */
-.startComment { flex: 1; min-width: 0; min-height: 4.5rem; padding: .65rem .8rem; font: inherit; font-size: .95rem; text-align: left; color: var(--text-subtle); background: #fff; border: 1px solid var(--border-strong); border-radius: .7rem; cursor: text; display: flex; align-items: flex-start; transition: border-color 140ms ease; }
+.startComment { flex: 1; min-width: 0; min-height: 4.5rem; padding: .65rem .8rem; font: inherit; font-size: .95rem; text-align: left; color: var(--muted); background: #fff; border: 1px solid var(--border-strong); border-radius: .7rem; cursor: text; display: flex; align-items: flex-start; transition: border-color 140ms ease; }
 .startComment:hover { border-color: var(--border-hover); }
 .commentForm > :global(.form-error) { margin: .5rem 0 0; color: var(--critical); }
 
