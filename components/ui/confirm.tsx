@@ -3,6 +3,7 @@
 import { createContext, use, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import styles from "./confirm.module.css";
 import { closeOnBackdrop } from "@/components/ui/backdrop";
+import { openModal } from "@/components/ui/use-modal";
 
 export type ConfirmOptions = {
   title: string;
@@ -37,8 +38,7 @@ function ConfirmDialog({ request, onAnswer }: { request: Request; onAnswer: (ok:
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current!;
-    dialog.showModal();
-    return () => dialog.close();
+    return openModal(dialog);
   }, []);
   const { title, message, confirm, danger = true } = request;
   // Cancel is focused first: these actions cannot be undone, so Enter should not do them.

@@ -7,6 +7,7 @@ import type { DocumentProject } from "@/lib/documents/types";
 import DocumentSheet from "./document-sheet";
 import "./documents.css";
 import { closeOnBackdrop } from "@/components/ui/backdrop";
+import { openModal } from "@/components/ui/use-modal";
 
 // A template rendered with one of the user's projects, before it is saved.
 export default function TemplatePreviewDialog({
@@ -32,10 +33,10 @@ export default function TemplatePreviewDialog({
   useEffect(() => {
     const dialog = ref.current!;
     const previousOverflow = document.body.style.overflow;
-    dialog.showModal();
+    const closeModal = openModal(dialog);
     document.body.style.overflow = "hidden";
     return () => {
-      dialog.close();
+      closeModal();
       document.body.style.overflow = previousOverflow;
     };
   }, []);

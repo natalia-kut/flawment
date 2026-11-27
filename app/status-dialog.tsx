@@ -6,6 +6,7 @@ import { clearAfterOptions, statusPresets, type ClearAfter, type Status } from "
 import { submitInPlace } from "@/components/ui/submit-in-place";
 import { closeOnBackdrop } from "@/components/ui/backdrop";
 import { OFFLINE, reach } from "@/components/ui/offline";
+import { openModal } from "@/components/ui/use-modal";
 
 const EMOJIS = ["💬", "🍽️", "☕", "🚗", "📅", "🎯", "🏠", "🤒", "🌴", "✈️", "🎧", "🔕"];
 
@@ -25,8 +26,7 @@ export default function StatusDialog({ status, onClose }: { status: Status | nul
 
   useEffect(() => {
     const dialog = ref.current!;
-    dialog.showModal();
-    return () => dialog.close();
+    return openModal(dialog);
   }, []);
 
   return <dialog ref={ref} className="project-dialog status-dialog" aria-labelledby="status-dialog-title"

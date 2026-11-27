@@ -26,6 +26,7 @@ import people from "./project-people.module.css";
 import { submitInPlace } from "@/components/ui/submit-in-place";
 import { closeOnBackdrop } from "@/components/ui/backdrop";
 import { OFFLINE, reach } from "@/components/ui/offline";
+import { openModal } from "@/components/ui/use-modal";
 
 function ChangeForm({ children, operation, projectId, onSubmit, onSuccess, className = "workspace-form", id }: {
   children?: ReactNode; operation: string; projectId?: number; id?: string;
@@ -65,11 +66,18 @@ function ManageMenu({ children }: { children: ReactNode }) {
     const menu = ref.current!;
     const close = (event: Event) => {
       if (!menu.open) return;
-      if (event instanceof KeyboardEvent ? event.key === "Escape" : !menu.contains(event.target as Node)) menu.open = false;
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !menu.contains(event.target as Node)) {
+        menu.open = false;
+        // Escape leaves the keyboard on the ⋯ button rather than on the page body.
+        if (event instanceof KeyboardEvent) menu.querySelector("summary")?.focus();
+      }
     };
+    // Tabbing out of the menu closes it, as a click outside does.
+    const leave = (event: FocusEvent) => { if (menu.open && !menu.contains(event.relatedTarget as Node | null)) menu.open = false; };
     document.addEventListener("pointerdown", close);
     document.addEventListener("keydown", close);
-    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", close); };
+    menu.addEventListener("focusout", leave);
+    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", close); menu.removeEventListener("focusout", leave); };
   }, []);
   return <details ref={ref} className={`member-settings ${people.manage}`}>
     <summary title="Manage"><span aria-hidden="true">⋯</span><span className="visually-hidden">Manage</span></summary>{children}
@@ -83,10 +91,10 @@ function ProjectDialog({ title, description, onClose, children }: {
   useEffect(() => {
     const dialog = ref.current!;
     const previousOverflow = document.body.style.overflow;
-    dialog.showModal();
+    const closeModal = openModal(dialog);
     document.body.style.overflow = "hidden";
     return () => {
-      dialog.close();
+      closeModal();
       document.body.style.overflow = previousOverflow;
     };
   }, []);

@@ -42,8 +42,8 @@ export default function ProjectTaskList({ project, today, onCreate, onEdit }: {
     return <div key={task.id} className={styles.row} role="row">
       {/* The row opens the editor for whoever may edit the task, and its page for everyone else. */}
       <span role="cell" className={styles.main}>{task.canEdit
-        ? <button type="button" className={styles.open} aria-label={"Edit task: " + task.title} onClick={() => onEdit(task.id)}>{info}</button>
-        : <Link href={"/?task=" + task.id} className={styles.open} aria-label={"Open task: " + task.title}>{info}</Link>}</span>
+        ? <button type="button" className={styles.open} onClick={() => onEdit(task.id)}>{info}</button>
+        : <Link href={"/?task=" + task.id} className={styles.open}>{info}</Link>}</span>
       <span role="cell"><span className={styles.status} data-status={task.status}>{taskStatusLabels[task.status]}</span></span>
       <span role="cell" className={styles.assignee} data-empty={task.assignedTo === null || undefined}>{task.assigneeName}</span>
       <span role="cell" className={styles.due} data-late={late || undefined} title={formatTaskDeadline(task.deadline)}>

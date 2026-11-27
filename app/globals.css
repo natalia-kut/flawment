@@ -911,3 +911,21 @@ a.team-card[data-own] { border-color: var(--accent-border); box-shadow: inset 0 
 
 /* Phones: room at the bottom, so the floating assistant button does not cover the last action. */
 @media (max-width: 720px) { .main-content { padding-bottom: 88px; } }
+
+/* Focus rings at 3:1 or more against the page and cards. The decorative accent border
+   (about 1.8:1) stays for hover and borders; focus uses the strong accent (about 5.5:1). */
+button:focus-visible, a:focus-visible, summary:focus-visible,
+.workspace-form :is(input, select, textarea):focus-visible, .photo-button:focus-within,
+.inline-field:focus-visible, .inline-field-form input:focus-visible, .type-choice:has(input:focus-visible),
+.time-off-scroll:focus-visible, .person-card:focus-visible, .status-input:focus-within, .skill-add-input:focus-visible {
+  outline-color: var(--accent);
+}
+
+/* Values shown as text (an empty field's "Add phone", the task page hint) need 4.5:1:
+   the subtle colour is for placeholders only. */
+.muted-value { color: var(--muted); }
+
+/* Hidden until it gets the keyboard focus: the first stop on every page. */
+.skip-link { position: absolute; top: 8px; left: 8px; z-index: 100; padding: 8px 14px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600; transform: translateY(-160%); }
+.skip-link:focus-visible { transform: none; outline-color: var(--foreground); }
+#main-content:focus { outline: none; }

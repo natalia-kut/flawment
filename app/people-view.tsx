@@ -14,6 +14,7 @@ import { submitInPlace } from "@/components/ui/submit-in-place";
 import { closeOnBackdrop } from "@/components/ui/backdrop";
 import { OFFLINE, offlineSafe, reach } from "@/components/ui/offline";
 import { NAME_PATTERN, NAME_RULE } from "@/lib/auth/names";
+import { openModal } from "@/components/ui/use-modal";
 
 type Person = PeopleDirectory["people"][number];
 
@@ -68,8 +69,7 @@ export function EditPerson({ person, directory, onClose }: { person: Person; dir
   }, {});
   useEffect(() => {
     const dialog = ref.current!;
-    dialog.showModal();
-    return () => dialog.close();
+    return openModal(dialog);
   }, []);
 
   const admin = person.role === "SUPER_ADMIN";
@@ -148,24 +148,39 @@ function JobTitles({ directory }: { directory: PeopleDirectory }) {
     { key: "other", label: "Other titles", empty: "None", titles: directory.jobTitles.filter((t) => !t.can_lead) },
   ] as const;
   const ask = useConfirm();
+  // The chip that was just moved: it gets the focus back in its new group, and the move is announced.
+  const [moved, setMoved] = useState<{ id: number; text: string } | null>(null);
+  useEffect(() => {
+    if (moved && !pending) document.querySelector<HTMLButtonElement>(`[data-title-id="${moved.id}"]`)?.focus();
+  }, [moved, pending, directory.jobTitles]);
   async function toggle(title: PeopleDirectory["jobTitles"][number]) {
     const canLead = !title.can_lead;
-    const leads = directory.people.filter((p) => p.job_title_id === title.id && p.team_lead);
-    // Taking it away ends their lead role: name who loses it and ask first.
-    if (!canLead && leads.length > 0 && !await ask({
+    const holders = directory.people.filter((p) => p.job_title_id === title.id);
+    const names = (people: typeof holders) => {
+      const shown = people.slice(0, 5).map((p) => `${p.first_name} ${p.last_name}`).join(", ");
+      return people.length > 5 ? `${shown} and ${people.length - 5} more` : shown;
+    };
+    const leads = holders.filter((p) => p.team_lead);
+    // Either way it changes what everyone with the title may do: name them, and both rights, and ask first.
+    if (holders.length > 0 && !await ask(canLead ? {
+      title: `Make ${title.name} a managerial title?`,
+      message: `${names(holders)} will be able to lead a team and start projects.`,
+      confirm: "Move to Can lead a team", danger: false,
+    } : {
       title: `${title.name} can no longer lead a team?`,
-      message: `${leads.map((p) => `${p.first_name} ${p.last_name}`).join(", ")} will no longer lead ${leads.length === 1 ? "their team" : "their teams"}.`,
+      message: `${names(holders)} will no longer be able to lead a team or start projects.${leads.length ? ` ${names(leads)} will stop leading ${leads.length === 1 ? "their team" : "their teams"}.` : ""}`,
       confirm: "Move to Other titles",
     })) return;
     const data = new FormData();
     data.set("job_title_id", String(title.id));
     if (canLead) data.set("can_lead", "on");
+    setMoved({ id: title.id, text: `${title.name} moved to ${canLead ? "Can lead a team" : "Other titles"}.` });
     startTransition(() => action(data));
   }
   const chips = (titles: typeof directory.jobTitles) => <ul className={styles.chips}>
     {titles.map((title) => {
       const count = directory.people.filter((p) => p.job_title_id === title.id).length;
-      return <li key={title.id}><button type="button" className={styles.chip} data-lead={title.can_lead || undefined} disabled={pending}
+      return <li key={title.id}><button type="button" className={styles.chip} data-title-id={title.id} data-lead={title.can_lead || undefined} disabled={pending}
         draggable={!pending} data-dragging={dragged === title.id || undefined}
         onDragStart={(e) => { e.dataTransfer.setData("text/plain", title.name); e.dataTransfer.effectAllowed = "move"; setDragged(title.id); }}
         onDragEnd={() => { setDragged(null); setOver(null); }}
@@ -183,6 +198,7 @@ function JobTitles({ directory }: { directory: PeopleDirectory }) {
       <span className={styles.summaryHint}>{groups[0].titles.length} can lead a team</span>
     </summary>
     <p className="field-help">To change who can lead a team, drag a title to the right group.</p>
+    <p className="visually-hidden" role="status">{moved && !pending && !state.error ? moved.text : ""}</p>
     {directory.jobTitles.length === 0 ? <p>No job titles yet. Add one when editing a person.</p> : <div className={styles.groups}>
       {groups.map(({ key, label, empty, titles }) => {
         // Only the other group accepts the chip: dropping it where it is changes nothing.

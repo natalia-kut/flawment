@@ -381,7 +381,8 @@ export default function TasksOverview({ projects, currentUserId, today }: {
                   style={gliding === task.id ? { viewTransitionName: "task-card-" + task.id, viewTransitionClass: "task-card" } : undefined}
                   draggable={task.canChangeStatus && saving === null}
                   aria-busy={saving === task.id}
-                  role="button" tabIndex={0} aria-label={"View task: " + task.title}
+                  role="button" tabIndex={0}
+                  // No aria-label: the card's own text (priority, title, assignee, deadline, overdue) is its name.
                   onClick={() => openDetails(task.id)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {

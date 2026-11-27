@@ -15,6 +15,7 @@ import EmptyState from "@/components/ui/empty-state";
 import { closeOnBackdrop } from "@/components/ui/backdrop";
 import { OFFLINE, reach } from "@/components/ui/offline";
 import { useSearchParams } from "next/navigation";
+import { openModal } from "@/components/ui/use-modal";
 
 type DocumentsViewProps = {
   projects: DocumentProject[];
@@ -57,10 +58,10 @@ function ConfirmDialog({ tone, title, children, confirmLabel, busyLabel, busy, o
   useEffect(() => {
     const dialog = ref.current!;
     const previousOverflow = document.body.style.overflow;
-    dialog.showModal();
+    const closeModal = openModal(dialog);
     document.body.style.overflow = "hidden";
     return () => {
-      dialog.close();
+      closeModal();
       document.body.style.overflow = previousOverflow;
     };
   }, []);

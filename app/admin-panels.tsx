@@ -10,6 +10,7 @@ import dashboard from "./dashboard.module.css";
 import styles from "./admin-panels.module.css";
 import { closeOnBackdrop } from "@/components/ui/backdrop";
 import { OFFLINE, reach } from "@/components/ui/offline";
+import { openModal } from "@/components/ui/use-modal";
 
 export type AdminData = { requests: PendingTitleRequest[]; people: TeamPerson[]; teams: { id: number; name: string; members: TeamPerson[] }[] };
 
@@ -78,8 +79,7 @@ function RequestDialog({ request: r, today, onClose }: { request: PendingTitleRe
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current!;
-    dialog.showModal();
-    return () => dialog.close();
+    return openModal(dialog);
   }, []);
   const [state, action, pending] = useActionState(async (previous: TitleRequestState, data: FormData) => {
     const result = await reach(() => titleRequestAction(previous, data), { error: OFFLINE });

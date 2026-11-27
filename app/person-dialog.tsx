@@ -9,6 +9,7 @@ import AvailabilityBadge from "./availability-badge";
 import { StatusText } from "./status-dialog";
 import EmailText from "./email-text";
 import { closeOnBackdrop } from "@/components/ui/backdrop";
+import { openModal } from "@/components/ui/use-modal";
 
 /** "🎂 Birthday today" or "🎉 3 years today": shown on the day only. */
 export function CelebrationBadge({ person }: { person: TeamPerson }) {
@@ -26,8 +27,7 @@ export default function PersonDialog({ person, you, team, onClose, manage }: {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current!;
-    dialog.showModal();
-    return () => dialog.close();
+    return openModal(dialog);
   }, []);
   const contact = [
     { label: "Email", value: <a href={`mailto:${person.email}`}><EmailText email={person.email} /></a>, wide: true },
