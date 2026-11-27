@@ -86,8 +86,8 @@ function scheduleHealth(project: DocumentProject, today: string, progress: numbe
   if (project.status !== "IN_PROGRESS" && project.status !== "TO_DO") return projectStatusLabels[project.status];
   if (today < project.startDate) return "Not started";
 
-  const openTasks = project.tasks.filter(isOpen).length;
-  if (project.endDate && today > project.endDate && openTasks > 0) return "Past deadline";
+  // Past its end and still running is past the deadline, open tasks or not (the insights say the same).
+  if (project.endDate && today > project.endDate) return "Past deadline";
   if (overdue > 0 || (elapsed !== null && progress < elapsed - BEHIND_POINTS)) return "At risk";
   return "On track";
 }

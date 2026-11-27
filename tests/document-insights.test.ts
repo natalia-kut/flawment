@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { projectInsights } from "../lib/documents/insights";
 import { buildVariables } from "../lib/documents/engine";
 import { stageRows } from "../lib/documents/stages";
-import { parseBlocks } from "../lib/documents/template-schema";
+import { parseBlocks, parseTemplateInput, templateLimits } from "../lib/documents/template-schema";
 import type { DocumentProject, DocumentStage, DocumentTask } from "../lib/documents/types";
 
 const today = "2026-11-25";
@@ -71,8 +71,13 @@ test("stage findings: late, almost due with little done, and tasks due after the
     ["stage-late-2", "stage-1", "no-deadline"]);
 });
 
-test("an empty stage is neither done nor late", () => {
-  assert.equal(stageRows(project([], { stages: [launch] }), today)[0].state, "empty");
+test("a stage with nothing in it is late by its own deadline, and says when all its tasks were cancelled", () => {
+  // Launch was due 20 Nov: past, with no tasks, is still late, and the attention list says so.
+  assert.equal(stageRows(project([], { stages: [launch] }), today)[0].state, "late");
+  assert.ok(projectInsights(project([], { stages: [launch] }), today).some((insight) => insight.key === "stage-late-2" && /no tasks/.test(insight.text)));
+  const later: DocumentStage = { id: 3, name: "Later", deadline: "2027-03-01" };
+  assert.equal(stageRows(project([], { stages: [later] }), today)[0].label, "No tasks yet");
+  assert.equal(stageRows(project([{ status: "CANCELLED", stage: { id: 3, name: "Later", deadline: "2027-03-01" } }], { stages: [later] }), today)[0].label, "All tasks cancelled");
 });
 
 test("charts that were removed turn into what replaced them", () => {
@@ -95,4 +100,21 @@ test("planned duration counts both the first and the last day", () => {
   assert.equal(duration("2026-11-10", "2026-11-10"), "1 day");
   assert.equal(duration("2026-11-10", "2026-11-11"), "2 days");
   assert.equal(duration("2026-10-15", "2026-12-20"), "67 days");
+});
+
+test("templates with empty fact sheets, key figures or tables are refused, naming the block", () => {
+  const input = (blocks: unknown[]) => parseTemplateInput({ name: "T", description: "", blocks, showStatus: true, showName: true });
+  const facts = input([{ id: "a", type: "facts", title: "Basics", facts: [] }]);
+  assert.equal(facts.ok ? "" : facts.error, "The “Basics” fact sheet needs at least one row.");
+  const metrics = input([{ id: "a", type: "metrics", metrics: [] }]);
+  assert.equal(metrics.ok ? "" : metrics.error, "Key figures need at least one figure.");
+  const table = input([{ id: "a", type: "taskTable", title: "Open work", columns: [] }]);
+  assert.equal(table.ok ? "" : table.error, "The “Open work” table needs at least one column.");
+});
+
+test("a name cut to its limit never ends in half an emoji", () => {
+  const name = "x".repeat(templateLimits.name - 1) + "😀";
+  const parsed = parseTemplateInput({ name, description: "", blocks: [{ id: "a", type: "heading", text: "Hi" }], showStatus: true, showName: true });
+  assert.ok(parsed.ok);
+  if (parsed.ok) assert.equal(parsed.value.name, "x".repeat(templateLimits.name - 1));
 });

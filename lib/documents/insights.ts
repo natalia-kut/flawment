@@ -54,6 +54,10 @@ export function projectInsights(project: DocumentProject, today: string): Insigh
   if (project.endDate && today > project.endDate && open.length > 0) {
     insights.push({ key: "past-end", tone: "critical", subject: "The project is past its end date",
       text: `(${formatShortDay(project.endDate)}) with ${plural(open.length, "task")} still open.` });
+  } else if (project.endDate && today > project.endDate && (project.status === "IN_PROGRESS" || project.status === "TO_DO")) {
+    // Nothing open, but still running: the same thing the health ("Past deadline") reports.
+    insights.push({ key: "past-end", tone: "critical", subject: "The project is past its end date",
+      text: `(${formatShortDay(project.endDate)}) and still marked as running: close it or move the end date.` });
   }
   if (overdue.length > 0) {
     insights.push({ key: "overdue", tone: "critical", subject: `${plural(overdue.length, "task")} past the deadline:`,
@@ -71,7 +75,8 @@ export function projectInsights(project: DocumentProject, today: string): Insigh
   const rows = stageRows(project, today);
   for (const { stage, state, label, tasks, done } of rows) {
     if (!stage || state !== "late") continue;
-    insights.push({ key: `stage-late-${stage.id}`, tone: "critical", subject: `Stage “${stage.name}”`, text: `is ${label} with ${done} of ${plural(tasks.length, "task")} done.` });
+    insights.push({ key: `stage-late-${stage.id}`, tone: "critical", subject: `Stage “${stage.name}”`,
+      text: tasks.length ? `is ${label} with ${done} of ${plural(tasks.length, "task")} done.` : `is ${label} and has no tasks.` });
   }
 
   const { progress, elapsed } = projectPace(project, today);
@@ -80,6 +85,11 @@ export function projectInsights(project: DocumentProject, today: string): Insigh
   }
   for (const { stage, state, label, tasks, done, after } of rows) {
     if (!stage) continue;
+    // Due soon with nothing in it yet is worth a word too.
+    if (state === "soon" && tasks.length === 0) {
+      insights.push({ key: `stage-${stage.id}`, tone: "warning", subject: `Stage “${stage.name}”`, text: `is ${label.toLowerCase()} and has no tasks yet.` });
+      continue;
+    }
     const little = state === "soon" && done * 2 < tasks.length;
     const later = `${listTitles(after)} ${after.length === 1 ? "is" : "are"} due only after it ends`;
     if (!little && after.length === 0) continue;
