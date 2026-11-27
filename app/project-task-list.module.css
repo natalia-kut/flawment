@@ -40,7 +40,8 @@
 
 @media (max-width: 700px) {
   .head { display: none; }
-  .row { grid-template-columns: minmax(0, 1fr) auto auto; row-gap: .3rem; }
+  /* A fourth column for the bin, so it does not wrap onto a line of its own. */
+  .row { grid-template-columns: minmax(0, 1fr) auto auto auto; row-gap: .3rem; }
   .main { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { .row, .delete, .fold svg { transition: none; } }

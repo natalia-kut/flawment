@@ -1784,3 +1784,8 @@ p.document-muted {
     overflow: visible;
   }
 }
+/* The team plan keeps its drawn size on a phone and scrolls sideways, so its text stays legible. */
+.chart-scroll { overflow-x: auto; }
+.chart-scroll > .team-plan { min-width: 600px; }
+/* Long unbroken task titles in lists wrap instead of running out of the sheet. */
+.document-sheet li { overflow-wrap: anywhere; }

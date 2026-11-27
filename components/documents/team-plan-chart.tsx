@@ -34,6 +34,20 @@ export default function TeamPlanChart({ project, today }: { project: DocumentPro
         <li><span className="chart-swatch swatch-plan-clash" aria-hidden="true" />Due while away</li>
         <li><span className="chart-swatch swatch-plan-away" aria-hidden="true" />Away</li>
       </ul>
+      {/* The same plan as text, for screen readers: the chart's details are only in SVG titles. */}
+      <ul className="visually-hidden">
+        {rows.map((row) => {
+          const due = [...row.due.entries()].flatMap(([day, tasks]) => tasks.map((task) => `${task.title} due ${formatDay(day)}`));
+          const parts = [
+            row.late.length ? `${row.late.length} late` : "",
+            due.length ? `due: ${due.join(", ")}` : "nothing due in these two weeks",
+            row.absences.length ? `away ${row.absences.map(formatAbsence).join(", ")}` : "",
+          ].filter(Boolean);
+          return <li key={row.personId ?? "unassigned"}>{row.name}: {parts.join("; ")}.</li>;
+        })}
+      </ul>
+      {/* Scrolls sideways on a phone rather than shrinking the text to a few pixels. */}
+      <div className="chart-scroll">
       <svg className="chart team-plan" viewBox={`0 0 ${WIDTH} ${bottom + 2}`} role="img"
         aria-label={`Deadlines and days away per person, ${formatDay(firstDay)} to ${formatDay(lastDay)}`}>
         <defs>
@@ -92,6 +106,7 @@ export default function TeamPlanChart({ project, today }: { project: DocumentPro
         })}
         <line className="plan-line" x1={0} x2={WIDTH} y1={bottom} y2={bottom} />
       </svg>
+      </div>
       <DocumentNotes insights={[...conflicts.map(conflictInsight), ...unassignedDue.map(unownedInsight)]}
         empty="Nobody is away when their work is due, and everything due in these two weeks has an owner." />
     </>

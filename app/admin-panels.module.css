@@ -30,3 +30,8 @@
 .dialog .meta { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
 .dialog .warn { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--critical); }
 .dialogActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+/* A row never grows past the panel: long names and title changes wrap inside it. */
+.list { grid-template-columns: minmax(0, 1fr); }
+.row { width: 100%; min-width: 0; }
+.body > * { min-width: 0; overflow-wrap: anywhere; }

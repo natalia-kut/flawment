@@ -24,7 +24,8 @@
 /* First row lines up with the month axis, the rest with the bars. */
 .names { display: grid; grid-template-rows: 26px; grid-auto-rows: var(--row); }
 .axisSpacer { height: 26px; }
-.name { display: flex; align-items: center; min-width: 0; overflow: hidden; font-size: 13px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; transition: opacity 140ms ease; }
+/* Block, not flex: text-overflow needs it to show the ellipsis on long names. */
+.name { display: block; line-height: var(--row); min-width: 0; overflow: hidden; font-size: 13px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; transition: opacity 140ms ease; }
 .name[data-dim] { opacity: .4; }
 
 .plot { min-width: 0; }
@@ -47,7 +48,7 @@
 .bar[data-late] { box-shadow: inset 0 0 0 2px var(--critical); }
 .bar[data-open] { background: repeating-linear-gradient(90deg, var(--bar) 0 70%, transparent 70% 100%) right / 100% 100%; mask-image: linear-gradient(90deg, #000 75%, transparent); }
 .fill { height: 100%; background: var(--bar-fill); border-radius: 6px; }
-.barLabel { position: absolute; left: 8px; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / 25%); pointer-events: none; }
+.barLabel { position: absolute; left: 8px; z-index: 1; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / 25%); pointer-events: none; }
 .milestone { position: absolute; top: 50%; width: 9px; height: 9px; background: var(--card); border: 2px solid var(--foreground); border-radius: 2px; transform: translate(-50%, -50%) rotate(45deg); }
 
 .tooltip { position: absolute; bottom: calc(100% - 4px); z-index: 5; display: grid; gap: 2px; padding: 7px 10px; font-size: 12px; white-space: nowrap; color: #fff; background: var(--foreground); border-radius: 8px; box-shadow: 0 8px 20px -8px #00000055; transform: translateX(-50%); pointer-events: none; }
@@ -69,4 +70,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .bar { animation: none; }
+}
+
+/* On a phone the chart keeps a readable width and scrolls sideways, instead of squeezing
+   the month labels into each other. */
+.scroll { overflow-x: auto; }
+@media (max-width: 600px) {
+  .chart { grid-template-columns: 7rem minmax(0, 1fr); min-width: 560px; }
 }
