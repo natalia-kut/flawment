@@ -76,7 +76,7 @@ section.assistant:global(.started) .ripples { display: none; }
 @keyframes ripple { from { opacity: .45; transform: scale(.96); } to { opacity: .85; transform: scale(1.04); } }
 
 @media (max-width: 1200px) {
-  .columns { grid-template-columns: 1fr; }
+  .columns { grid-template-columns: minmax(0, 1fr); }
 }
 /* Phones: the counts in two rows of two, each row starting without a divider. */
 @media (max-width: 720px) {

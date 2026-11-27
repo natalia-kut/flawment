@@ -897,3 +897,17 @@ a.team-card[data-own] { border-color: var(--accent-border); box-shadow: inset 0 
 
 /* Long owner emails wrap instead of being cut off at the page edge when printed. */
 .document-footer-owner { min-width: 0; overflow-wrap: anywhere; }
+
+/* Short screens (a phone held sideways, a laptop at 200% zoom): the sidebar scrolls, so the account menu with Sign out stays reachable. */
+@media (min-width: 721px) { .sidebar { overflow-y: auto; } }
+
+/* Phones: the member menu stacks its two controls instead of running off the left edge. */
+@media (max-width: 560px) {
+  .member-controls { flex-direction: column; align-items: stretch; gap: 10px; white-space: normal; }
+}
+/* "Add to team": the select may shrink below its long options, and the button wraps below it. */
+.add-member-form label { min-width: 0; }
+.add-member-form select { min-width: 0; width: 100%; max-width: 100%; }
+
+/* Phones: room at the bottom, so the floating assistant button does not cover the last action. */
+@media (max-width: 720px) { .main-content { padding-bottom: 88px; } }

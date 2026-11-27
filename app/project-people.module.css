@@ -5,9 +5,10 @@
 /* Lifts a little under the pointer, like the project cards. */
 .member:hover, .member:focus-within { border-color: var(--accent-border); box-shadow: 0 8px 18px -10px #39220f40; transform: translateY(-2px); }
 /* Every line starts at the same left edge; pills keep their own width instead of stretching. */
-.info { display: grid; flex: 1; justify-items: start; gap: 2px; min-width: 0; text-align: left; }
+/* One column that may shrink, so a long name wraps inside the tile instead of spilling out. */
+.info { display: grid; flex: 1; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: 2px; min-width: 0; text-align: left; overflow-wrap: anywhere; }
 .info p { margin: 0; }
-.name { overflow: hidden; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
+.name { max-width: 100%; overflow: hidden; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
 /* The name covers the whole tile (its ::after), as on the project cards; the ⋯ menu sits above it. */
 button.nameLink { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 button.nameLink::after { content: ""; position: absolute; inset: 0; border-radius: 14px; }

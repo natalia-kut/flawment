@@ -102,7 +102,8 @@ button.memberLink:hover .memberName { text-decoration: underline; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 760px) {
-  .calendar { grid-template-columns: 1fr; }
+  /* minmax(0, …): a plain 1fr would grow to the content's width and push the page sideways. */
+  .calendar { grid-template-columns: minmax(0, 1fr); }
   .dayPanel { padding: 16px 0 0; border-top: 1px solid var(--border); border-left: 0; }
 }
 

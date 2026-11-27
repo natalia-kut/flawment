@@ -99,7 +99,7 @@ export default function ProjectTimeline({ projects, today }: { projects: Workspa
     </div>
 
     {bars.length === 0 ? <p className={styles.quiet}>Pick projects above to see them on the timeline.</p> : <>
-      <div className={styles.chart} onMouseLeave={() => setHover(null)}>
+      <div className={styles.scroll}><div className={styles.chart} onMouseLeave={() => setHover(null)}>
         <div className={styles.names}>
           <span className={styles.axisSpacer} />
           {bars.map((bar) => <span key={bar.id} className={styles.name} data-dim={hovered && hovered.id !== bar.id && !related.has(bar.id) || undefined} title={bar.name}>{bar.name}</span>)}
@@ -143,7 +143,7 @@ export default function ProjectTimeline({ projects, today }: { projects: Workspa
             })}
           </div>
         </div>
-      </div>
+      </div></div>
 
       <ul className={styles.key}>
         <li><span className={styles.keyBar} />Done so far</li>
