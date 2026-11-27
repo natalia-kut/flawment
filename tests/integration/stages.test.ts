@@ -46,6 +46,10 @@ test("stages support authorized CRUD, task assignment and safe deletion", async 
     // `_` is a character, not a wildcard: "Plan_ing" is not "Planning".
     const underscored = await mutateStage(actor(0), stageInput({ name: "Plan_ing" }));
     await mutateStage(actor(0), stageInput({ operation: "delete", stage_id: underscored.id }));
+    // A form sends line breaks as \r\n: 4000 characters as typed must fit, not 4400.
+    const long = await mutateStage(actor(0), stageInput({ name: "Long", description: ("x".repeat(9) + "\r\n").repeat(400) }));
+    assert.equal(long.description?.length, 3999);
+    await mutateStage(actor(0), stageInput({ operation: "delete", stage_id: long.id }));
     await assert.rejects(mutateStage(actor(0), stageInput({ name: " " })), /stage name/);
     await assert.rejects(mutateStage(actor(0), stageInput({ deadline: "2026-02-30" })), /deadline/);
     const renamed = await mutateStage(actor(1), stageInput({

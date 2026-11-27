@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { filterProjects } from "@/lib/projects/filters";
 import { taskProgress, isTaskOverdue } from "@/lib/tasks/board";
@@ -36,9 +37,22 @@ export function ProgressRing({ percent, done }: { percent: number; done: boolean
 }
 
 export default function ProjectBrowser({ projects, today }: { projects: WorkspaceProject[]; today: string }) {
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
+  // Kept in the address too, so opening a project and coming back (Back, the breadcrumb's history)
+  // finds the list as it was. Written with history.replaceState: no server round trip per keystroke.
+  const search = useSearchParams();
+  const [query, setQueryState] = useState(search.get("q") ?? "");
+  const [status, setStatusState] = useState(search.get("status") ?? "");
+  const [showArchived, setShowArchivedState] = useState(search.get("archived") === "1");
+  function remember(next: { q: string; status: string; archived: boolean }) {
+    const params = new URLSearchParams(window.location.search);
+    for (const [key, value] of [["q", next.q], ["status", next.status], ["archived", next.archived ? "1" : ""]] as const) {
+      if (value) params.set(key, value); else params.delete(key);
+    }
+    window.history.replaceState(null, "", "?" + params.toString());
+  }
+  const setQuery = (q: string) => { setQueryState(q); remember({ q, status, archived: showArchived }); };
+  const setStatus = (value: string) => { setStatusState(value); remember({ q: query, status: value, archived: showArchived }); };
+  const setShowArchived = (archived: boolean) => { setShowArchivedState(archived); remember({ q: query, status, archived }); };
   const results = filterProjects(projects, { query, status, showArchived });
   const filtered = Boolean(query || status || showArchived);
 
@@ -58,7 +72,7 @@ export default function ProjectBrowser({ projects, today }: { projects: Workspac
       <div className={controls.statusText}>
         <p className={controls.status} role="status" aria-live="polite">Showing {results.length} of {projects.length} projects</p>
         {filtered && <button type="button" className={controls.clear}
-          onClick={() => { setQuery(""); setStatus(""); setShowArchived(false); }}>Clear filters</button>}
+          onClick={() => { setQueryState(""); setStatusState(""); setShowArchivedState(false); remember({ q: "", status: "", archived: false }); }}>Clear filters</button>}
       </div>
     </div>
 

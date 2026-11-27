@@ -39,7 +39,8 @@ function id(value: string) {
   return result;
 }
 function projectInput(data: FormData) {
-  const name = field(data, "name"), description = field(data, "description");
+  // Forms send line breaks as \r\n; counted as one, as the browser does.
+  const name = field(data, "name"), description = normalizeNewlines(field(data, "description"));
   const status = field(data, "status") as ProjectStatus;
   const start = field(data, "start_date"), end = field(data, "end_date");
   const validDay = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s)) && new Date(s).toISOString().slice(0, 10) === s;

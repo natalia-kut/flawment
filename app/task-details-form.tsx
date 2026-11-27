@@ -112,7 +112,7 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
           <label><span>Assigned to</span>
             <select name="assigned_to" value={fields.assigned_to} onChange={(e) => update("assigned_to", e.target.value)}>
               <option value="">Unassigned</option>
-              {project.members.filter((member) => project.canManageTasks || member.id === project.viewerId || String(member.id) === base.assigned_to)
+              {project.members.filter((member) => String(member.id) === base.assigned_to || (member.assignable && (project.canManageTasks || member.id === project.viewerId)))
                 .map((member) => <option key={member.id} value={member.id}>{member.first_name} {member.last_name}</option>)}
             </select>
           </label>
