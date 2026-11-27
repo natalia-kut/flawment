@@ -121,13 +121,18 @@ function VariableText({
   maxLength: number;
 }) {
   const fieldRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+  const [noRoom, setNoRoom] = useState(false);
 
   function insertVariable(key: string) {
     const field = fieldRef.current;
     const token = `{{${key}}}`;
     const start = field?.selectionStart ?? value.length;
     const end = field?.selectionEnd ?? value.length;
-    onChange((value.slice(0, start) + token + value.slice(end)).slice(0, maxLength));
+    // Cutting the result to fit would silently drop the end of the text: refuse instead.
+    const next = value.slice(0, start) + token + value.slice(end);
+    if (next.length > maxLength) { setNoRoom(true); return; }
+    setNoRoom(false);
+    onChange(next);
     requestAnimationFrame(() => {
       field?.focus();
       field?.setSelectionRange(start + token.length, start + token.length);
@@ -156,11 +161,12 @@ function VariableText({
       </div>
       <Field
         maxLength={maxLength}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => { setNoRoom(false); onChange(event.target.value); }}
         ref={fieldRef}
         rows={multiline ? 5 : undefined}
         value={value}
       />
+      {noRoom && <p className="form-error" role="alert">Not enough room for that: shorten the text first (up to {maxLength} characters).</p>}
     </div>
   );
 }
@@ -658,7 +664,10 @@ export default function TemplateBuilder({
                 Project: <strong>{project.name}</strong>
               </p>
             )}
-            {project && !projectLocked && (
+            {editingId !== null && source.projectId === null && (
+              <p className="builder-project">Project: <strong>All projects</strong></p>
+            )}
+            {project && !projectLocked && !(editingId !== null && source.projectId === null) && (
               <select
                 aria-label="Project"
                 className="project-select compact"

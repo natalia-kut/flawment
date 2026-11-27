@@ -894,3 +894,6 @@ a.team-card[data-own] { border-color: var(--accent-border); box-shadow: inset 0 
 /* The status dialog lists Save first (so Enter saves); shown as Clear … Cancel, Save. */
 .status-dialog .dialog-actions .status-clear-button { order: -1; }
 .status-dialog .dialog-actions .status-save-button { order: 1; }
+
+/* Long owner emails wrap instead of being cut off at the page edge when printed. */
+.document-footer-owner { min-width: 0; overflow-wrap: anywhere; }

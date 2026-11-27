@@ -14,6 +14,7 @@ import PageHeader from "@/components/page-header";
 import EmptyState from "@/components/ui/empty-state";
 import { closeOnBackdrop } from "@/components/ui/backdrop";
 import { OFFLINE, reach } from "@/components/ui/offline";
+import { useSearchParams } from "next/navigation";
 
 type DocumentsViewProps = {
   projects: DocumentProject[];
@@ -93,16 +94,28 @@ function ConfirmDialog({ tone, title, children, confirmLabel, busyLabel, busy, o
 }
 
 export default function DocumentsView({ projects, initialTemplates, today }: DocumentsViewProps) {
-  const requestedTemplateId = useContext(RequestedTemplateContext);
+  // A template Flawiusz asked to open wins; otherwise the project and template in the address
+  // (kept there as they change, so a reload or a shared link shows the same document).
+  const search = useSearchParams();
+  const requestedTemplateId = useContext(RequestedTemplateContext) ?? search.get("template");
+  const fromAddress = projects.find((project) => String(project.id) === search.get("docProject"))?.id;
   const [templates, setTemplates] = useState(initialTemplates);
-  const [selectedTemplateId, setSelectedTemplateId] = useState(
+  const [selectedTemplateId, setSelectedTemplateIdState] = useState(
     initialTemplates.some((template) => template.id === requestedTemplateId)
       ? requestedTemplateId!
       : (initialTemplates[0]?.id ?? ""),
   );
-  const [selectedProjectId, setSelectedProjectId] = useState(
-    initialTemplates.find((template) => template.id === requestedTemplateId)?.projectId ?? projects[0]?.id ?? 0,
+  const [selectedProjectId, setSelectedProjectIdState] = useState(
+    fromAddress ?? initialTemplates.find((template) => template.id === requestedTemplateId)?.projectId ?? projects[0]?.id ?? 0,
   );
+  function remember(key: "docProject" | "template", value: string) {
+    const params = new URLSearchParams(window.location.search);
+    params.set(key, value);
+    window.history.replaceState(null, "", "?" + params.toString());
+  }
+  const setSelectedTemplateId = (id: string) => { setSelectedTemplateIdState(id); remember("template", id); };
+  // A message about the previous project ("Copied to …") does not carry over to the next one.
+  const setSelectedProjectId = (id: number) => { setSelectedProjectIdState(id); setNotice(""); remember("docProject", String(id)); };
   // Template the builder starts from; null while the builder is closed.
   const [builderSource, setBuilderSource] = useState<DocumentTemplate | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -125,8 +138,12 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0];
   // Custom templates show up only in their own project, or everywhere when they have none.
+  // A template whose project its owner has left stays theirs: it shows in every project they
+  // still have, marked, so they can copy it somewhere or delete it.
+  const projectIds = new Set(projects.map((project) => project.id));
+  const isOrphan = (template: DocumentTemplate) => !template.isBuiltIn && template.projectId !== null && !projectIds.has(template.projectId);
   const projectTemplates = templates.filter(
-    (template) => template.isBuiltIn || template.projectId === null || template.projectId === selectedProject?.id,
+    (template) => template.isBuiltIn || template.projectId === null || template.projectId === selectedProject?.id || isOrphan(template),
   );
   const selectedTemplate = projectTemplates.find((template) => template.id === selectedTemplateId) ?? projectTemplates[0];
   const copyTargets = projects.filter((project) => project.id !== selectedTemplate.projectId);
@@ -234,6 +251,8 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
         <strong title={template.name}>{template.name}</strong>
         <span>{template.description || `${template.blocks.length} blocks`}</span>
         {!template.isBuiltIn && template.projectId === null && <em>All projects</em>}
+        {isOrphan(template) && <em>From a project you left</em>}
+        {template.ownerName && <em>By {template.ownerName}</em>}
       </button>
     );
   }
@@ -251,6 +270,7 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
         <EmptyState art="documents" title="Documents start with a project"
           action={<Link className="primary-button" href="/?view=projects">Go to projects</Link>}>
           They are generated from project data. Once you have a project, you can create them here.
+          {templates.some(isOrphan) && " Your templates from projects you have left are kept and show up again then."}
         </EmptyState>
       ) : (
         <div className="documents-layout">
@@ -266,7 +286,9 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
               value={selectedProject.id}
             >
               {projects.map((project) => (
-                <option key={project.id} value={project.id}>{project.name}</option>
+                <option key={project.id} value={project.id}>
+                  {project.name}{project.status === "ARCHIVED" ? " (archived)" : project.status === "CANCELLED" ? " (cancelled)" : ""}
+                </option>
               ))}
             </select>
 
@@ -275,7 +297,7 @@ export default function DocumentsView({ projects, initialTemplates, today }: Doc
               {projectTemplates.filter((template) => template.isBuiltIn).map(templateCard)}
             </div>
 
-            <p className="template-list-heading">Your templates</p>
+            <p className="template-list-heading">{templates.some((template) => template.ownerName) ? "Custom templates" : "Your templates"}</p>
             <div className="template-list">
               {customTemplates.map(templateCard)}
               <button className="new-template-button" onClick={() => setBuilderSource(blankTemplate)} type="button">

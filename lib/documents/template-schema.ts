@@ -177,6 +177,8 @@ export type DocumentTemplate = {
   showName: boolean;
   /** A custom template's last save (its updated_at), so an old copy cannot overwrite a newer one. */
   version?: string;
+  /** For a super admin: who owns a template that is not theirs. */
+  ownerName?: string;
 };
 
 export type TemplateInput = {
@@ -257,7 +259,10 @@ function pickList<T extends string>(value: unknown, allowed: readonly string[]):
 }
 
 function text(value: unknown, max: number) {
-  return typeof value === "string" ? value.slice(0, max) : "";
+  if (typeof value !== "string") return "";
+  const cut = value.slice(0, max);
+  // Never half an emoji: a lone surrogate left by the cut would be refused on save.
+  return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
 }
 
 // Charts that only repeated the tables next to them. Templates saved with one get what replaced it.
@@ -367,10 +372,16 @@ export function parseTemplateInput(raw: unknown): Result<TemplateInput> {
   const blocks = parseBlocks(raw.blocks);
   if (blocks.length === 0) return { ok: false, error: "Add at least one block." };
 
-  const tableWithoutColumns = blocks.find(
-    (block) => (block.type === "taskTable" || block.type === "memberTable") && block.columns.length === 0,
-  );
-  if (tableWithoutColumns) return { ok: false, error: "Every table needs at least one column." };
+  // Each says which block, since a template can have several of a kind.
+  for (const block of blocks) {
+    if ((block.type === "taskTable" || block.type === "memberTable") && block.columns.length === 0) {
+      return { ok: false, error: `The “${block.title || "Untitled"}” table needs at least one column.` };
+    }
+    if (block.type === "facts" && block.facts.length === 0) {
+      return { ok: false, error: `The “${block.title || "Untitled"}” fact sheet needs at least one row.` };
+    }
+    if (block.type === "metrics" && block.metrics.length === 0) return { ok: false, error: "Key figures need at least one figure." };
+  }
 
   return {
     ok: true,

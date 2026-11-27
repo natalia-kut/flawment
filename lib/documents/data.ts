@@ -39,7 +39,8 @@ export async function getDocumentProjects(): Promise<DocumentProject[]> {
     orderBy: [{ start_date: "desc" }, { id: "asc" }],
     include: {
       owner: { select: personSelect },
-      memberships: { where: user.role === "SUPER_ADMIN" ? {} : { user: { role: "USER" } }, include: { user: { select: {
+      // Super admins never join projects as people: counted out for every reader alike.
+      memberships: { where: { user: { role: "USER" } }, include: { user: { select: {
         ...personSelect,
         // A document can leave the company, so the reason for an absence is not even read.
         absences: { where: relevantAbsences(today), select: { start_date: true, end_date: true } },
@@ -68,7 +69,8 @@ export async function getDocumentProjects(): Promise<DocumentProject[]> {
     members: project.memberships.map((membership) => ({
       person: visiblePerson(membership.user),
       role: membership.role,
-      joinedAt: toDay(membership.joined_at),
+      // The Warsaw day, as every other date in documents.
+      joinedAt: workspaceDay(membership.joined_at),
       // Only the time off colleagues may know about (within the lookahead), joined with what touches it.
       absences: upcomingRanges(toRanges(membership.user.absences), today).map(({ start, end }) => ({ start, end })),
     })),
@@ -117,6 +119,13 @@ export function toCustomTemplate(record: {
 
 export async function getDocumentTemplates(): Promise<DocumentTemplate[]> {
   const user = await requireUser();
-  const custom = await prisma.documentTemplate.findMany({ where: user.role === "SUPER_ADMIN" ? {} : { owner_id: user.id }, orderBy: { created_at: "asc" } });
-  return [...builtInTemplates, ...custom.map(toCustomTemplate)];
+  const custom = await prisma.documentTemplate.findMany({
+    where: user.role === "SUPER_ADMIN" ? {} : { owner_id: user.id }, orderBy: { created_at: "asc" },
+    include: { owner: { select: { id: true, first_name: true, last_name: true } } },
+  });
+  // A super admin sees everyone's templates: theirs are labelled with whose they are.
+  return [...builtInTemplates, ...custom.map((record) => ({
+    ...toCustomTemplate(record),
+    ...(record.owner && record.owner_id !== user.id ? { ownerName: `${record.owner.first_name} ${record.owner.last_name}` } : {}),
+  }))];
 }

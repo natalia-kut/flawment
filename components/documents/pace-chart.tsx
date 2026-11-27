@@ -10,7 +10,15 @@ const MAX_DAYS_PAST_END = 45;
 const MAX_MONTHS = 8;
 
 
-function verdict(forecast: Forecast, open: number, endDate: string | null) {
+const CLOSED: Record<string, string> = {
+  COMPLETED: "The project is completed, so there is no forecast.",
+  CANCELLED: "The project was cancelled, so there is no forecast.",
+  ARCHIVED: "The project is archived, so there is no forecast.",
+};
+
+function verdict(forecast: Forecast, open: number, endDate: string | null, status: string) {
+  // A closed project will not get its open work done: a forecast would read as a plan.
+  if (CLOSED[status]) return CLOSED[status];
   if (forecast.state === "finished") return "All work is done.";
   if (forecast.state === "unknown") return "There are too few recent completions on record to forecast when the work will be done.";
   const pace = `At the pace of the last ${plural(forecast.days, "day")} (${plural(forecast.completed, "task")} done), the ${plural(open, "open task")} would be finished around ${formatDay(forecast.day)}`;
@@ -27,7 +35,7 @@ export default function PaceChart({ project, today }: { project: DocumentProject
   if (last.scope === 0) return <p className="document-muted">This project has no tasks yet.</p>;
 
   const first = points[0].day;
-  const expected = forecast.state === "expected" ? forecast.day : null;
+  const expected = forecast.state === "expected" && !CLOSED[project.status] ? forecast.day : null;
   const end = [project.endDate ?? today, today].sort().at(-1)!;
   const limit = addDays(end, MAX_DAYS_PAST_END);
   const to = expected && expected > end ? (expected < limit ? expected : limit) : end;
@@ -63,7 +71,7 @@ export default function PaceChart({ project, today }: { project: DocumentProject
         {expected && <li><span className="chart-swatch swatch-pace-forecast" aria-hidden="true" />At the current pace</li>}
       </ul>
       <svg className="chart" viewBox={`0 0 ${WIDTH} ${BASE + 24}`} role="img"
-        aria-label={`${last.done ?? 0} of ${last.scope} tasks done. ${verdict(forecast, open, project.endDate)}`}>
+        aria-label={`${last.done ?? 0} of ${last.scope} tasks done. ${verdict(forecast, open, project.endDate, project.status)}`}>
         {[0, Math.round(max / 2), max].filter((value, index, all) => all.indexOf(value) === index).map((value) => (
           <g key={value}>
             <line className="pace-grid" x1={LEFT} x2={WIDTH - RIGHT} y1={y(value)} y2={y(value)} />
@@ -89,7 +97,7 @@ export default function PaceChart({ project, today }: { project: DocumentProject
         {(!ends || Math.abs(x(ends) - x(today)) > 80) && <text className="chart-today-label" x={x(today)} y={TOP - 9} textAnchor="middle">Today</text>}
       </svg>
       <p className="chart-caption">
-        {verdict(forecast, open, project.endDate)}
+        {verdict(forecast, open, project.endDate, project.status)}
         {undated > 0 && ` ${plural(undated, "task")} ${undated === 1 ? "was" : "were"} done before completion dates were recorded, so earlier progress is not drawn.`}
       </p>
     </>

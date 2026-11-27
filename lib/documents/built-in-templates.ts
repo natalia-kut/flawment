@@ -108,7 +108,8 @@ export const builtInTemplates: DocumentTemplate[] = [
         filter: filter({ statuses: ["TO_DO", "IN_PROGRESS", "IN_REVIEW", "CANCELLED"] }),
         sort: "status",
         limit: null,
-        emptyText: "No outstanding items — full scope delivered.",
+        // Neutral: with no tasks at all, "full scope delivered" would be a false statement in a record that gets signed.
+        emptyText: "No outstanding or cancelled items.",
       },
       { id: "files", type: "fileTable", title: "Files handed over" },
       { id: "team", type: "memberTable", title: "Project team", columns: ["name", "role", "email", "joined"], sort: "role" },

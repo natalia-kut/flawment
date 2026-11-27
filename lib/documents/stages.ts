@@ -18,10 +18,11 @@ export type StageRow = {
 
 const SOON_DAYS = 14;
 
-function describe(deadline: string | null, total: number, open: number, today: string): { state: StageState; label: string } {
+function describe(deadline: string | null, total: number, open: number, cancelled: number, today: string): { state: StageState; label: string } {
   if (total > 0 && open === 0) return { state: "done", label: "Done" };
   const days = deadline ? daysBetween(today, deadline) : null;
-  if (total === 0) return { state: "empty", label: "No tasks yet" };
+  // A stage with nothing left to count is still late (or due) by its own deadline.
+  if (total === 0 && (days === null || days > SOON_DAYS)) return { state: "empty", label: cancelled > 0 ? "All tasks cancelled" : "No tasks yet" };
   if (days === null) return { state: "open", label: "No deadline" };
   if (days < 0) return { state: "late", label: `${plural(-days, "day")} late` };
   return { state: days <= SOON_DAYS ? "soon" : "open", label: days === 0 ? "Due today" : `Due in ${plural(days, "day")}` };
@@ -30,12 +31,13 @@ function describe(deadline: string | null, total: number, open: number, today: s
 /** How far each stage is, in the order of their deadlines; tasks outside any stage come last. */
 export function stageRows(project: DocumentProject, today: string): StageRow[] {
   const row = (stage: DocumentStage | null): StageRow => {
-    const tasks = project.tasks.filter((task) => task.status !== "CANCELLED" && (task.stage?.id ?? null) === (stage?.id ?? null));
+    const all = project.tasks.filter((task) => (task.stage?.id ?? null) === (stage?.id ?? null));
+    const tasks = all.filter((task) => task.status !== "CANCELLED");
     const open = tasks.filter(isOpen);
     const deadline = stage?.deadline ?? null;
     return {
       stage, tasks, done: tasks.length - open.length,
-      ...describe(deadline, tasks.length, open.length, today),
+      ...describe(deadline, tasks.length, open.length, all.length - tasks.length, today),
       after: deadline ? open.filter((task) => task.deadline !== null && task.deadline > deadline) : [],
     };
   };

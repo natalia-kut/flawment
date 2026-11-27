@@ -287,8 +287,9 @@ function renderBlock(block: TemplateBlock, project: DocumentProject, today: stri
         <>
           <SectionTitle title={block.title} variables={variables} />
           <div className="signature-grid">
-            {signersFor(project, block.signers).map((signer) => (
-              <div className="signature" key={signer.name}>
+            {/* Keyed by position: two people can share a name. */}
+            {signersFor(project, block.signers).map((signer, index) => (
+              <div className="signature" key={index}>
                 <span className="signature-line" />
                 <strong>{signer.name}</strong>
                 <span>{signer.role} · date</span>
@@ -342,7 +343,8 @@ export default function DocumentSheet({ template, project, today, frame }: Sheet
       })}
       <footer className="document-footer">
         <span>{template.showName ? `${template.name} · generated with Flawment` : "Generated with Flawment"}</span>
-        <span>{project.owner.name} · {project.owner.email}</span>
+        {/* An owner whose email is not shown (a super admin) gets no dangling separator. */}
+        <span className="document-footer-owner">{[project.owner.name, project.owner.email].filter(Boolean).join(" · ")}</span>
       </footer>
     </article>
   );
