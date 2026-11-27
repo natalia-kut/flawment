@@ -14,6 +14,7 @@ const person = (today: string) => ({
   email: true,
   photo_updated_at: true,
   team_id: true,
+  role: true,
   job_title: { select: { name: true } },
   absences: absenceSelect(today),
   ...statusSelect,
@@ -28,7 +29,8 @@ export async function getWorkspaceProjects() {
     where: visibleProjects(user),
     orderBy: { created_at: "desc" },
     include: {
-      stages: { orderBy: [{ created_at: "asc" }, { id: "asc" }] },
+      // By deadline, so the list reads in order; stages without one come last.
+      stages: { orderBy: [{ deadline: { sort: "asc", nulls: "last" } }, { created_at: "asc" }, { id: "asc" }] },
       memberships: {
         where:
           user.role === "SUPER_ADMIN"
@@ -96,6 +98,8 @@ export async function getWorkspaceProjects() {
           availability: availability(toRanges(m.user.absences, canSeeAbsenceReason(viewer, m.user)), today),
           photoVersion: m.user.photo_updated_at?.toISOString() ?? null,
           role: m.role,
+          // Super admins run the workspace and are never assigned tasks, even in a project they started.
+          assignable: m.user.role === "USER",
         })),
         eligible,
         stages: project.stages.map((stage) => ({

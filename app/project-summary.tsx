@@ -13,8 +13,10 @@ const formatDay = (day: string) => date.format(new Date(day + "T00:00:00Z"));
 export default function ProjectSummary({ project, today }: { project: WorkspaceProject; today: string }) {
   const progress = taskProgress(project.tasks);
   const overdue = project.tasks.filter((task) => isTaskOverdue(task, today)).length;
-  const next = project.stages.filter((stage) => stage.deadline && stage.doneCount < stage.taskCount)
+  // The earliest unfinished stage with a deadline; one without tasks is not finished either.
+  const next = project.stages.filter((stage) => stage.deadline && (stage.taskCount === 0 || stage.doneCount < stage.taskCount))
     .sort((a, b) => a.deadline.localeCompare(b.deadline))[0];
+  const nextLate = !!next && next.deadline < today;
   const due = dueLabel(project.end_date || null, project.status, today);
   return <dl className={"workspace-card " + styles.summary}>
     <div className={styles.progress}>
@@ -24,7 +26,8 @@ export default function ProjectSummary({ project, today }: { project: WorkspaceP
     <div><dt>Status</dt><dd><span className={card.status} data-status={project.status}>{projectStatusLabels[project.status]}</span></dd></div>
     <div><dt>Period</dt><dd>{formatDay(project.start_date)} – {project.end_date ? formatDay(project.end_date) : "open"}
       {project.end_date && due.tone && <small className={styles.due} data-tone={due.tone}>{due.text}</small>}</dd></div>
-    {next && <div><dt>Next stage</dt><dd>{next.name} <small>due {formatDay(next.deadline)}</small></dd></div>}
+    {next && <div><dt>{nextLate ? "Late stage" : "Next stage"}</dt><dd>{next.name}{" "}
+      {nextLate ? <small className={styles.due} data-tone="late">overdue since {formatDay(next.deadline)}</small> : <small>due {formatDay(next.deadline)}</small>}</dd></div>}
     <div><dt>Overdue</dt><dd>{overdue > 0
       ? <Link className={styles.overdue} href={`/?view=tasks&in=${project.id}&overdue=1`}><span className={card.dot} aria-hidden="true" />{overdue} {overdue === 1 ? "task" : "tasks"} →</Link>
       : "Nothing"}</dd></div>

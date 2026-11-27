@@ -52,7 +52,7 @@ function DeleteStage({ projectId, stage }: { projectId: number; stage: Stage }) 
   </form>;
 }
 
-export default function ProjectStages({ project }: { project: WorkspaceProject }) {
+export default function ProjectStages({ project, today }: { project: WorkspaceProject; today: string }) {
   const [editing, setEditing] = useState<number | "new" | null>(null);
   const stage = project.stages.find((item) => item.id === editing);
   return <section className={"workspace-card " + styles.section} aria-labelledby="project-stages-heading">
@@ -66,6 +66,8 @@ export default function ProjectStages({ project }: { project: WorkspaceProject }
           {item.description && <p className={styles.description}>{item.description}</p>}
           <p className={styles.meta}>
             <span>{item.deadline ? "Due " + dueDate.format(new Date(item.deadline + "T00:00:00Z")) : "No deadline"}</span>
+            {/* Past its deadline with work left (or none started): marked, as late tasks are. */}
+            {item.deadline && item.deadline < today && (item.taskCount === 0 || item.doneCount < item.taskCount) && <span className={styles.late}>Overdue</span>}
             <span>{item.doneCount}/{item.taskCount} tasks done</span>
             {item.taskCount > 0 && <span className={styles.progress} aria-hidden="true"><span style={{ width: `${(item.doneCount / item.taskCount) * 100}%` }} /></span>}
           </p>

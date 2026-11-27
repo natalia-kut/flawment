@@ -1,5 +1,6 @@
 import { can, type Actor } from "@/lib/rbac";
 import { serializable } from "@/lib/transaction";
+import { normalizeNewlines } from "@/lib/rich-text/markdown";
 
 export class StageError extends Error {}
 const text = (data: FormData, key: string) => String(data.get(key) ?? "").trim();
@@ -15,7 +16,8 @@ export async function mutateStage(actor: Actor, data: FormData) {
   if (!["create", "update", "delete"].includes(operation)) throw new StageError("Unknown stage operation.");
   const stageId = operation === "create" ? null : id(text(data, "stage_id"));
   const name = text(data, "name");
-  const description = text(data, "description");
+  // Forms send line breaks as \r\n; counted as one, as the browser does.
+  const description = normalizeNewlines(text(data, "description"));
   const deadline = text(data, "deadline");
   if (operation !== "delete") {
     if (!name || name.length > 120) throw new StageError("Enter a stage name between 1 and 120 characters.");

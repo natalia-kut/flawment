@@ -114,6 +114,16 @@ export default function ProjectsView({ projects, today, canCreateProjects }: {
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const editingTask = project?.tasks.find((task) => task.id === editingTaskId);
   const close = () => { setModal(null); setEditingTaskId(null); };
+  // A dialog belongs to the project it was opened on: leaving it (a deletion, Back) closes it,
+  // so the next project never opens with another project's dialog showing.
+  const [dialogProject, setDialogProject] = useState(selected);
+  if (dialogProject !== selected) {
+    setDialogProject(selected);
+    close();
+  }
+  // What deleting the project or removing a member takes with it, so the confirmations can say so.
+  const assignedTo = (memberId: number) => project?.tasks.filter((task) => task.assignedTo === memberId).length ?? 0;
+  const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
   // On a project page the breadcrumb takes the label line above the title.
   const breadcrumbs = <nav className="project-breadcrumbs" aria-label="Breadcrumb">
     <ol>
@@ -142,7 +152,7 @@ export default function ProjectsView({ projects, today, canCreateProjects }: {
         { key: "tasks", label: "Tasks", count: project.tasks.length, content: <ProjectTaskList project={project} today={today}
           onCreate={() => { setEditingTaskId(null); setModal("task"); }}
           onEdit={(id) => { setModal(null); setEditingTaskId(id); }} /> },
-        { key: "stages", label: "Stages", count: project.stages.length, content: <ProjectStages project={project} /> },
+        { key: "stages", label: "Stages", count: project.stages.length, content: <ProjectStages project={project} today={today} /> },
         { key: "people", label: "People", count: project.members.length, content: <section className="workspace-card project-team" aria-labelledby="project-people-heading">
             <div className="section-heading"><h2 id="project-people-heading">Working on this project</h2>{project.canManage && <button className="primary-button" onClick={() => setModal("add")}><span aria-hidden="true">+</span> Add member</button>}</div>
             {project.members.length === 0 && <p>No team members yet.</p>}
@@ -161,7 +171,9 @@ export default function ProjectsView({ projects, today, canCreateProjects }: {
               </div>
               {project.canManage && member.id !== project.owner_id && (project.canAssignRoles || member.role === "CONTRIBUTOR") && <ManageMenu><div className="member-controls">
                 {project.canAssignRoles && <ChangeForm operation="role" projectId={project.id} className="compact-form"><input type="hidden" name="user_id" value={member.id} /><RoleSelect canNameCoordinators value={member.role} saveOnChange /></ChangeForm>}
-                <ChangeForm operation="remove" projectId={project.id} className="compact-form" onSubmit={confirmSubmit({ title: `Remove ${member.first_name} from this project?`, message: "They lose access to this project.", confirm: "Remove" })}>
+                <ChangeForm operation="remove" projectId={project.id} className="compact-form" onSubmit={confirmSubmit({ title: `Remove ${member.first_name} from this project?`, message: assignedTo(member.id)
+                  ? `They lose access to this project, and their ${plural(assignedTo(member.id), "task")} here (finished ones included) become unassigned.`
+                  : "They lose access to this project.", confirm: "Remove" })}>
                   <input type="hidden" name="user_id" value={member.id} /><button className="text-button danger">Remove from project</button>
                 </ChangeForm>
               </div></ManageMenu>}
@@ -180,8 +192,8 @@ export default function ProjectsView({ projects, today, canCreateProjects }: {
     {modal === "edit" && project && <ProjectDetailsForm key={"edit-" + project.id} project={project} onClose={close} onSaved={() => { close(); router.refresh(); }}
       // Its own form (forms cannot nest); the dialog's "Delete project" button submits it by id.
       deletion={project.canDelete ? { formId: "delete-project-" + project.id, form: <ChangeForm id={"delete-project-" + project.id} operation="delete" projectId={project.id}
-        className="compact-form" onSuccess={() => router.push("/?view=projects")}
-        onSubmit={confirmSubmit({ title: `Delete “${project.name}”?`, message: "Its tasks, stages and memberships go with it. This cannot be undone.", confirm: "Delete project" })} /> } : undefined} />}
+        className="compact-form" onSuccess={() => { close(); router.push("/?view=projects"); }}
+        onSubmit={confirmSubmit({ title: `Delete “${project.name}”?`, message: `Everything in it goes too: ${plural(project.tasks.length, "task")} with their comments and files, ${plural(project.stages.length, "stage")}, the document templates made for it and everyone's membership. This cannot be undone.`, confirm: "Delete project" })} /> } : undefined} />}
     {modal === "add" && project && <ProjectDialog title="Bring someone on board" description={`Add a registered user to ${project.name}.`} onClose={close}>
       {project.eligible.length === 0 ? <p>There are no other available users to add.</p> : <ChangeForm operation="add" projectId={project.id} onSuccess={close}>
         <label>Available users<select name="user_id" required defaultValue=""><option value="" disabled>Select a user</option>{project.eligible.map((user) => <option key={user.id} value={user.id}>{user.first_name} {user.last_name} ({user.email}){user.availability ? ` · ${user.availability.label}` : ""}</option>)}</select></label>

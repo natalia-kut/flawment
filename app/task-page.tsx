@@ -246,7 +246,7 @@ export default function TaskPage({ project, task, details, viewer, today }: {
               {task.canEdit
                 ? <select value={values.assigned_to} onChange={(event) => save("assigned_to", event.target.value)}>
                   <option value="">Unassigned</option>
-                  {project.members.filter((member) => project.canManageTasks || member.id === project.viewerId || String(member.id) === saved.assigned_to)
+                  {project.members.filter((member) => String(member.id) === saved.assigned_to || (member.assignable && (project.canManageTasks || member.id === project.viewerId)))
                     .map((member) => <option key={member.id} value={member.id}>{member.first_name} {member.last_name}</option>)}
                 </select>
                 : <strong>{task.assigneeName}</strong>}
