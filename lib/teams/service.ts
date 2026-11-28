@@ -1,5 +1,6 @@
 import type { Actor } from "@/lib/rbac";
 import { serializable } from "@/lib/transaction";
+import { cleanLine, hasLetterOrDigit } from "@/lib/text";
 
 export class TeamError extends Error {}
 
@@ -65,8 +66,10 @@ export async function mutateTeam(actor: Actor, data: FormData) {
       return tx.team.delete({ where: { id: teamId! } });
     }
 
-    const name = String(data.get("name") ?? "").trim().replace(/\s+/g, " ");
+    // Lookalikes are one name: invisible characters go, and accents are composed one way.
+    const name = cleanLine(String(data.get("name") ?? ""));
     if (!name || name.length > 80) throw new TeamError("Use a team name between 1 and 80 characters.");
+    if (!hasLetterOrDigit(name)) throw new TeamError("Use a team name with at least one letter or digit.");
     const name_key = name.toLowerCase();
     if (await tx.team.findFirst({ where: { name_key, ...(teamId ? { id: { not: teamId } } : {}) } })) {
       throw new TeamError("A team with this name already exists.");

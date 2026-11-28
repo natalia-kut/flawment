@@ -57,7 +57,7 @@ export default function NeedsYou({ requests, needs, today }: { requests: Pending
         </button>
       </li>}
       {needs.leaderless.map((t) => <li key={"team-" + t.id} className={styles.row}>
-        <span className={styles.teamMark} aria-hidden="true">{t.name.split(/\s+/).map((w) => w[0]).filter((c) => /\w/.test(c)).join("").slice(0, 2)}</span>
+        <span className={styles.teamMark} aria-hidden="true">{t.name.split(/\s+/).map((w) => w[0]).filter((c) => /[\p{L}\p{N}]/u.test(c ?? "")).join("").slice(0, 2)}</span>
         <div className={styles.body}>
           <p><strong>{t.name}</strong></p>
           <p className={styles.missing}>No team lead</p>

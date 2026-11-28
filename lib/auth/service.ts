@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "./password";
 import { isValidName, NAME_RULE } from "./names";
 import { isValidEmail } from "./email";
+import { cleanLine } from "@/lib/text";
 type AuthResult = { error: string; userId?: never } | { userId: number; error?: never };
 const text = (data: FormData, name: string) => String(data.get(name) ?? "").trim();
 // Emails and usernames are stored lower-cased (here, in updatePerson and in the
@@ -16,8 +17,8 @@ export async function registerAccount(data: FormData): Promise<AuthResult> {
   if (!(data instanceof FormData)) return { error: "Fill in the form and try again." };
   const username = text(data, "username").toLowerCase();
   const email = text(data, "email").toLowerCase();
-  const first_name = text(data, "first_name");
-  const last_name = text(data, "last_name");
+  const first_name = cleanLine(text(data, "first_name"));
+  const last_name = cleanLine(text(data, "last_name"));
   const password = String(data.get("password") ?? "");
   if (!/^[a-z0-9_.-]{3,40}$/.test(username)) return { error: "Username must be 3–40 letters, numbers, dots, underscores or hyphens." };
   if (!isValidEmail(email)) return { error: "Enter a valid email address." };

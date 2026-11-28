@@ -4,6 +4,7 @@ import { MAX_DESCRIPTION_LENGTH, MIN_DEADLINE } from "./limits";
 import type { Task, TaskPriority, TaskStatus } from "@/src/generated/prisma/client";
 import { serializable } from "@/lib/transaction";
 import { keepUnchanged, knowsBase, listFields, staleFields } from "@/lib/stale";
+import { cleanLine } from "@/lib/text";
 
 export class TaskError extends Error {}
 /** The page was out of date: someone changed what it was about to save. */
@@ -81,7 +82,8 @@ function readFields(data: FormData, editing: boolean) {
   if (!taskStatuses.includes(status)) throw new TaskError("Choose a valid task status.");
   const stageValue = text(data, "stage_id");
   const stageId = stageValue ? recordId(stageValue) : null;
-  const title = text(data, "title");
+  // A title made only of invisible characters would look nameless: it counts as empty.
+  const title = cleanLine(text(data, "title"));
   // Forms submit line breaks as \r\n.
   const description = normalizeNewlines(text(data, "description"));
   const priority = text(data, "priority") as TaskPriority;

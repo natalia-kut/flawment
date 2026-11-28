@@ -39,6 +39,8 @@ export default function ProfileView({ user, today }: { today: string; user: {
   const [photoError, setPhotoError] = useState("");
   const confirmSubmit = useConfirmSubmit();
   const [state, action, pending] = useActionState(async (previous: Awaited<ReturnType<typeof profileAction>>, data: FormData) => {
+    // A new upload or a removal: an earlier "too large" no longer applies.
+    setPhotoError("");
     const result = await reach(() => profileAction(previous, data), { error: OFFLINE });
     setPhoto(null);
     setPhotoInputKey((k) => k + 1);
@@ -144,12 +146,13 @@ export default function ProfileView({ user, today }: { today: string; user: {
                 ? <ul className="mini-people">{user.team.leads.map((lead) => <li key={lead.id}><PersonButton id={lead.id} name={lead.first_name + " " + lead.last_name} className="mini-person"><UserAvatar id={lead.id} firstName={lead.first_name} lastName={lead.last_name} photoVersion={lead.photoVersion} size={24} /><strong>{lead.first_name} {lead.last_name}</strong></PersonButton></li>)}</ul>
                 : <span className="muted-value">{user.teamLead ? "You lead this team" : "No team lead yet"}</span>}</dd></div>
               <div><dt>Teammates</dt><dd>
-                <ul className="avatar-stack" aria-label="Teammates">{user.team.members.slice(0, 6).map((m) => <li key={m.id} title={`${m.first_name} ${m.last_name}`}>
+                {user.team.members.length === 0 && <span className="muted-value">Only you so far</span>}
+                {user.team.members.length > 0 && <ul className="avatar-stack" aria-label="Teammates">{user.team.members.slice(0, 6).map((m) => <li key={m.id} title={`${m.first_name} ${m.last_name}`}>
                   <PersonButton id={m.id} name={m.first_name + " " + m.last_name}>
                     <UserAvatar id={m.id} firstName={m.first_name} lastName={m.last_name} photoVersion={m.photoVersion} size={26} />
                     <span className="visually-hidden">{m.first_name} {m.last_name}</span>
-                  </PersonButton></li>)}</ul>
-                {user.team.members.length > 6 && <span className="muted-value">+{user.team.members.length - 6}</span>}
+                  </PersonButton></li>)}</ul>}
+                {user.team.members.length > 6 && <Link href="/?view=team" className="inline-link">+{user.team.members.length - 6} more</Link>}
               </dd></div>
             </dl>}
         </section>

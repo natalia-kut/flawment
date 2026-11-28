@@ -63,7 +63,10 @@ export function activeStatus(row: { status_emoji: string | null; status_text: st
     const sameDay = workspaceToday(until) === workspaceToday(now);
     // Midnight reads better as "until tomorrow" / "until Monday" than "until 00:00".
     const atMidnight = time.format(until) === "00:00";
-    if (atMidnight) untilLabel = workspaceToday(until) === addDays(workspaceToday(now), 1) ? "Until tomorrow" : `Until ${weekday.format(until)}`;
+    // A status ending at midnight lasts through the day before it: "Until end of Sunday", not "Until Monday".
+    const lastDay = addDays(workspaceToday(until), -1);
+    if (atMidnight) untilLabel = lastDay === workspaceToday(now) ? "Until end of today"
+      : `Until end of ${weekday.format(new Date(lastDay + "T12:00:00Z"))}`;
     else untilLabel = sameDay ? `Until ${time.format(until)}` : `Until ${weekday.format(until)} ${time.format(until)}`;
   }
   return { emoji: row.status_emoji, text: row.status_text ?? "", until: until?.toISOString() ?? null, untilLabel };

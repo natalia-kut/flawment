@@ -3,10 +3,11 @@ import type { Prisma } from "@/src/generated/prisma/client";
 import { isManagerialTitle } from "./job-titles";
 import { serializable } from "@/lib/transaction";
 import { isValidName, NAME_RULE } from "@/lib/auth/names";
+import { cleanLine, hasLetterOrDigit } from "@/lib/text";
 
 export class PeopleError extends Error {}
 
-const clean = (value: FormDataEntryValue | null) => String(value ?? "").trim().replace(/\s+/g, " ");
+const clean = (value: FormDataEntryValue | null) => cleanLine(String(value ?? ""));
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function optionalId(value: FormDataEntryValue | null) {
@@ -18,8 +19,9 @@ function optionalId(value: FormDataEntryValue | null) {
 
 /** Finds a job title by name (ignoring case and spacing), or adds it to the list; its name says whether it is managerial. */
 export async function findOrCreateJobTitle(tx: Prisma.TransactionClient, rawName: string) {
-  const name = rawName.trim().replace(/\s+/g, " ");
+  const name = cleanLine(rawName);
   if (!name || name.length > 80) throw new PeopleError("Use a job title between 1 and 80 characters.");
+  if (!hasLetterOrDigit(name)) throw new PeopleError("Use a job title with at least one letter or digit.");
   const name_key = name.toLowerCase();
   return await tx.jobTitle.findUnique({ where: { name_key } })
     ?? tx.jobTitle.create({ data: { name, name_key, can_lead: isManagerialTitle(name) } });

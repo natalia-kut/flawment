@@ -7,6 +7,7 @@ import type { Prisma, ProjectRole, ProjectStatus } from "@/src/generated/prisma/
 import { serializable } from "@/lib/transaction";
 import { normalizeNewlines } from "@/lib/rich-text/markdown";
 import { keepUnchanged, knowsBase, listFields, staleFields } from "@/lib/stale";
+import { cleanLine } from "@/lib/text";
 
 export class ProjectError extends Error {}
 /** The page was out of date: someone changed what it was about to save. */
@@ -40,7 +41,7 @@ function id(value: string) {
 }
 function projectInput(data: FormData) {
   // Forms send line breaks as \r\n; counted as one, as the browser does.
-  const name = field(data, "name"), description = normalizeNewlines(field(data, "description"));
+  const name = cleanLine(field(data, "name")), description = normalizeNewlines(field(data, "description"));
   const status = field(data, "status") as ProjectStatus;
   const start = field(data, "start_date"), end = field(data, "end_date");
   const validDay = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s)) && new Date(s).toISOString().slice(0, 10) === s;
