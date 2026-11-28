@@ -10,7 +10,7 @@ import { useRouter, useSearchParams, type ReadonlyURLSearchParams } from "next/n
 import type { WorkspaceProject } from "@/lib/projects/data";
 import { emptyTaskFilters, filterTasks, taskAssigneeKey, type TaskFilters } from "@/lib/tasks/filters";
 import { getOverviewTasks, filterOverviewTasks } from "@/lib/tasks/overview";
-import { boardColumns, isTaskOverdue, taskProgress } from "@/lib/tasks/board";
+import { boardColumns, isDueThisWeek, isTaskOverdue, taskProgress } from "@/lib/tasks/board";
 import { changeTaskStatusAction } from "@/lib/tasks/actions";
 import styles from "./tasks-board.module.css";
 import details from "@/components/ui/details-dialog.module.css";
@@ -47,8 +47,8 @@ type TaskStatus = ReturnType<typeof getOverviewTasks>[number]["status"];
  * link find it as it was. `project` null: none chosen yet, so the tab remembered on
  * this device is used; "" is All projects.
  */
-type BoardState = { project: string | null; filters: TaskFilters; overdueOnly: boolean; mineOnly: boolean; groupBy: "project" | "person" };
-const BOARD_PARAMS = ["in", "q", "assignee", "stage", "priority", "overdue", "mine", "group"] as const;
+type BoardState = { project: string | null; filters: TaskFilters; overdueOnly: boolean; weekOnly: boolean; mineOnly: boolean; groupBy: "project" | "person" };
+const BOARD_PARAMS = ["in", "q", "assignee", "stage", "priority", "overdue", "week", "mine", "group"] as const;
 
 function readBoardState(search: URLSearchParams | ReadonlyURLSearchParams, projects: readonly { id: number }[]): BoardState {
   const linked = search.get("in");
@@ -61,6 +61,7 @@ function readBoardState(search: URLSearchParams | ReadonlyURLSearchParams, proje
     filters: { ...emptyTaskFilters, query: search.get("q") ?? "", assignee: search.get("assignee") ?? "",
       stage: search.get("stage") ?? "", priority: search.get("priority") ?? "" },
     overdueOnly: search.get("overdue") === "1",
+    weekOnly: search.get("week") === "1",
     mineOnly: search.get("mine") === "1",
     groupBy: search.get("group") === "person" ? "person" : "project",
   };
@@ -70,7 +71,7 @@ function boardSearch(state: BoardState, projectId: string) {
   const params = new URLSearchParams(window.location.search);
   const values: Record<(typeof BOARD_PARAMS)[number], string> = {
     in: projectId, q: state.filters.query, assignee: state.filters.assignee, stage: state.filters.stage,
-    priority: state.filters.priority, overdue: state.overdueOnly ? "1" : "", mine: state.mineOnly ? "1" : "",
+    priority: state.filters.priority, overdue: state.overdueOnly ? "1" : "", week: state.weekOnly ? "1" : "", mine: state.mineOnly ? "1" : "",
     group: state.groupBy === "person" ? "person" : "",
   };
   for (const key of BOARD_PARAMS) {
@@ -91,7 +92,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
   const search = useSearchParams();
   const [board, setBoard] = useState(() => readBoardState(search, projects));
   const [error, setError] = useState("");
-  const { filters, overdueOnly, mineOnly, groupBy, project: chosenProjectId } = board;
+  const { filters, overdueOnly, weekOnly, mineOnly, groupBy, project: chosenProjectId } = board;
   // Tabs: A–Z by default; once the user drags them, their own order (new projects join A–Z at the end).
   const savedOrder = readOrder(useSyncExternalStore(subscribeToStorage,
     () => localStorage.getItem(ORDER_STORAGE_KEY), () => null));
@@ -171,7 +172,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
   const formatShortDeadline = (value: string) => value ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(value + "T00:00:00Z")) : "No deadline";
   type BoardTask = (typeof allTasks)[number];
   const tasks = filterOverviewTasks(allTasks, filters, projectId)
-    .filter((task) => (!overdueOnly || isTaskOverdue(task, today)) &&
+    .filter((task) => (!overdueOnly || isTaskOverdue(task, today)) && (!weekOnly || isDueThisWeek(task, today)) &&
       (!mineOnly || task.assignedTo === currentUserId));
   const overdue = allTasks.filter((task) => isTaskOverdue(task, today) && (!projectId || String(task.projectId) === projectId));
   const assigneeNames = new Map(allTasks.map((task) => [taskAssigneeKey(task), task.assigneeName] as const));
@@ -190,7 +191,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
   const selectedProject = projects.find((project) => String(project.id) === projectId);
   // The project a task can be added to when the board is empty: the one picked, if you may add tasks to it.
   const emptyAddTo = singleProject ? creatable.find((project) => String(project.id) === projectId) : undefined;
-  const anyFilter = overdueOnly || mineOnly || Object.values(filters).some(Boolean);
+  const anyFilter = overdueOnly || weekOnly || mineOnly || Object.values(filters).some(Boolean);
   const groups: (readonly [string, string])[] = Array.from(new Map(tasks.map((task) => grouping === "project"
     ? [String(task.projectId), task.projectName] as const
     : [taskAssigneeKey(task), task.assigneeName] as const)));
@@ -232,7 +233,8 @@ export default function TasksOverview({ projects, currentUserId, today }: {
       deadline: field("deadline"),
     };
     return (!projectId || String(created.projectId) === projectId) && filterTasks([created], filters).length > 0 &&
-      (!overdueOnly || isTaskOverdue(created, today)) && (!mineOnly || assignedTo === currentUserId);
+      (!overdueOnly || isTaskOverdue(created, today)) && (!weekOnly || isDueThisWeek(created, today)) &&
+      (!mineOnly || assignedTo === currentUserId);
   }
   // The card gliding to its new place, the only one named for the view transition.
   const [gliding, setGliding] = useState<number | null>(null);
@@ -357,7 +359,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
       <span className={styles.overdueDot} aria-hidden="true" />
       <strong>{overdue.length} overdue {overdue.length === 1 ? "task" : "tasks"}</strong>
       <button type="button" className={styles.showMore} onClick={() => {
-        change({ overdueOnly: true, mineOnly: false, filters: { ...emptyTaskFilters } });
+        change({ overdueOnly: true, weekOnly: false, mineOnly: false, filters: { ...emptyTaskFilters } });
       }}>Show them</button>
     </p>}
     <div className={controls.toolbar} role="group" aria-label="Task filters">
@@ -388,6 +390,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
           {["LOW", "MEDIUM", "HIGH", "URGENT"].map((value) => <option key={value} value={value}>{value.charAt(0) + value.slice(1).toLowerCase()}</option>)}
         </select>
         <label className={controls.chip}><input type="checkbox" checked={overdueOnly} onChange={(e) => change({ overdueOnly: e.target.checked })} />Overdue</label>
+        <label className={controls.chip}><input type="checkbox" checked={weekOnly} onChange={(e) => change({ weekOnly: e.target.checked })} />Due this week</label>
         <label className={controls.chip}><input type="checkbox" checked={mineOnly} onChange={(e) => change({ mineOnly: e.target.checked })} />Only my tasks</label>
       </div>
     </div>
@@ -395,7 +398,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
       <div className={controls.statusText}>
         <p className={controls.status} role="status" aria-live="polite">{saving !== null ? "Saving task status…" : message || "Showing " + tasks.length + " of " + scopeTasks.length + " tasks"}</p>
         {anyFilter && <button className={controls.clear} type="button"
-          onClick={() => change({ filters: { ...emptyTaskFilters }, overdueOnly: false, mineOnly: false })}>
+          onClick={() => change({ filters: { ...emptyTaskFilters }, overdueOnly: false, weekOnly: false, mineOnly: false })}>
           Clear filters
         </button>}
       </div>

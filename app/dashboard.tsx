@@ -13,7 +13,7 @@ import TeamRings from "@/components/dashboard/team-rings";
 import TaskPreview from "@/components/dashboard/task-preview";
 import type { TeamPerson } from "@/lib/teams/data";
 import type { WorkspaceProject } from "@/lib/projects/data";
-import { isTaskOverdue } from "@/lib/tasks/board";
+import { isDueThisWeek, isTaskOverdue } from "@/lib/tasks/board";
 import { taskAssigneeKey } from "@/lib/tasks/filters";
 import { taskPriorityLabels } from "@/lib/tasks/labels";
 import styles from "./dashboard.module.css";
@@ -105,16 +105,20 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
   const open = tasks.filter(isOpen);
   const mine = open.filter((task) => task.assignedTo === userId);
   const activeProjects = projects.filter((project) => project.status === "IN_PROGRESS");
-  const managesTasks = projects.some((project) => project.canManageTasks);
-  // Whoever plans the work counts everyone's deadlines; everyone else counts their own.
-  const counted = managesTasks ? open : mine;
+  // Per project: where you plan the work (coordinator, owner) everyone's deadlines count;
+  // elsewhere only your own. Managing one project says nothing about the others.
+  const managed = new Set(projects.filter((project) => project.canManageTasks).map((project) => project.id));
+  const counted = open.filter((task) => task.assignedTo === userId || managed.has(task.projectId));
   const overdue = counted.filter((task) => task.overdue);
-  const dueThisWeek = counted.filter((task) => task.deadline && daysUntil(task.deadline, today) >= 0 && daysUntil(task.deadline, today) < 7);
-  const scopeParam = managesTasks ? "" : "&mine=1";
+  const dueThisWeek = counted.filter((task) => isDueThisWeek(task, today));
+  // The board shows everyone's tasks or only yours; for someone who manages no project, only theirs.
+  const scopeParam = managed.size > 0 ? "" : "&mine=1";
 
-  // Up next: your own open work first, most urgent first, then the team's soonest to fill the list.
-  const byDeadline = (a: { deadline: string }, b: { deadline: string }) => (a.deadline || "9999").localeCompare(b.deadline || "9999");
-  const upNext = [...mine.toSorted(byDeadline), ...open.filter((task) => task.assignedTo !== userId).toSorted(byDeadline)]
+  // Up next: what the header counts, most urgent first (late work has the earliest deadlines),
+  // your own winning ties; then other open work to fill the list.
+  const urgency = (a: { deadline: string; assignedTo: number | null }, b: { deadline: string; assignedTo: number | null }) =>
+    (a.deadline || "9999").localeCompare(b.deadline || "9999") || Number(b.assignedTo === userId) - Number(a.assignedTo === userId);
+  const upNext = [...counted.toSorted(urgency), ...open.filter((task) => !counted.includes(task)).toSorted(urgency)]
     .slice(0, UP_NEXT);
 
   const previewTask = tasks.find((task) => task.id === previewId);
@@ -177,19 +181,19 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
           <Stat label="No team" value={needs.noTeam.length} href="/?view=team" />
           <Stat label="Teams without a lead" value={needs.leaderless.length} href="/?view=team" />
         </div>
-        {/* Deadlines on the left, like everyone's dashboard; what needs the super admin on the right. */}
-        <div className={styles.columns}>
-          {/* Only their own work: a super admin oversees people, not every project's deadlines. */}
-          <section className={styles.panel} aria-label="Deadlines">
-            <TaskCalendar today={today} tasks={tasks.filter((task) => task.status !== "CANCELLED" && task.assignedTo === userId)} timeOff={timeOff} onOpenTask={setPreviewId} />
-          </section>
-          <NeedsYou requests={admin.requests} needs={needs} today={today} />
-        </div>
-      </> : <>
+        {/* A super admin is never given tasks, so no deadline calendar: what needs them takes the width. */}
+        <NeedsYou requests={admin.requests} needs={needs} today={today} />
+      </> : projects.length === 0 ? <section className={`${styles.panel} ${styles.wide} ${styles.firstRun}`} aria-labelledby="first-run-title">
+        {/* A new account: every number would be 0 and every panel empty, so say why instead. */}
+        <h2 id="first-run-title">You are not on any project yet</h2>
+        <p>Projects are where tasks, deadlines and the timeline come from. Once a manager adds you to one, or you start one
+          yourself if your job title allows it, this page fills up with your work.</p>
+        <Link className="secondary-button" href="/?view=projects">Go to projects</Link>
+      </section> : <>
         <div className={styles.stats}>
           <Stat label="Your open tasks" value={mine.length} href="/?view=tasks&mine=1" />
           <Stat label="Overdue" value={overdue.length} href={"/?view=tasks&overdue=1" + scopeParam} tone={overdue.length > 0 ? "critical" : undefined} />
-          <Stat label="Due this week" value={dueThisWeek.length} href={"/?view=tasks" + scopeParam} />
+          <Stat label="Due this week" value={dueThisWeek.length} href={"/?view=tasks&week=1" + scopeParam} />
           <Stat label="Active projects" value={activeProjects.length} href="/?view=projects" />
         </div>
 
@@ -225,7 +229,7 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
       </>}
 
       {/* A super admin looks after people and accounts, not project work. */}
-      {!admin && <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="timeline-title">
+      {!admin && projects.length > 0 && <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="timeline-title">
         <div className={styles.panelHeading}><h2 id="timeline-title">Timeline</h2></div>
         <ProjectTimeline projects={projects} today={today} />
       </section>}
@@ -233,7 +237,7 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
       {/* Everyone sees their own team: who is in, who is away, how their work is going. */}
       {myTeam && <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="team-title">
         <div className={styles.panelHeading}><h2 id="team-title">Your team <small className={styles.teamName}>{myTeam.name}</small></h2><Link href="/?view=team">Open team page</Link></div>
-        <TeamRings currentUserKey={String(userId)} people={teamDetails}
+        <TeamRings currentUserKey={String(userId)} people={teamDetails} moreHref="/?view=team"
           members={myTeam.members.map((m) => ({ key: String(m.id), name: `${m.first_name} ${m.last_name}` }))}
           tasks={tasks.map((task) => ({ status: task.status, overdue: task.overdue, assigneeKey: taskAssigneeKey(task), assigneeName: task.assigneeName }))} />
       </section>}

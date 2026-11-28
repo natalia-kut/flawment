@@ -82,7 +82,15 @@ const joinedDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "sh
 
 /** Accounts still missing a job title or a team: new sign-ups land here until a super admin sets them up. */
 function NewHires({ directory }: { directory: PeopleDirectory }) {
-  const [editingId, setEditingId] = useState<number | null>(null);
+  // "Set up →" on the dashboard opens one person's set-up straight away (?setup=ID).
+  const setup = useSearchParams().get("setup");
+  const [editingId, setEditingId] = useState<number | null>(setup ? Number(setup) : null);
+  function close() {
+    setEditingId(null);
+    // A refresh should not open it again.
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("setup")) { params.delete("setup"); window.history.replaceState(null, "", "?" + params.toString()); }
+  }
   const pending = directory.people.filter((p) => p.role !== "SUPER_ADMIN" && (p.job_title_id === null || p.team_id === null));
   const editing = directory.people.find((p) => p.id === editingId);
   if (pending.length === 0) return null;
@@ -97,7 +105,7 @@ function NewHires({ directory }: { directory: PeopleDirectory }) {
         <span className={styles.missing}>{[p.job_title_id === null && "No job title", p.team_id === null && "No team"].filter(Boolean).join(" · ")}</span>
       </button>
     </li>)}</ul>
-    {editing && <EditPerson key={editing.id} person={editing} directory={directory} onClose={() => setEditingId(null)} />}
+    {editing && <EditPerson key={editing.id} person={editing} directory={directory} onClose={close} />}
   </section>;
 }
 

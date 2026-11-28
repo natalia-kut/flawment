@@ -13,6 +13,19 @@ export function isTaskOverdue(task: { deadline: string; status: string }, today:
     task.status !== "COMPLETED" && task.status !== "CANCELLED";
 }
 
+/** Sunday of the calendar week (Monday to Sunday, like the dashboard calendar) that `today` falls in. */
+export function endOfWeek(today: string) {
+  const day = new Date(today + "T00:00:00Z");
+  day.setUTCDate(day.getUTCDate() + 6 - (day.getUTCDay() + 6) % 7);
+  return day.toISOString().slice(0, 10);
+}
+
+/** Open, and due from today to Sunday. Earlier deadlines are overdue, not due. */
+export function isDueThisWeek(task: { deadline: string; status: string }, today: string) {
+  return !!task.deadline && task.deadline >= today && task.deadline <= endOfWeek(today) &&
+    task.status !== "COMPLETED" && task.status !== "CANCELLED";
+}
+
 export function taskProgress(tasks: readonly { status: string }[]) {
   const active = tasks.filter((task) => task.status !== "CANCELLED");
   const done = active.filter((task) => task.status === "COMPLETED").length;

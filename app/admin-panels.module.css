@@ -35,3 +35,8 @@
 .list { grid-template-columns: minmax(0, 1fr); }
 .row { width: 100%; min-width: 0; }
 .body > * { min-width: 0; overflow-wrap: anywhere; }
+
+/* "Show 32 more people": the rest of the list on request, so the teams below stay in view. */
+.more { padding: 8px; }
+.moreButton { padding: 4px 0; font: inherit; font-size: 13px; font-weight: 600; color: var(--accent-strong); background: none; border: 0; cursor: pointer; }
+.moreButton:hover { text-decoration: underline; }
