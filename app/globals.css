@@ -931,9 +931,42 @@ button:focus-visible, a:focus-visible, summary:focus-visible,
 #main-content:focus { outline: none; }
 
 /* My profile: change your password, or sign out your other devices. */
-.password-form fieldset { display: grid; gap: 10px; min-width: 0; margin: 0; padding: 0; border: 0; }
-.password-form label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+.workspace-form.password-form { margin-top: 0; }
 .password-form .muted-value { margin: 0; font-size: 12.5px; }
 .password-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .password-card .text-button { padding: 0; font: inherit; font-size: 13px; font-weight: 600; }
 .password-done { margin: 10px 0 0; font-size: 13.5px; color: var(--success-strong); }
+
+/* Whom to contact: the administrators, on the Teams page and in My profile. */
+.workspace-card.admin-contact { margin-top: 18px; padding: 18px 22px; }
+.admin-contact h2 { margin: 0 0 6px; font-size: 18px; }
+.admin-contact p { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
+.admin-contact.compact { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.admin-contact-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.admin-contact-list li { display: flex; flex-wrap: wrap; gap: 4px 10px; overflow-wrap: anywhere; }
+
+/*
+ * Drop-down lists in the app's look: a rounded panel, options highlighted in the accent.
+ * Browsers that cannot style the list (Firefox, Safari for now) keep their own, as before.
+ */
+@supports (appearance: base-select) {
+  select, ::picker(select) { appearance: base-select; }
+  select { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  /* A thin chevron like the app's other icons, not the browser's filled triangle. */
+  select::picker-icon {
+    content: ""; width: 12px; height: 12px; flex: none; background: var(--muted);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+    transition: rotate 160ms ease;
+  }
+  select:open::picker-icon { rotate: 180deg; }
+  ::picker(select) {
+    margin-block: 6px; padding: 6px; max-height: min(22rem, 60vh); color: var(--foreground); background: var(--card);
+    border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 18px 40px -18px #39220f59;
+  }
+  select option { gap: 8px; padding: 8px 12px; font: inherit; font-weight: 500; border-radius: 9px; cursor: pointer; transition: background-color 100ms ease; }
+  /* Under the pointer or the keyboard: a lighter tint than the chosen option. */
+  select option:hover, select option:focus-visible { color: var(--accent-strong); background: color-mix(in srgb, var(--accent-soft) 55%, transparent); outline: none; }
+  select option:checked { font-weight: 700; color: var(--accent-strong); background: var(--accent-soft); }
+  select option::checkmark { color: var(--accent); }
+  select option:disabled { color: var(--muted); cursor: default; }
+}

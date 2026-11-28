@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth/session";
 import type { TeamsOverview } from "@/lib/teams/data";
 import { getPromotions, type LeadTitleRequests } from "@/lib/job-title-requests/data";
-import { getPeopleDirectory } from "@/lib/people/data";
+import { getAdministrators, getPeopleDirectory } from "@/lib/people/data";
 import { prisma } from "@/lib/prisma";
 import { workspaceToday } from "@/lib/time-off/dates";
 import TeamView from "./team-view";
@@ -15,5 +15,7 @@ export default async function TeamSection({ overview, titleRequests }: { overvie
   const leads = overview.people.some((p) => p.id === user.id && p.teamLead);
   const lead = leads ? { requests: titleRequests, jobTitles: await prisma.jobTitle.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }) } : null;
   const today = workspaceToday();
-  return <TeamView overview={overview} directory={directory} currentUserId={user.id} lead={lead} month={today.slice(0, 7)} promotions={await getPromotions(today)} />;
+  // Whom everyone else asks about accounts and teams; an administrator does not need to be told.
+  const administrators = user.role === "SUPER_ADMIN" ? [] : await getAdministrators();
+  return <TeamView administrators={administrators} overview={overview} directory={directory} currentUserId={user.id} lead={lead} month={today.slice(0, 7)} promotions={await getPromotions(today)} />;
 }

@@ -486,7 +486,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
                   <h4><span className={styles.priority} data-priority={task.priority} title={taskPriorityLabels[task.priority] + " priority"} />
                     <span className="visually-hidden">{taskPriorityLabels[task.priority]} priority: </span>{task.title}</h4>
                   <div className={styles.cardMeta}>
-                    <span>{task.assigneeName}</span>
+                    <span title={task.assigneeName}>{task.assigneeName}</span>
                     <span className={isTaskOverdue(task, today) ? styles.lateText : undefined}>{formatShortDeadline(task.deadline)}{isTaskOverdue(task, today) && <span className="visually-hidden"> (overdue)</span>}</span>
                   </div>
                 </article>)}

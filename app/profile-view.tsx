@@ -11,6 +11,8 @@ import { absenceTypeLabels } from "@/lib/time-off/labels";
 import { daySpan, formatBirthday, formatRange } from "@/lib/time-off/dates";
 import type { AbsenceType } from "@/src/generated/prisma/enums";
 import UserAvatar from "./user-avatar";
+import AdminContact from "./admin-contact";
+import type { AdministratorContact } from "@/lib/people/data";
 import { PersonButton } from "./people-context";
 import AvailabilityBadge from "./availability-badge";
 import StatusDialog, { StatusText } from "./status-dialog";
@@ -24,7 +26,7 @@ import PasswordCard from "./password-card";
 type Person = { id: number; first_name: string; last_name: string; photoVersion: string | null };
 
 /** Everything on this page saves where you edit it: no form, no Save button. */
-export default function ProfileView({ user, today }: { today: string; user: {
+export default function ProfileView({ user, today, administrators }: { today: string; administrators: AdministratorContact[]; user: {
   id: number; first_name: string; last_name: string; email: string; username: string; role: string;
   photoVersion: string | null; teamLead: boolean;
   jobTitle: string; pronouns: string; phone: string; location: string; workingHours: string; skills: string[];
@@ -157,6 +159,7 @@ export default function ProfileView({ user, today }: { today: string; user: {
                 {user.team.members.length > 6 && <Link href={`/?view=team&team=${user.team.id}`} className="inline-link">+{user.team.members.length - 6} more</Link>}
               </dd></div>
             </dl>}
+          <AdminContact administrators={administrators} compact />
         </section>
 
         <section className="workspace-card profile-mini-card">

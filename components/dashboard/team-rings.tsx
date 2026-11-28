@@ -97,7 +97,7 @@ export default function TeamRings({ tasks, currentUserKey, people: details = new
         </li>;
       })}
       {more > 0 && <li className={styles.member}>
-        {moreHref ? <Link href={moreHref} className={styles.more}>+{more} more</Link> : <span className={styles.more}>+{more} more</span>}
+        {moreHref ? <Link href={moreHref} className={styles.moreRing}>+{more} more</Link> : <span className={styles.moreRing}>+{more} more</span>}
       </li>}
   </ul>;
 }

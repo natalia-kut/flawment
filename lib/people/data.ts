@@ -25,3 +25,18 @@ export async function getPeopleDirectory(actor: Actor) {
 }
 
 export type PeopleDirectory = NonNullable<Awaited<ReturnType<typeof getPeopleDirectory>>>;
+
+export type AdministratorContact = { id: number; name: string; email: string };
+
+/**
+ * Who to contact about an account, a job title or a team: the active administrators,
+ * by name and email only. They stay out of the directory, teams and projects as before.
+ */
+export async function getAdministrators(): Promise<AdministratorContact[]> {
+  const rows = await prisma.user.findMany({
+    where: { role: "SUPER_ADMIN", is_active: true },
+    select: { id: true, first_name: true, last_name: true, email: true },
+    orderBy: [{ first_name: "asc" }, { last_name: "asc" }],
+  });
+  return rows.map((row) => ({ id: row.id, name: `${row.first_name} ${row.last_name}`.trim(), email: row.email }));
+}

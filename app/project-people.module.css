@@ -9,6 +9,8 @@
 .info { display: grid; flex: 1; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: 2px; min-width: 0; text-align: left; overflow-wrap: anywhere; }
 .info p { margin: 0; }
 .name { max-width: 100%; overflow: hidden; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
+/* In the ink colour: `.workspace-card p` would make it grey, which reads as an inactive person. */
+.info .name { color: var(--foreground); }
 /* The name covers the whole tile (its ::after), as on the project cards; the ⋯ menu sits above it. */
 button.nameLink { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 button.nameLink::after { content: ""; position: absolute; inset: 0; border-radius: 14px; }
