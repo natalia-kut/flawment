@@ -15,15 +15,33 @@ type Content =
   | { kind: "pdf"; url: string }
   | { kind: "text"; text: string; more: boolean }
   | { kind: "sheets"; sheets: Sheet[] }
-  | { kind: "document"; html: string };
+  | { kind: "document"; html: string }
+  | { kind: "too-large" };
 
 // A document from outside: its frame runs no scripts, loads nothing and cannot reach the app.
 const documentPage = (body: string) => `<!doctype html><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'">
 <style>
   body { max-width: 46rem; margin: 0 auto; padding: 2rem 1.5rem 3rem; font: 15px/1.6 Calibri, "Segoe UI", sans-serif; color: #211912; background: #fff; overflow-wrap: anywhere; }
+  .link { color: #0b5394; text-decoration: underline; }
   img { max-width: 100%; height: auto; } h1, h2, h3 { line-height: 1.3; } table { border-collapse: collapse; } td, th { padding: .3rem .6rem; border: 1px solid #d9cabc; vertical-align: top; }
 </style><body>${body}`;
+
+/**
+ * Links in a document become plain text, with the address on hover. Followed inside the
+ * preview, a link would replace the document with the page it points to.
+ */
+function inertLinks(html: string) {
+  const page = new DOMParser().parseFromString(html, "text/html");
+  for (const link of page.querySelectorAll("a")) {
+    const text = page.createElement("span");
+    const href = link.getAttribute("href") ?? "";
+    if (/^(https?:|mailto:)/i.test(href)) { text.className = "link"; text.title = href; }
+    text.append(...link.childNodes);
+    link.replaceWith(text);
+  }
+  return page.body.innerHTML;
+}
 
 function cellText(value: unknown) {
   if (value instanceof Date) {
@@ -47,6 +65,9 @@ async function load(file: TaskFile, signal: AbortSignal): Promise<Content> {
       return { kind: "sheets", sheets: [{ name: file.name, rows, more }] };
     }
     case "excel": {
+      // Measured before parsing: the parser would build every cell of the grid, empty ones too.
+      const { largestSheetGrid, MAX_PREVIEW_CELLS } = await import("@/lib/files/sheet-size");
+      if (largestSheetGrid(new Uint8Array(data)) > MAX_PREVIEW_CELLS) return { kind: "too-large" };
       const { default: readXlsxFile } = await import("read-excel-file/browser");
       const sheets = await readXlsxFile(data);
       return { kind: "sheets", sheets: sheets.map(({ sheet, data: rows }) => ({
@@ -55,7 +76,7 @@ async function load(file: TaskFile, signal: AbortSignal): Promise<Content> {
     }
     case "word": {
       const { default: mammoth } = await import("mammoth");
-      return { kind: "document", html: documentPage((await mammoth.convertToHtml({ arrayBuffer: data })).value) };
+      return { kind: "document", html: documentPage(inertLinks((await mammoth.convertToHtml({ arrayBuffer: data })).value)) };
     }
     default: {
       const text = decodeText(new Uint8Array(data));
@@ -115,6 +136,7 @@ function Preview({ file }: { file: TaskFile }) {
     case "pdf": return <iframe className={styles.frame} src={content.url} title={file.name} />;
     case "document": return <iframe className={styles.frame} srcDoc={content.html} sandbox="" title={file.name} />;
     case "sheets": return <Sheets sheets={content.sheets} />;
+    case "too-large": return <p className={styles.message}>This spreadsheet is too large to preview. Download it to open it.</p>;
     case "text": return <div className={styles.textScroll} tabIndex={0} role="region" aria-label={file.name}>
       <pre className={styles.text}>{content.text}</pre>
       {content.more && <p className={styles.note}>Only the beginning is shown. Download the file to see all of it.</p>}
