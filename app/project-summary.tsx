@@ -20,7 +20,7 @@ export default function ProjectSummary({ project, today }: { project: WorkspaceP
   const due = dueLabel(project.end_date || null, project.status, today);
   return <dl className={"workspace-card " + styles.summary}>
     <div className={styles.progress}>
-      <ProgressRing percent={progress.percent} done={project.status === "COMPLETED" || (progress.total > 0 && progress.percent === 100)} />
+      <ProgressRing percent={progress.percent} done={project.status === "COMPLETED" || progress.complete} />
       <div><dt>Progress</dt><dd>{progress.total ? <>{progress.percent}% <small>{progress.done}/{progress.total} tasks</small></> : "No tasks yet"}</dd></div>
     </div>
     <div><dt>Status</dt><dd><span className={card.status} data-status={project.status}>{projectStatusLabels[project.status]}</span></dd></div>

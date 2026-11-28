@@ -15,8 +15,13 @@ test("overdue excludes completed and cancelled tasks and treats today as on time
 
 test("progress excludes cancelled tasks and handles empty groups", () => {
   assert.deepEqual(taskProgress([{ status: "COMPLETED" }, { status: "TO_DO" }, { status: "CANCELLED" }]),
-    { done: 1, total: 2, percent: 50 });
-  assert.deepEqual(taskProgress([]), { done: 0, total: 0, percent: 0 });
-  assert.deepEqual(taskProgress([{ status: "CANCELLED" }]), { done: 0, total: 0, percent: 0 });
+    { done: 1, total: 2, percent: 50, complete: false });
+  assert.deepEqual(taskProgress([]), { done: 0, total: 0, percent: 0, complete: false });
+  assert.deepEqual(taskProgress([{ status: "CANCELLED" }]), { done: 0, total: 0, percent: 0, complete: false });
+  // 100% only when everything is done, 0% only when nothing is.
+  const many = (done: number, open: number) => [...Array(done).fill({ status: "COMPLETED" }), ...Array(open).fill({ status: "TO_DO" })];
+  assert.deepEqual(taskProgress(many(199, 1)), { done: 199, total: 200, percent: 99, complete: false });
+  assert.deepEqual(taskProgress(many(1, 499)), { done: 1, total: 500, percent: 1, complete: false });
+  assert.deepEqual(taskProgress(many(3, 0)), { done: 3, total: 3, percent: 100, complete: true });
   assert.deepEqual(boardColumns.map((column) => column.status), ["TO_DO", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "CANCELLED"]);
 });

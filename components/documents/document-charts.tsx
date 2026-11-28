@@ -1,5 +1,6 @@
 import PaceChart from "./pace-chart";
 import { formatMonthTick } from "@/lib/time-off/dates";
+import { sharePercent } from "@/lib/percent";
 import StageRoadmap from "./stage-roadmap";
 import TeamPlanChart from "./team-plan-chart";
 import {
@@ -71,7 +72,7 @@ function StatusBreakdown({ project }: ChartProps) {
           <li key={status}>
             <span className={`chart-swatch swatch-${status.toLowerCase()}`} aria-hidden="true" />
             {taskStatusLabels[status]} <strong>{counts[status]}</strong>
-            <span className="document-muted">({Math.round((counts[status] / total) * 100)}%)</span>
+            <span className="document-muted">({sharePercent(counts[status], total)}%)</span>
           </li>
         ))}
       </ul>

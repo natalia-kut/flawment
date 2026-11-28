@@ -26,6 +26,6 @@ test("archived projects are hidden by default and available explicitly", () => {
 
 test("project progress counts completed tasks and excludes cancelled tasks", () => {
   assert.deepEqual(taskProgress([{ status: "COMPLETED" }, { status: "IN_PROGRESS" }, { status: "CANCELLED" }]),
-    { done: 1, total: 2, percent: 50 });
+    { done: 1, total: 2, percent: 50, complete: false });
   assert.equal(taskProgress([]).percent, 0);
 });

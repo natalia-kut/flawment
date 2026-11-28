@@ -85,3 +85,8 @@
   .card:hover { transform: none; }
   .card[aria-busy=true] { animation: none; opacity: .7; }
 }
+
+/* Urgent is more than High: the same red, with a ring around the dot and a solid badge. */
+/* The title clips its overflow, so the ring needs room on the left. */
+.priority[data-priority=URGENT] { margin-left: 3.5px; box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--critical); }
+.badge[data-priority=URGENT] { color: var(--surface); background: var(--critical); }

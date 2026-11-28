@@ -36,7 +36,8 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
   overdue?: boolean;
   showOpenProject?: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  /** Called with what was sent, so a caller can tell where the saved task belongs. */
+  onSaved: (data: FormData) => void;
 }) {
   const creating = !task;
   const [projectId, setProjectId] = useState(initialProject.id);
@@ -62,7 +63,7 @@ export default function TaskDetailsForm({ project: initialProject, projectChoice
       const box = document.activeElement instanceof HTMLElement ? document.activeElement.getBoundingClientRect() : null;
       celebrate("small", box && box.width ? { x: box.left + box.width / 2, y: box.top } : undefined);
     }
-    if (result.success) { clearClashed(); onSaved(); }
+    if (result.success) { clearClashed(); onSaved(data); }
     return result;
   }, {});
   // Closing (Escape, ×, the backdrop, Cancel) or leaving the page asks first while something is unsaved.

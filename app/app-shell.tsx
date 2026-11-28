@@ -103,7 +103,7 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
   function setActivePage(item: NavigationItem | AccountView) {
     const params = new URLSearchParams(search.toString());
     // Links into a view (a project or task page, a filtered Tasks board) do not carry over to other views.
-    for (const key of ["project", "task", "in", "overdue", "mine", "team", "tab"]) params.delete(key);
+    for (const key of ["project", "task", "in", "overdue", "mine", "team", "tab", "q", "status", "archived", "assignee", "stage", "priority", "group"]) params.delete(key);
     if (item === "Dashboard") params.delete("view");
     else params.set("view", item.toLowerCase());
     // Unsaved work on the page (a description being edited, a dialog with changes) asks first.
