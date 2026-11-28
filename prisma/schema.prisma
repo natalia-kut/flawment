@@ -85,6 +85,9 @@ model User {
   created_at        DateTime           @default(now())
   absences          Absence[]
   sessions          Session[]
+  api_tokens        ApiToken[]
+  notifications     Notification[]     @relation("NotificationRecipient")
+  notices_caused    Notification[]     @relation("NotificationActor")
   templates         DocumentTemplate[]
 
   title_requests_about   JobTitleRequest[] @relation("TitleRequestPerson")
@@ -134,6 +137,7 @@ model JobTitleRequest {
   decider      User?         @relation("TitleRequestDecider", fields: [decided_by], references: [id], onDelete: SetNull)
   decided_at   DateTime?
   created_at   DateTime      @default(now())
+  notices      Notification[]
 
   @@index([status])
   @@index([user_id])
@@ -172,6 +176,67 @@ model Session {
   @@index([expires_at])
 }
 
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_STATUS
+  TASK_COMMENT
+  PROJECT_ADDED
+  TITLE_REQUEST
+  TITLE_DECIDED
+}
+
+// Something that happened to a person's work, for the bell in the sidebar. Only
+// references are kept, so it shows the task's name as it is now, and goes when
+// the task, project or request does; who may see it is checked when it is read.
+model Notification {
+  id               Int              @id @default(autoincrement())
+  user_id          Int
+  user             User             @relation("NotificationRecipient", fields: [user_id], references: [id], onDelete: Cascade)
+  type             NotificationType
+  // Who caused it; null once their account is gone.
+  actor_id         Int?
+  actor            User?            @relation("NotificationActor", fields: [actor_id], references: [id], onDelete: SetNull)
+  task_id          Int?
+  task             Task?            @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  project_id       Int?
+  project          Project?         @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  title_request_id Int?
+  title_request    JobTitleRequest? @relation(fields: [title_request_id], references: [id], onDelete: Cascade)
+  // The status a task moved to (TASK_STATUS), which may have changed again since.
+  status           TaskStatus?
+  created_at       DateTime         @default(now())
+  read_at          DateTime?
+
+  @@index([user_id, created_at])
+  @@index([task_id])
+  @@index([project_id])
+  @@index([title_request_id])
+}
+
+// What an access token may be used for.
+enum ApiScope {
+  MCP_READ
+  CALENDAR
+}
+
+// Personal access tokens for tools outside the browser (an MCP client, a calendar
+// feed). Stored hashed, like sessions; deleting the row revokes the token.
+model ApiToken {
+  id           Int        @id @default(autoincrement())
+  user_id      Int
+  user         User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  name         String
+  token_hash   String     @unique
+  // The start of the token, so its owner can tell their tokens apart.
+  prefix       String
+  scopes       ApiScope[]
+  expires_at   DateTime
+  last_used_at DateTime?
+  created_at   DateTime   @default(now())
+
+  @@index([user_id])
+}
+
 model LoginAttempt {
   key        String   @id
   count      Int      @default(1)
@@ -193,6 +258,7 @@ model Project {
   tasks              Task[]
   stages             ProjectStage[]
   document_templates DocumentTemplate[]
+  notifications      Notification[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -223,6 +289,7 @@ model Task {
 
   comments TaskComment[]
   files    TaskFile[]
+  notices  Notification[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

@@ -572,6 +572,25 @@ input[type=date]::-webkit-calendar-picker-indicator:hover { background-color: va
 .account-menu button svg { color: var(--muted); flex-shrink: 0; }
 .account-menu button:hover:not(:disabled), .account-menu button:focus-visible { background: var(--surface-sunken); outline: none; }
 .account-menu-signout { margin: 6px 0 0; }
+
+/* The notification bell at the sidebar foot, and its list. */
+.notification-icon { position: relative; display: inline-flex; }
+.notification-count { margin-left: auto; min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 700; line-height: 1.5; text-align: center; }
+.nav-link.notification-button:hover .notification-count { background: #fff; color: var(--accent-strong); }
+.notification-dot { position: absolute; top: -2px; right: -3px; width: 8px; height: 8px; border: 2px solid var(--sidebar, #2b2119); border-radius: 50%; background: var(--accent); }
+.account-menu.notification-panel { width: 360px; max-height: min(520px, calc(100vh - 24px)); overflow-y: auto; }
+.notification-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 8px 10px; border-bottom: 1px solid var(--border); }
+.notification-head strong { font-size: 14px; }
+.account-menu .notification-head .text-button { display: inline; width: auto; min-height: 0; padding: 0; color: var(--accent-strong); font-size: 12.5px; font-weight: 600; }
+.account-menu .notification-head .text-button:hover { background: none; text-decoration: underline; }
+.notification-empty { margin: 0; padding: 14px 8px 8px; color: var(--muted); font-size: 13.5px; }
+.notification-list { list-style: none; margin: 0; padding: 6px 0 0; }
+.notification-list a { position: relative; display: grid; gap: 2px; padding: 9px 10px 9px 22px; border-radius: 7px; color: var(--foreground); font-size: 13.5px; line-height: 1.4; text-decoration: none; }
+.notification-list a:hover, .notification-list a:focus-visible { background: var(--surface-sunken); outline: none; }
+.notification-list strong { font-weight: 650; overflow-wrap: anywhere; }
+.notification-list small { color: var(--muted); font-size: 12px; }
+.notification-list .unread a::before { content: ""; position: absolute; top: 15px; left: 9px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.notification-list li:not(.unread) a { color: var(--muted); }
 .account-menu-signout button:disabled { opacity: .6; cursor: wait; }
 @media (prefers-reduced-motion: no-preference) {
   .account-menu { transition: opacity 140ms ease, transform 140ms ease, overlay 140ms allow-discrete, display 140ms allow-discrete; opacity: 0; transform: translateY(4px); }
@@ -936,6 +955,26 @@ button:focus-visible, a:focus-visible, summary:focus-visible,
 .password-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .password-card .text-button { padding: 0; font: inherit; font-size: 13px; font-weight: 600; }
 .password-done { margin: 10px 0 0; font-size: 13.5px; color: var(--success-strong); }
+
+/* My profile, Sign-in & security tab: one card under another, each as tall as it needs. */
+.profile-security { display: grid; gap: 24px; align-items: start; }
+
+/* My profile: access tokens for MCP clients and calendar feeds. */
+.workspace-form.api-token-form { margin-top: 0; }
+.api-token-form .muted-value { margin: 0; font-size: 12.5px; }
+.api-token-scopes { display: grid; gap: 6px; margin: 0; padding: 0; border: 0; }
+.api-token-scopes legend { margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+.api-tokens-card .text-button { padding: 0; font: inherit; font-size: 13px; font-weight: 600; }
+.api-tokens-card .text-button.danger-text { color: var(--critical); }
+.api-token-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.api-token-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.api-token-list small { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px; }
+.api-token-list code, .api-token-value code { font-size: 12.5px; }
+.api-token-new { margin-bottom: 12px; padding: 10px 14px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--accent-soft); }
+.api-token-new p { margin: 0 0 8px; font-size: 13.5px; font-weight: 600; }
+.api-token-value { display: flex; align-items: center; gap: 8px; }
+.api-token-value code { flex: 1; min-width: 0; overflow-wrap: anywhere; user-select: all; }
+.api-token-new .api-token-warning { margin: 8px 0 0; font-size: 12.5px; font-weight: 400; }
 
 /* Whom to contact: the administrators, on the Teams page and in My profile. */
 .workspace-card.admin-contact { margin-top: 18px; padding: 18px 22px; }

@@ -8,6 +8,7 @@ import { serializable } from "@/lib/transaction";
 import { normalizeNewlines } from "@/lib/rich-text/markdown";
 import { keepUnchanged, knowsBase, listFields, staleFields } from "@/lib/stale";
 import { cleanLine } from "@/lib/text";
+import { notify } from "@/lib/notifications/notify";
 
 export class ProjectError extends Error {}
 /** The page was out of date: someone changed what it was about to save. */
@@ -95,7 +96,9 @@ export async function mutateProject(actor: Actor, data: FormData) {
       if (operation === "add") {
         if (member) throw new ProjectError("This user is already a project member.");
         if (!target.is_active) throw new ProjectError("Choose an active user.");
-        return tx.projectMembership.create({ data: { project_id: projectId, user_id: userId, role } });
+        const added = await tx.projectMembership.create({ data: { project_id: projectId, user_id: userId, role } });
+        await notify(tx, { type: "PROJECT_ADDED", recipients: [userId], actorId: actor.id, projectId });
+        return added;
       }
       if (!member) throw new ProjectError("This user is no longer a member.");
       return tx.projectMembership.update({ where: { id: member.id }, data: { role } });

@@ -22,11 +22,14 @@ import { useConfirmSubmit } from "@/components/ui/confirm";
 import { submitInPlace } from "@/components/ui/submit-in-place";
 import { OFFLINE, offlineSafe, reach } from "@/components/ui/offline";
 import PasswordCard from "./password-card";
+import Tabs from "@/components/ui/tabs";
+import ApiTokensCard from "./api-tokens-card";
+import type { ApiTokenSummary } from "@/lib/auth/api-token-limits";
 
 type Person = { id: number; first_name: string; last_name: string; photoVersion: string | null };
 
 /** Everything on this page saves where you edit it: no form, no Save button. */
-export default function ProfileView({ user, today, administrators }: { today: string; administrators: AdministratorContact[]; user: {
+export default function ProfileView({ user, today, administrators, tokens }: { today: string; administrators: AdministratorContact[]; tokens: ApiTokenSummary[]; user: {
   id: number; first_name: string; last_name: string; email: string; username: string; role: string;
   photoVersion: string | null; teamLead: boolean;
   jobTitle: string; pronouns: string; phone: string; location: string; workingHours: string; skills: string[];
@@ -136,7 +139,9 @@ export default function ProfileView({ user, today, administrators }: { today: st
       </div>
     </section>
 
-    <div className="profile-layout">
+    {/* One part at a time: who you work with, or how you sign in. */}
+    <Tabs label="My profile" tabs={[
+      { key: "team", label: "Team & time off", content: <div className="profile-layout">
       {/* Team and Time off side by side, at one height. */}
       <div className="profile-sidebar">
         <section className="workspace-card profile-mini-card">
@@ -170,10 +175,13 @@ export default function ProfileView({ user, today, administrators }: { today: st
             <span>{absenceTypeLabels[user.nextTimeOff.type]} · {nextDays} {nextDays === 1 ? "day" : "days"}</span>
           </p> : <p>Nothing planned.</p>}
         </section>
-
-        <PasswordCard />
       </div>
-    </div>
+    </div> },
+      { key: "security", label: "Sign-in & security", content: <div className="profile-security">
+        <PasswordCard />
+        <ApiTokensCard tokens={tokens} />
+      </div> },
+    ]} />
     {editingStatus && <StatusDialog status={user.status} onClose={() => setEditingStatus(false)} />}
   </section>;
 }

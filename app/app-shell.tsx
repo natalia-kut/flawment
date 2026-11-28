@@ -5,6 +5,7 @@ import Link from "next/link";
 import SessionWatch from "./session-watch";
 import { useRouter, useSearchParams } from "next/navigation";
 import AccountMenu from "./account-menu";
+import NotificationBell from "./notification-bell";
 import type { Availability } from "@/lib/time-off/availability";
 import type { Status } from "@/lib/status/status";
 import type { Celebration } from "@/lib/time-off/dates";
@@ -168,6 +169,7 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
           ))}
         </nav>
         <div className="sidebar-footer">
+          <NotificationBell compact={collapsed} />
           <AccountMenu user={user} compact={collapsed} onOpen={setActivePage} />
         </div>
       </aside>

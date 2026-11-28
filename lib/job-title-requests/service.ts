@@ -1,6 +1,7 @@
 import type { Actor } from "@/lib/rbac";
 import { findOrCreateJobTitle } from "@/lib/people/service";
 import { serializable } from "@/lib/transaction";
+import { administratorIds, notify } from "@/lib/notifications/notify";
 
 export class TitleRequestError extends Error {}
 
@@ -35,9 +36,11 @@ export async function mutateTitleRequest(actor: Actor, data: FormData) {
       if (person.job_title?.name.toLowerCase() === title.toLowerCase()) throw new TitleRequestError("This is already their job title.");
       const pending = await tx.jobTitleRequest.findFirst({ where: { user_id: userId, status: "PENDING" }, select: { id: true } });
       const values = { title, note: note || null, requested_by: actor.id, created_at: new Date() };
-      return pending
-        ? tx.jobTitleRequest.update({ where: { id: pending.id }, data: values, select: { id: true } })
-        : tx.jobTitleRequest.create({ data: { ...values, user_id: userId }, select: { id: true } });
+      const saved = pending
+        ? await tx.jobTitleRequest.update({ where: { id: pending.id }, data: values, select: { id: true } })
+        : await tx.jobTitleRequest.create({ data: { ...values, user_id: userId }, select: { id: true } });
+      await notify(tx, { type: "TITLE_REQUEST", recipients: await administratorIds(tx), actorId: actor.id, titleRequestId: saved.id });
+      return saved;
     }
 
     const requestId = recordId(data.get("request_id"));
@@ -63,8 +66,11 @@ export async function mutateTitleRequest(actor: Actor, data: FormData) {
       throw new TitleRequestError(`The suggestion changed to “${request.title}” after you opened it. Check it again before deciding.`);
     }
     const decided = { decided_by: actor.id, decided_at: new Date() };
+    const told = { type: "TITLE_DECIDED", recipients: [request.requested_by], actorId: actor.id, titleRequestId: requestId } as const;
     if (operation === "decline") {
-      return tx.jobTitleRequest.update({ where: { id: requestId }, data: { status: "DECLINED", ...decided }, select: { id: true } });
+      const declined = await tx.jobTitleRequest.update({ where: { id: requestId }, data: { status: "DECLINED", ...decided }, select: { id: true } });
+      await notify(tx, told);
+      return declined;
     }
     if (operation !== "approve") throw new TitleRequestError("Unknown request operation.");
     // The suggested name joins the list when it is new; a title that cannot lead ends a lead role.
@@ -73,6 +79,8 @@ export async function mutateTitleRequest(actor: Actor, data: FormData) {
       where: { id: request.user_id },
       data: { job_title_id: jobTitle.id, ...(jobTitle.can_lead ? {} : { team_lead: false }) },
     });
-    return tx.jobTitleRequest.update({ where: { id: requestId }, data: { status: "APPROVED", ...decided }, select: { id: true } });
+    const approved = await tx.jobTitleRequest.update({ where: { id: requestId }, data: { status: "APPROVED", ...decided }, select: { id: true } });
+    await notify(tx, told);
+    return approved;
   });
 }
