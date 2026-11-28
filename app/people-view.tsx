@@ -41,7 +41,7 @@ export default function PeopleView({ directory }: { directory: PeopleDirectory }
           <td><div className="member-identity"><UserAvatar id={person.id} firstName={person.first_name} lastName={person.last_name} photoVersion={person.photoVersion} size={32} />
             <div><strong>{person.first_name} {person.last_name}</strong><small>{person.email}</small></div></div></td>
           <td>{titleName(person.job_title_id) ?? <span className="muted-value">Not set</span>}</td>
-          <td>{person.role === "SUPER_ADMIN" ? <span className="role-badge">Super admin</span>
+          <td>{person.role === "SUPER_ADMIN" ? <span className="role-badge">Administrator</span>
             : <>{teamName(person.team_id) ?? <span className="muted-value">No team</span>}{person.team_lead && <span className="role-badge lead-badge">Lead</span>}</>}</td>
           <td><button type="button" className={"icon-button edit " + styles.rowAction} onClick={() => setEditingId(person.id)}
             aria-label={`Edit ${person.first_name} ${person.last_name}`} title="Edit"><PencilIcon /></button></td>
@@ -89,7 +89,7 @@ export function EditPerson({ person, directory, onClose }: { person: Person; dir
     {...closeOnBackdrop(onClose)}>
     <div className="project-dialog-content">
       <div className="project-dialog-heading"><h2 id="edit-person-title">{person.first_name} {person.last_name}</h2><button type="button" className="dialog-close" onClick={onClose} aria-label="Close dialog">×</button></div>
-      <p>@{person.username}{admin ? " · Super admin" : ""}</p>
+      <p>@{person.username}{admin ? " · Administrator" : ""}</p>
       <form action={action} onSubmit={submitInPlace(action)} className="workspace-form">
         <input type="hidden" name="user_id" value={person.id} />
         <fieldset disabled={pending}>
@@ -102,7 +102,7 @@ export function EditPerson({ person, directory, onClose }: { person: Person; dir
           {titleId === "new" && <input type="hidden" name="new_job_title" value={typedTitle} />}
           <JobTitleField titles={directory.jobTitles} value={titleText} onChange={setTitleText}
             hint={titleId === "new" && <>&ldquo;{typedTitle}&rdquo; will be added as a new job title.</>} />
-          {admin ? <p className="field-help">Super admins are not part of a team.</p> : <>
+          {admin ? <p className="field-help">Administrators are not part of a team.</p> : <>
             <label>Team
               <select name="team_id" value={teamId} onChange={(e) => {
                 setTeamId(e.target.value);

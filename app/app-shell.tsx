@@ -192,7 +192,7 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
             {adminPage
               ? <EmptyState art="locked" title="Only administrators can open this page"
                 action={<Link className="primary-button" href="/">Go to the dashboard</Link>}>
-                It is where super admins look after everyone&apos;s accounts. Ask one of them if something about yours needs to change.
+                It is where administrators look after everyone&apos;s accounts. Ask one of them if something about yours needs to change.
               </EmptyState>
               : <EmptyState art="lost" title="This page does not exist"
                 action={<>

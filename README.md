@@ -50,9 +50,9 @@ npm run dev
 ```
 
 Bootstrap installs dependencies, creates `.env`, starts PostgreSQL in Docker, applies
-migrations and adds a super admin; it is safe to rerun. Open
+migrations and adds an administrator; it is safe to rerun. Open
 [http://localhost:3000](http://localhost:3000) and register, or sign in as the local
-super admin: `admin@flawment.local` / `FlawmentAdmin123!`.
+administrator: `admin@flawment.local` / `FlawmentAdmin123!`.
 
 For sample projects and people, run `npm run db:seed` before anyone registers (it skips
 a database that already has users); the sample
@@ -73,7 +73,7 @@ Something not working? See
 | `npm run db:deploy` | Apply committed migrations without prompts |
 | `npm run db:generate` | Regenerate Prisma Client after schema changes |
 | `npm run db:seed` | Add optional sample data to an empty database |
-| `npm run db:seed:admin` | Add the super admin to an existing installation |
+| `npm run db:seed:admin` | Add the administrator to an existing installation |
 | `npm run db:demo` | Bring the sample projects up to date with today |
 | `npm test` | Run unit tests |
 | `npm run test:integration` | Run integration tests against the local database |

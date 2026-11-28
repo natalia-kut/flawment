@@ -140,7 +140,7 @@ export default function ProfileView({ user, today }: { today: string; user: {
         <section className="workspace-card profile-mini-card">
           <div className="profile-card-head"><h2>Team</h2>{user.team ? <Link href={`/?view=team&team=${user.team.id}`} className="inline-link">Open team page</Link>
             : <Link href="/?view=team" className="inline-link">See all teams</Link>}</div>
-          {user.role === "SUPER_ADMIN" ? <p>Super admins are not part of a team. You manage teams on the Team page.</p>
+          {user.role === "SUPER_ADMIN" ? <p>Administrators are not part of a team. You manage teams on the Teams page.</p>
             : !user.team ? <p>You are not in a team yet. Your administrator assigns teams.</p>
             : <dl className="profile-facts">
               <div><dt>Team</dt><dd>{user.team.name}</dd></div>
