@@ -113,6 +113,7 @@ button.memberLink:hover .memberName { text-decoration: underline; }
   .festiveRing { animation: none; }
 }
 
-/* "+3 more": where the rest of a big team is, sized like a ring so the row stays even. */
-.more { display: grid; place-items: center; width: 56px; height: 56px; margin: 8px 0; font-size: 13px; font-weight: 700; color: var(--accent-strong); text-decoration: none; border: 1.5px dashed var(--border-strong); border-radius: 50%; }
-a.more:hover { border-color: var(--accent); }
+/* "+3 more": where the rest of a big team is, sized like a ring so the row stays even.
+   Not .more: that is the calendar's "+1" under a day with many deadlines. */
+.moreRing { display: grid; place-items: center; width: 56px; height: 56px; margin: 8px 0; font-size: 13px; font-weight: 700; color: var(--accent-strong); text-decoration: none; border: 1.5px dashed var(--border-strong); border-radius: 50%; }
+a.moreRing:hover { border-color: var(--accent); }

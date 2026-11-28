@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { absenceSelect, availability, toRanges } from "@/lib/time-off/availability";
 import { workspaceToday } from "@/lib/time-off/dates";
 import { activeStatus, statusSelect } from "@/lib/status/status";
+import { getAdministrators } from "@/lib/people/data";
 import ProfileView from "./profile-view";
 
 const person = { id: true, first_name: true, last_name: true, photo_updated_at: true } as const;
@@ -23,7 +24,8 @@ export default async function ProfileSection() {
     select: { type: true, start_date: true, end_date: true },
   });
   const { absences, birth_date, team, team_lead, job_title, working_hours, status_emoji, status_text, status_expires_at, ...rest } = user;
-  return <ProfileView today={today} user={{
+  const administrators = user.role === "SUPER_ADMIN" ? [] : await getAdministrators();
+  return <ProfileView today={today} administrators={administrators} user={{
     ...rest, photoVersion: actor.photoVersion, teamLead: team_lead,
     status: activeStatus({ status_emoji, status_text, status_expires_at }),
     jobTitle: job_title?.name ?? "", workingHours: working_hours ?? "",

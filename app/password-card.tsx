@@ -27,7 +27,7 @@ export default function PasswordCard() {
       <h2 id="password-title">Password</h2>
       {!changing && <button type="button" className="inline-link text-button" onClick={() => { setChanging(true); setLatest("change"); }}>Change password</button>}
     </div>
-    {changing ? <form action={action} onSubmit={submitInPlace(action)} className="password-form">
+    {changing ? <form action={action} onSubmit={submitInPlace(action)} className="workspace-form password-form">
       <fieldset disabled={pending}>
         <label>Current password<input name="current_password" type="password" autoComplete="current-password" required maxLength={128} autoFocus /></label>
         <label>New password<input name="new_password" type="password" autoComplete="new-password" required minLength={10} maxLength={128} /></label>

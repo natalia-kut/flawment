@@ -45,7 +45,8 @@ export default function ProjectTaskList({ project, today, onCreate, onEdit }: {
         ? <button type="button" className={styles.open} onClick={() => onEdit(task.id)}>{info}</button>
         : <Link href={"/?task=" + task.id} className={styles.open}>{info}</Link>}</span>
       <span role="cell"><span className={styles.status} data-status={task.status}>{taskStatusLabels[task.status]}</span></span>
-      <span role="cell" className={styles.assignee} data-empty={task.assignedTo === null || undefined}>{task.assigneeName}</span>
+      {/* A long name is cut short to fit; the whole of it shows on hover. */}
+      <span role="cell" className={styles.assignee} data-empty={task.assignedTo === null || undefined} title={task.assigneeName}>{task.assigneeName}</span>
       <span role="cell" className={styles.due} data-late={late || undefined} title={formatTaskDeadline(task.deadline)}>
         {task.deadline ? formatShortDay(task.deadline) : "—"}{late && <span className="visually-hidden"> (overdue)</span>}
       </span>

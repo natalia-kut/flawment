@@ -9,7 +9,8 @@ import type { TeamPerson, TeamsOverview } from "@/lib/teams/data";
 import UserAvatar from "./user-avatar";
 import AvailabilityBadge from "./availability-badge";
 import PersonDialog, { CelebrationBadge } from "./person-dialog";
-import type { PeopleDirectory } from "@/lib/people/data";
+import type { AdministratorContact, PeopleDirectory } from "@/lib/people/data";
+import AdminContact from "./admin-contact";
 import { EditPerson } from "./people-view";
 import TitleRequestControls from "./title-request-controls";
 import styles from "./team-view.module.css";
@@ -30,7 +31,9 @@ type Team = TeamsOverview["teams"][number];
  * any of them. A super admin also creates teams, sets up new hires and, on a
  * team's page, places people and picks its lead.
  */
-export default function TeamView({ overview, directory, currentUserId, lead, month, promotions }: {
+export default function TeamView({ overview, directory, currentUserId, lead, month, promotions, administrators }: {
+  /** Whom to ask about accounts and teams (empty for an administrator). */
+  administrators: AdministratorContact[];
   overview: TeamsOverview; directory: PeopleDirectory | null; currentUserId: number; lead: Lead | null; promotions: Promotion[];
   /** This month in the workspace (YYYY-MM): who counts as new. */
   month: string;
@@ -43,7 +46,7 @@ export default function TeamView({ overview, directory, currentUserId, lead, mon
       admin={overview.canManage ? { people: overview.people, teams: overview.teams } : undefined} />
       : <><PageHeader title="Team unavailable" breadcrumbs={<TeamsCrumb />} /><section className="project-empty-state"><h2>This team no longer exists</h2><Link href="/?view=team" className="secondary-button">Back to teams</Link></section></>;
   }
-  return <TeamsIndex overview={overview} directory={directory} month={month} promotions={promotions} />;
+  return <TeamsIndex overview={overview} directory={directory} month={month} promotions={promotions} administrators={administrators} />;
 }
 
 function TeamsCrumb({ name }: { name?: string }) {
@@ -55,7 +58,7 @@ function TeamsCrumb({ name }: { name?: string }) {
 
 /* ---------- Teams index ---------- */
 
-function TeamsIndex({ overview, directory, month, promotions }: { overview: TeamsOverview; directory: PeopleDirectory | null; month: string; promotions: Promotion[] }) {
+function TeamsIndex({ overview, directory, month, promotions, administrators }: { overview: TeamsOverview; directory: PeopleDirectory | null; month: string; promotions: Promotion[]; administrators: AdministratorContact[] }) {
   const teamName = (id: number | null) => overview.teams.find((t) => t.id === id)?.name;
   const [creating, setCreating] = useState(false);
   const admin = overview.canManage;
@@ -75,6 +78,7 @@ function TeamsIndex({ overview, directory, month, promotions }: { overview: Team
         action={admin && <button className="primary-button" onClick={() => setCreating(true)}><span aria-hidden="true">+</span> Create your first team</button>}>
         {admin ? "Create teams that mirror your company, then open one to add people." : "Your administrator has not set up any teams yet."}</EmptyState>
       : <ul className="team-grid">{overview.teams.map((team) => <TeamTile key={team.id} team={team} own={team.id === overview.myTeamId} admin={admin} />)}</ul>}
+    <AdminContact administrators={administrators} />
   </>;
 }
 
