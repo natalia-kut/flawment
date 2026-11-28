@@ -4,11 +4,11 @@ import Link from "next/link";
 import TaskDetailsDialog, { TaskDialogColumns } from "./task-details-dialog";
 import TaskDetailsForm from "./task-details-form";
 import { formatTaskDeadline, taskPriorityLabels, taskStatusLabels } from "@/lib/tasks/labels";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, type ReadonlyURLSearchParams } from "next/navigation";
 import type { WorkspaceProject } from "@/lib/projects/data";
-import { emptyTaskFilters, taskAssigneeKey, type TaskFilters } from "@/lib/tasks/filters";
+import { emptyTaskFilters, filterTasks, taskAssigneeKey, type TaskFilters } from "@/lib/tasks/filters";
 import { getOverviewTasks, filterOverviewTasks } from "@/lib/tasks/overview";
 import { boardColumns, isTaskOverdue, taskProgress } from "@/lib/tasks/board";
 import { changeTaskStatusAction } from "@/lib/tasks/actions";
@@ -42,20 +42,56 @@ function subscribeToStorage(onChange: () => void) {
 
 type TaskStatus = ReturnType<typeof getOverviewTasks>[number]["status"];
 
+/**
+ * What the board shows, kept in the address so a refresh, Back and Forward, or a shared
+ * link find it as it was. `project` null: none chosen yet, so the tab remembered on
+ * this device is used; "" is All projects.
+ */
+type BoardState = { project: string | null; filters: TaskFilters; overdueOnly: boolean; mineOnly: boolean; groupBy: "project" | "person" };
+const BOARD_PARAMS = ["in", "q", "assignee", "stage", "priority", "overdue", "mine", "group"] as const;
+
+function readBoardState(search: URLSearchParams | ReadonlyURLSearchParams, projects: readonly { id: number }[]): BoardState {
+  const linked = search.get("in");
+  const known = linked !== null && projects.some((project) => String(project.id) === linked);
+  // A link that sets anything on the board (Overdue on the dashboard, say) means all projects
+  // unless it names one: the tab remembered from last time could hide what the link is about.
+  const anyParam = BOARD_PARAMS.some((key) => search.has(key));
+  return {
+    project: known ? linked : anyParam ? "" : null,
+    filters: { ...emptyTaskFilters, query: search.get("q") ?? "", assignee: search.get("assignee") ?? "",
+      stage: search.get("stage") ?? "", priority: search.get("priority") ?? "" },
+    overdueOnly: search.get("overdue") === "1",
+    mineOnly: search.get("mine") === "1",
+    groupBy: search.get("group") === "person" ? "person" : "project",
+  };
+}
+
+function boardSearch(state: BoardState, projectId: string) {
+  const params = new URLSearchParams(window.location.search);
+  const values: Record<(typeof BOARD_PARAMS)[number], string> = {
+    in: projectId, q: state.filters.query, assignee: state.filters.assignee, stage: state.filters.stage,
+    priority: state.filters.priority, overdue: state.overdueOnly ? "1" : "", mine: state.mineOnly ? "1" : "",
+    group: state.groupBy === "person" ? "person" : "",
+  };
+  for (const key of BOARD_PARAMS) {
+    if (values[key]) params.set(key, values[key]); else params.delete(key);
+  }
+  return params.toString();
+}
+
 export default function TasksOverview({ projects, currentUserId, today }: {
   projects: WorkspaceProject[]; currentUserId: number; today: string;
 }) {
   const router = useRouter();
-  const [filters, setFilters] = useState<TaskFilters>({ ...emptyTaskFilters });
   // "" shows every project. The last choice is remembered on this device;
   // until the user picks one here, the remembered one (if it still exists) is used.
   const remembered = useSyncExternalStore(subscribeToStorage,
     () => localStorage.getItem(PROJECT_STORAGE_KEY), () => null);
   // A link can open the board on one project (?in=ID), e.g. "5 overdue tasks" on the Projects page.
   const search = useSearchParams();
-  const linkedProject = search.get("in");
-  const [chosenProjectId, setProjectId] = useState<string | null>(
-    linkedProject && projects.some((project) => String(project.id) === linkedProject) ? linkedProject : null);
+  const [board, setBoard] = useState(() => readBoardState(search, projects));
+  const [error, setError] = useState("");
+  const { filters, overdueOnly, mineOnly, groupBy, project: chosenProjectId } = board;
   // Tabs: A–Z by default; once the user drags them, their own order (new projects join A–Z at the end).
   const savedOrder = readOrder(useSyncExternalStore(subscribeToStorage,
     () => localStorage.getItem(ORDER_STORAGE_KEY), () => null));
@@ -78,9 +114,31 @@ export default function TasksOverview({ projects, currentUserId, today }: {
     ?? (remembered && projects.some((project) => String(project.id) === remembered) ? remembered : "");
   // Groups the user opened or closed by hand; the rest follow their default.
   const [toggledGroups, setToggledGroups] = useState<Record<string, boolean>>({});
-  const [groupBy, setGroupBy] = useState<"project" | "person">("project");
-  const [overdueOnly, setOverdueOnly] = useState(search.get("overdue") === "1");
-  const [mineOnly, setMineOnly] = useState(search.get("mine") === "1");
+  // Addresses this board wrote itself that the router has not caught up with yet. Any other
+  // new address is a navigation (the Tasks link in the sidebar, Back), and the board follows it.
+  const written = useRef<string[]>([]);
+  const searchString = search.toString();
+  useEffect(() => {
+    const index = written.current.indexOf(searchString);
+    if (index >= 0) { written.current.splice(0, index + 1); return; }
+    written.current = [];
+    setBoard(readBoardState(new URLSearchParams(searchString), projects));
+    setError("");
+  // Only a new address resets the board, not new task data.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchString]);
+  /** Changes what the board shows and writes it to the address (no server round trip). */
+  function change(patch: Partial<BoardState>) {
+    const next = { ...board, ...patch };
+    setBoard(next);
+    // An error about the last move no longer applies once the view changes.
+    setError("");
+    const query = boardSearch(next, next.project ?? projectId);
+    written.current.push(query);
+    window.history.replaceState(null, "", "?" + query);
+  }
+  const setFilters = (next: TaskFilters) => change({ filters: next });
+  const setGroupBy = (value: BoardState["groupBy"]) => change({ groupBy: value });
   const [dragging, setDragging] = useState<number | null>(null);
   const [saving, setSaving] = useState<number | null>(null);
   const [message, setMessage] = useState("");
@@ -90,7 +148,6 @@ export default function TasksOverview({ projects, currentUserId, today }: {
     const timer = setTimeout(() => setMessage(""), MESSAGE_MS);
     return () => clearTimeout(timer);
   }, [message]);
-  const [error, setError] = useState("");
   const [detailsId, setDetailsId] = useState<number | null>(null);
   // A new task: in one project's column (its "+ Create new"), or "choose" a project in the form (the header button).
   const [creatingIn, setCreatingIn] = useState<{ projectId: number; status: TaskStatus } | "choose" | null>(null);
@@ -117,9 +174,14 @@ export default function TasksOverview({ projects, currentUserId, today }: {
     .filter((task) => (!overdueOnly || isTaskOverdue(task, today)) &&
       (!mineOnly || task.assignedTo === currentUserId));
   const overdue = allTasks.filter((task) => isTaskOverdue(task, today) && (!projectId || String(task.projectId) === projectId));
-  const assignees = Array.from(new Map(allTasks.map((task) =>
-    [taskAssigneeKey(task), task.assigneeName] as const
-  ))).filter(([key]) => key !== "unassigned").sort((a, b) => a[1].localeCompare(b[1]));
+  const assigneeNames = new Map(allTasks.map((task) => [taskAssigneeKey(task), task.assigneeName] as const));
+  // The person filtered by stays a choice after their last task went to someone else,
+  // or the filter would read "Everyone" while still hiding every task.
+  if (filters.assignee && filters.assignee !== "unassigned" && !assigneeNames.has(filters.assignee)) {
+    const member = projects.flatMap((project) => project.members).find((person) => String(person.id) === filters.assignee);
+    assigneeNames.set(filters.assignee, member ? member.first_name + " " + member.last_name : "Selected person");
+  }
+  const assignees = Array.from(assigneeNames).filter(([key]) => key !== "unassigned").sort((a, b) => a[1].localeCompare(b[1]));
   // With one project picked there is nothing to group by project: it is one board.
   const singleProject = projectId !== "";
   const grouping = singleProject ? "project" : groupBy;
@@ -128,9 +190,15 @@ export default function TasksOverview({ projects, currentUserId, today }: {
   const selectedProject = projects.find((project) => String(project.id) === projectId);
   // The project a task can be added to when the board is empty: the one picked, if you may add tasks to it.
   const emptyAddTo = singleProject ? creatable.find((project) => String(project.id) === projectId) : undefined;
-  const groups = Array.from(new Map(tasks.map((task) => grouping === "project"
+  const anyFilter = overdueOnly || mineOnly || Object.values(filters).some(Boolean);
+  const groups: (readonly [string, string])[] = Array.from(new Map(tasks.map((task) => grouping === "project"
     ? [String(task.projectId), task.projectName] as const
     : [taskAssigneeKey(task), task.assigneeName] as const)));
+  // All projects, unfiltered: a project with no tasks yet still has its group, where its first task is added.
+  if (grouping === "project" && !singleProject && !anyFilter && tasks.length > 0) {
+    for (const project of [...projects].sort((a, b) => a.name.localeCompare(b.name)))
+      if (project.tasks.length === 0 && project.canCreateTasks) groups.push([String(project.id), project.name]);
+  }
   const groupKey = (task: BoardTask) => grouping === "project" ? String(task.projectId) : taskAssigneeKey(task);
   function saveOrder(ids: number[] | null) {
     animate(() => {
@@ -146,12 +214,25 @@ export default function TasksOverview({ projects, currentUserId, today }: {
     saveOrder(ids);
   }
   function selectProject(id: string) {
-    setProjectId(id); update("stage", "");
+    change({ project: id, filters: { ...filters, stage: "" } });
     if (id) localStorage.setItem(PROJECT_STORAGE_KEY, id);
     else localStorage.removeItem(PROJECT_STORAGE_KEY);
   }
   function update(key: keyof TaskFilters, value: string) {
-    setFilters((current) => ({ ...current, [key]: value }));
+    setFilters({ ...filters, [key]: value });
+  }
+  /** Whether a task just created with this form would show on the board as it is filtered now. */
+  function shownOnBoard(data: FormData) {
+    const field = (name: string) => String(data.get(name) ?? "");
+    const assignedTo = field("assigned_to") ? Number(field("assigned_to")) : null;
+    const created = {
+      title: field("title"), description: field("description"), status: field("status") || "TO_DO",
+      priority: field("priority"), assignedTo, assigneeName: assignedTo === null ? "Unassigned" : "",
+      stageId: field("stage_id") ? Number(field("stage_id")) : null, projectId: Number(field("project_id")),
+      deadline: field("deadline"),
+    };
+    return (!projectId || String(created.projectId) === projectId) && filterTasks([created], filters).length > 0 &&
+      (!overdueOnly || isTaskOverdue(created, today)) && (!mineOnly || assignedTo === currentUserId);
   }
   // The card gliding to its new place, the only one named for the view transition.
   const [gliding, setGliding] = useState<number | null>(null);
@@ -211,10 +292,13 @@ export default function TasksOverview({ projects, currentUserId, today }: {
     }
   }
   const createForm = creatingIn !== null && <TaskDetailsForm
-    project={creatable.find((p) => creatingIn === "choose" ? String(p.id) === chosenProjectId : p.id === creatingIn.projectId) ?? creatable[0]}
+    project={creatable.find((p) => creatingIn === "choose" ? String(p.id) === projectId : p.id === creatingIn.projectId) ?? creatable[0]}
     initialStatus={creatingIn === "choose" ? undefined : creatingIn.status}
     projectChoices={creatingIn === "choose" ? creatable : undefined} showOpenProject={false} onClose={() => setCreatingIn(null)}
-    onSaved={() => { setMessage("Task added."); setCreatingIn(null); router.refresh(); }} />;
+    onSaved={(data) => {
+      setMessage(shownOnBoard(data) ? "Task added." : "Task added. Your filters hide it: clear them to see it.");
+      setCreatingIn(null); router.refresh();
+    }} />;
   // No tasks anywhere: search and filters would have nothing to work on, so only the way to start is shown.
   if (allTasks.length === 0) return <div className={styles.page}>
     <PageHeader title="Tasks" />
@@ -227,8 +311,8 @@ export default function TasksOverview({ projects, currentUserId, today }: {
     {createForm}
   </div>;
   return <div className={styles.page}>
-    {/* Grouped by project, each project adds its own tasks; otherwise a project is picked in the form. */}
-    <PageHeader title="Tasks" actions={creatable.length > 0 && (grouping === "person" || tasks.length === 0) &&
+    {/* Each project's columns also add tasks straight into it; here a project is picked in the form. */}
+    <PageHeader title="Tasks" actions={creatable.length > 0 &&
       <button className="primary-button" onClick={() => setCreatingIn("choose")}><span aria-hidden="true">+</span> New task</button>} />
     {projects.length > 1 && <div className={styles.projectTabs} role="group" aria-label="Show tasks from"
       onDragOver={(event) => { if (draggingTab !== null) event.preventDefault(); }}
@@ -273,7 +357,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
       <span className={styles.overdueDot} aria-hidden="true" />
       <strong>{overdue.length} overdue {overdue.length === 1 ? "task" : "tasks"}</strong>
       <button type="button" className={styles.showMore} onClick={() => {
-        setOverdueOnly(true); setFilters({ ...emptyTaskFilters }); setMineOnly(false);
+        change({ overdueOnly: true, mineOnly: false, filters: { ...emptyTaskFilters } });
       }}>Show them</button>
     </p>}
     <div className={controls.toolbar} role="group" aria-label="Task filters">
@@ -303,15 +387,15 @@ export default function TasksOverview({ projects, currentUserId, today }: {
           <option value="">Any priority</option>
           {["LOW", "MEDIUM", "HIGH", "URGENT"].map((value) => <option key={value} value={value}>{value.charAt(0) + value.slice(1).toLowerCase()}</option>)}
         </select>
-        <label className={controls.chip}><input type="checkbox" checked={overdueOnly} onChange={(e) => setOverdueOnly(e.target.checked)} />Overdue</label>
-        <label className={controls.chip}><input type="checkbox" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} />Only my tasks</label>
+        <label className={controls.chip}><input type="checkbox" checked={overdueOnly} onChange={(e) => change({ overdueOnly: e.target.checked })} />Overdue</label>
+        <label className={controls.chip}><input type="checkbox" checked={mineOnly} onChange={(e) => change({ mineOnly: e.target.checked })} />Only my tasks</label>
       </div>
     </div>
     <div className={controls.statusRow}>
       <div className={controls.statusText}>
         <p className={controls.status} role="status" aria-live="polite">{saving !== null ? "Saving task status…" : message || "Showing " + tasks.length + " of " + scopeTasks.length + " tasks"}</p>
-        {(overdueOnly || mineOnly || Object.values(filters).some(Boolean)) && <button className={controls.clear} type="button"
-          onClick={() => { setFilters({ ...emptyTaskFilters }); setOverdueOnly(false); setMineOnly(false); }}>
+        {anyFilter && <button className={controls.clear} type="button"
+          onClick={() => change({ filters: { ...emptyTaskFilters }, overdueOnly: false, mineOnly: false })}>
           Clear filters
         </button>}
       </div>
@@ -339,7 +423,8 @@ export default function TasksOverview({ projects, currentUserId, today }: {
         const progress = taskProgress(allTasks.filter((task) => groupKey(task) === key));
         // Finished groups start folded away; a single group is always open.
         const collapsible = groups.length > 1;
-        const collapsed = collapsible && (toggledGroups[key] ?? (progress.total > 0 && progress.percent === 100));
+        // An empty project starts folded too: its group is there for adding its first task.
+        const collapsed = collapsible && (toggledGroups[key] ?? (progress.complete || groupTasks.length === 0));
         const boardId = "board-" + grouping + "-" + key;
         // Grouped by project: "+ Create new" at the foot of each column, straight into this project and status.
         const addTo = grouping === "project" ? creatable.find((project) => String(project.id) === key) : undefined;
@@ -392,7 +477,7 @@ export default function TasksOverview({ projects, currentUserId, today }: {
                   onDragStart={(event) => {
                     if (!task.canChangeStatus || saving !== null) { event.preventDefault(); return; }
                     event.dataTransfer.setData("text/plain", String(task.id));
-                    event.dataTransfer.effectAllowed = "move"; setDragging(task.id);
+                    event.dataTransfer.effectAllowed = "move"; setDragging(task.id); setError("");
                   }}
                   onDragEnd={() => { setDragging(null); setDropTarget(null); }}>
                   <h4><span className={styles.priority} data-priority={task.priority} title={taskPriorityLabels[task.priority] + " priority"} />

@@ -32,7 +32,8 @@ export function ProgressRing({ percent, done }: { percent: number; done: boolean
   const r = 17, c = 2 * Math.PI * r;
   return <svg className={styles.ring} data-done={done || undefined} width="42" height="42" viewBox="0 0 42 42" aria-hidden="true">
     <circle cx="21" cy="21" r={r} className={styles.ringTrack} />
-    <circle cx="21" cy="21" r={r} className={styles.ringFill} strokeDasharray={`${(percent / 100) * c} ${c}`} transform="rotate(-90 21 21)" />
+    {/* No arc at 0: a round line cap would still draw a dot. */}
+    {percent > 0 && <circle cx="21" cy="21" r={r} className={styles.ringFill} strokeDasharray={`${(percent / 100) * c} ${c}`} transform="rotate(-90 21 21)" />}
   </svg>;
 }
 
@@ -89,7 +90,7 @@ export default function ProjectBrowser({ projects, today }: { projects: Workspac
         <p className={styles.description}>{project.description || <span className={styles.none}>No description yet.</span>}</p>
 
         <div className={styles.progress}>
-          <ProgressRing percent={progress.total ? progress.percent : 0} done={project.status === "COMPLETED" || (progress.total > 0 && progress.percent === 100)} />
+          <ProgressRing percent={progress.total ? progress.percent : 0} done={project.status === "COMPLETED" || progress.complete} />
           <span><strong>{progress.total ? progress.percent + "%" : "—"}</strong>
             <small>{progress.total ? `${progress.done}/${progress.total} tasks done` : "No tasks yet"}</small></span>
         </div>

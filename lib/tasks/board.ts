@@ -1,3 +1,5 @@
+import { sharePercent } from "@/lib/percent";
+
 export const boardColumns = [
   { status: "TO_DO", label: "TO DO" },
   { status: "IN_PROGRESS", label: "IN PROGRESS" },
@@ -14,5 +16,6 @@ export function isTaskOverdue(task: { deadline: string; status: string }, today:
 export function taskProgress(tasks: readonly { status: string }[]) {
   const active = tasks.filter((task) => task.status !== "CANCELLED");
   const done = active.filter((task) => task.status === "COMPLETED").length;
-  return { done, total: active.length, percent: active.length ? Math.round(done / active.length * 100) : 0 };
+  // `complete` is the test for "all done": a rounded percent can read 100 with work still open.
+  return { done, total: active.length, percent: sharePercent(done, active.length), complete: active.length > 0 && done === active.length };
 }

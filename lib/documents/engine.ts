@@ -1,5 +1,6 @@
 import type { MemberSort, TaskFilter, TaskSort, VariableKey } from "./template-schema";
 import { formatShortDay } from "@/lib/time-off/dates";
+import { sharePercent } from "@/lib/percent";
 import {
   projectRoleLabels,
   projectStatusLabels,
@@ -96,7 +97,7 @@ function scheduleHealth(project: DocumentProject, today: string, progress: numbe
 export function projectPace(project: DocumentProject, today: string) {
   const completed = project.tasks.filter((task) => task.status === "COMPLETED").length;
   const counted = project.tasks.filter((task) => task.status !== "CANCELLED").length;
-  const progress = counted > 0 ? Math.round((completed / counted) * 100) : 0;
+  const progress = sharePercent(completed, counted);
 
   let elapsed: number | null = null;
   if (project.endDate) {
