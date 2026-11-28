@@ -20,7 +20,7 @@ export async function login(_state: AuthState, data: FormData): Promise<AuthStat
   redirect(safeReturnPath(data.get("next")));
 }
 
+/** Ends this session. The page then loads /login afresh, so nothing of the account stays in it. */
 export async function logout() {
   await deleteSession();
-  redirect("/login");
 }

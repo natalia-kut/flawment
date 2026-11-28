@@ -29,7 +29,7 @@ export default function ProfileView({ user, today }: { today: string; user: {
   jobTitle: string; pronouns: string; phone: string; location: string; workingHours: string; skills: string[];
   birthDate: string; availability: Availability; status: Status | null;
   nextTimeOff: { type: AbsenceType; start: string; end: string } | null;
-  team: { name: string; leads: Person[]; members: Person[] } | null;
+  team: { id: number; name: string; leads: Person[]; members: Person[] } | null;
 } }) {
   const [photo, setPhotoState] = useState<{ file: File; url: string } | null>(null);
   const setPhoto = usePhotoPreview(setPhotoState);
@@ -137,7 +137,8 @@ export default function ProfileView({ user, today }: { today: string; user: {
       {/* Team and Time off side by side, at one height. */}
       <div className="profile-sidebar">
         <section className="workspace-card profile-mini-card">
-          <div className="profile-card-head"><h2>Team</h2><Link href="/?view=team" className="inline-link">Open team page</Link></div>
+          <div className="profile-card-head"><h2>Team</h2>{user.team ? <Link href={`/?view=team&team=${user.team.id}`} className="inline-link">Open team page</Link>
+            : <Link href="/?view=team" className="inline-link">See all teams</Link>}</div>
           {user.role === "SUPER_ADMIN" ? <p>Super admins are not part of a team. You manage teams on the Team page.</p>
             : !user.team ? <p>You are not in a team yet. Your administrator assigns teams.</p>
             : <dl className="profile-facts">
@@ -152,7 +153,7 @@ export default function ProfileView({ user, today }: { today: string; user: {
                     <UserAvatar id={m.id} firstName={m.first_name} lastName={m.last_name} photoVersion={m.photoVersion} size={26} />
                     <span className="visually-hidden">{m.first_name} {m.last_name}</span>
                   </PersonButton></li>)}</ul>}
-                {user.team.members.length > 6 && <Link href="/?view=team" className="inline-link">+{user.team.members.length - 6} more</Link>}
+                {user.team.members.length > 6 && <Link href={`/?view=team&team=${user.team.id}`} className="inline-link">+{user.team.members.length - 6} more</Link>}
               </dd></div>
             </dl>}
         </section>

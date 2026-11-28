@@ -22,7 +22,12 @@ export default function AccountMenu({ user, compact, onOpen }: {
 }) {
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
-  const [, signOut, signingOut] = useActionState(logout, undefined);
+  // A full page load afterwards, not a client-side move to /login: that keeps the signed-out
+  // workspace in the page (hidden, but there) until the next reload.
+  const [, signOut, signingOut] = useActionState(async () => {
+    await logout();
+    window.location.replace("/login");
+  }, undefined);
   const [editingStatus, setEditingStatus] = useState(false);
   const role = user.role === "SUPER_ADMIN" ? "Super admin" : "Standard user";
 
@@ -72,7 +77,7 @@ export default function AccountMenu({ user, compact, onOpen }: {
       <ul>
         <li><button type="button" onClick={() => go("profile")}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6" /><path d="M5 20a7 7 0 0 1 14 0" /></svg>
-          Edit profile</button></li>
+          My profile</button></li>
         <li><button type="button" onClick={() => go("time-off")}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
           Time off</button></li>

@@ -88,7 +88,7 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
   /** Your birthday or work anniversary, when it is today. */
   celebrations?: Celebration[];
   workspace: {
-    projects: WorkspaceProject[]; userId: number; today: string; timeOff?: CalendarTimeOff[]; myTeam?: { name: string; members: TeamPerson[] } | null;
+    projects: WorkspaceProject[]; userId: number; today: string; timeOff?: CalendarTimeOff[]; myTeam?: { id: number; name: string; members: TeamPerson[] } | null;
     /** A super admin's dashboard is about the workspace, not tasks: requests to decide and people to set up. */
     admin?: AdminData | null;
   };
@@ -236,8 +236,8 @@ export default function Dashboard({ chat, firstName, celebrations = [], workspac
 
       {/* Everyone sees their own team: who is in, who is away, how their work is going. */}
       {myTeam && <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="team-title">
-        <div className={styles.panelHeading}><h2 id="team-title">Your team <small className={styles.teamName}>{myTeam.name}</small></h2><Link href="/?view=team">Open team page</Link></div>
-        <TeamRings currentUserKey={String(userId)} people={teamDetails} moreHref="/?view=team"
+        <div className={styles.panelHeading}><h2 id="team-title">Your team <small className={styles.teamName}>{myTeam.name}</small></h2><Link href={`/?view=team&team=${myTeam.id}`}>Open team page</Link></div>
+        <TeamRings currentUserKey={String(userId)} people={teamDetails} moreHref={`/?view=team&team=${myTeam.id}`}
           members={myTeam.members.map((m) => ({ key: String(m.id), name: `${m.first_name} ${m.last_name}` }))}
           tasks={tasks.map((task) => ({ status: task.status, overdue: task.overdue, assigneeKey: taskAssigneeKey(task), assigneeName: task.assigneeName }))} />
       </section>}

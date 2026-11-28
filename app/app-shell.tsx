@@ -42,6 +42,9 @@ const navIcons: Record<NavigationItem, ReactNode> = {
   People: <><rect x="4" y="3" width="16" height="18" rx="2.5" /><circle cx="12" cy="10" r="2.8" /><path d="M7.5 17.5a4.5 4.5 0 0 1 9 0" /></>,
 };
 
+/** What the sidebar calls each page, where it differs from the item (and its ?view=). */
+const navLabels: Partial<Record<NavigationItem, string>> = { Team: "Teams" };
+
 /** Pages only a super admin sees. */
 const adminOnly: readonly NavigationItem[] = ["People"];
 
@@ -59,10 +62,14 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
   const visibleNavigation = navigation.filter((item) => user.role === "SUPER_ADMIN" || !adminOnly.includes(item));
   const view = search.get("view") ?? "";
   const accountView = (accountViews as readonly string[]).includes(view) && !search.has("project") && !search.has("task") ? view as AccountView : null;
+  // No view is the Dashboard; a view that does not exist (or is not yours to open) is not found,
+  // instead of quietly showing the Dashboard under a wrong address.
   const activePage: NavigationItem | null = accountView ? null : search.has("project")
     ? "Projects"
     : search.has("task") ? "Tasks"
-    : visibleNavigation.find((item) => item.toLowerCase() === view) ?? "Dashboard";
+    : view === "" ? "Dashboard"
+    : visibleNavigation.find((item) => item.toLowerCase() === view) ?? null;
+  const adminPage = !accountView && activePage === null && adminOnly.some((item) => item.toLowerCase() === view);
   const [chatOpen, setChatOpen] = useState(false);
   const [requestedTemplateId, setRequestedTemplateId] = useState<string | null>(null);
   const chat = useFlawiuszChat();
@@ -74,7 +81,8 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
   const openProject = projectId ? workspace.projects.find((project) => String(project.id) === projectId) : undefined;
   const openTask = taskId ? workspace.projects.flatMap((project) => project.tasks).find((item) => String(item.id) === taskId) : undefined;
   const viewTitle = openTask?.title ?? openProject?.name
-    ?? (accountView === "profile" ? "My profile" : accountView === "time-off" ? "Time off" : activePage ?? "Page not found");
+    ?? (accountView === "profile" ? "My profile" : accountView === "time-off" ? "Time off"
+      : activePage ? navLabels[activePage] ?? activePage : "Page not found");
   useEffect(() => { document.title = `${viewTitle} | Flawment`; }, [viewTitle]);
   // After moving to another view, the keyboard starts at its heading, not back at the sidebar.
   const viewKey = [view, projectId, taskId].join("|");
@@ -150,11 +158,11 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
               type="button"
               onClick={() => setActivePage(item)}
               aria-current={shownPage === item ? "page" : undefined}
-              aria-label={collapsed ? item : undefined}
-              title={collapsed ? item : undefined}
+              aria-label={collapsed ? navLabels[item] ?? item : undefined}
+              title={collapsed ? navLabels[item] ?? item : undefined}
             >
               <svg className="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{navIcons[item]}</svg>
-              <span className="sidebar-label">{item}</span>
+              <span className="sidebar-label">{navLabels[item] ?? item}</span>
             </button>
           ))}
         </nav>
@@ -180,7 +188,10 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
         ) : (
           <>
             <PageHeader title="Page not found" />
-            <section className="placeholder-panel"><h2>This page does not exist</h2></section>
+            <section className="placeholder-panel">
+              <h2>{adminPage ? "Only administrators can open this page" : "This page does not exist"}</h2>
+              <p><Link href="/">Go to the dashboard</Link></p>
+            </section>
           </>
         )}
       </main>

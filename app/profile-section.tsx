@@ -32,7 +32,7 @@ export default async function ProfileSection() {
     availability: availability(toRanges(absences, true), today),
     nextTimeOff: nextTimeOff && { type: nextTimeOff.type, start: nextTimeOff.start_date.toISOString().slice(0, 10), end: nextTimeOff.end_date.toISOString().slice(0, 10) },
     team: team && {
-      name: team.name,
+      id: team.id, name: team.name,
       // "Reports to": the team's leads other than you.
       leads: team.members.filter((m) => m.team_lead && m.id !== actor.id).map(plain),
       // Your teammates: the others, not you.
