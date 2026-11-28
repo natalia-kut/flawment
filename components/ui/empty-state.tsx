@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import s from "./empty-state.module.css";
 
-type Art = "projects" | "tasks" | "teams" | "documents";
+type Art = "projects" | "tasks" | "teams" | "documents" | "lost" | "locked";
 
 /** A line of text in a picture. */
 function Line({ x, y, w, h = 6, className = s.line }: { x: number; y: number; w: number; h?: number; className?: string }) {
@@ -67,6 +67,34 @@ const pictures: Record<Art, ReactNode> = {
     <rect x="137" y="134" width="13" height="28" rx="3" className={s.accentLight} /><rect x="157" y="120" width="13" height="42" rx="3" className={s.accent} />
     <rect x="177" y="144" width="13" height="18" rx="3" className={s.warm} /><rect x="197" y="128" width="13" height="34" rx="3" className={s.olive} />
     <rect x="132" y="167" width="84" height="1.8" className={s.line} />
+  </>,
+  // A page that is not there: an empty window, and a magnifying glass that finds nothing.
+  lost: <>
+    <g transform="rotate(-8 100 112)"><rect x="46" y="52" width="112" height="112" rx="13" className={s.back} /><Line x={60} y={70} w={26} /><Line x={60} y={86} w={18} /></g>
+    <g transform="rotate(8 260 112)"><rect x="202" y="52" width="112" height="112" rx="13" className={s.back} /><Line x={274} y={70} w={26} /><Line x={282} y={86} w={18} /></g>
+    <rect x="92" y="24" width="176" height="150" rx="15" className={s.card} />
+    <circle cx="110" cy="42" r="4" className={s.warm} /><circle cx="123" cy="42" r="4" className={s.accentLight} /><circle cx="136" cy="42" r="4" className={s.olive} />
+    <rect x="150" y="36" width="102" height="12" rx="6" className={s.back} />
+    <rect x="110" y="64" width="140" height="92" rx="10" className={s.slot} />
+    <Line x={124} y={80} w={58} className={s.line} /><Line x={124} y={94} w={84} className={s.line} />
+    <g transform="translate(222 128)">
+      <path d="M17 17l22 22" className={s.handle} />
+      <circle r="25" className={s.white} /><circle r="21" className={s.lens} />
+      <path d="M-6.5-5.5a6.5 6.5 0 1 1 9 6c-2.4 1-2.5 2.6-2.5 4.5" className={s.mark} /><circle cy="11" r="2" className={s.accent} />
+    </g>
+  </>,
+  // A page only some people may open: the same card, behind a padlock.
+  locked: <>
+    <g transform="rotate(-8 100 112)"><rect x="46" y="52" width="112" height="112" rx="13" className={s.back} /><Line x={60} y={70} w={26} /><Line x={60} y={86} w={18} /></g>
+    <g transform="rotate(8 260 112)"><rect x="202" y="52" width="112" height="112" rx="13" className={s.back} /><Line x={274} y={70} w={26} /><Line x={282} y={86} w={18} /></g>
+    <rect x="102" y="24" width="156" height="150" rx="15" className={s.card} />
+    <Line x={120} y={43} w={82} h={9} className={s.ink} /><Line x={120} y={62} w={110} /><Line x={120} y={75} w={80} />
+    <Face x={134} y={128} r={14} className={s.accentLight} /><Face x={160} y={128} r={14} className={s.accentLight} />
+    <g transform="translate(222 128)">
+      <path d="M-13-6v-8a13 13 0 0 1 26 0v8" className={s.shackle} />
+      <rect x="-21" y="-8" width="42" height="34" rx="8" className={s.accent} />
+      <circle cy="5" r="4.5" className={s.white} /><rect x="-1.8" y="7" width="3.6" height="9" rx="1.8" className={s.white} />
+    </g>
   </>,
 };
 

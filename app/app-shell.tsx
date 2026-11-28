@@ -17,6 +17,7 @@ import PageHeader from "@/components/page-header";
 import { ConfirmProvider } from "@/components/ui/confirm";
 import { PeopleProvider } from "./people-context";
 import { confirmLeave } from "@/components/ui/unsaved";
+import EmptyState from "@/components/ui/empty-state";
 
 const navigation = [
   "Dashboard",
@@ -82,7 +83,7 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
   const openTask = taskId ? workspace.projects.flatMap((project) => project.tasks).find((item) => String(item.id) === taskId) : undefined;
   const viewTitle = openTask?.title ?? openProject?.name
     ?? (accountView === "profile" ? "My profile" : accountView === "time-off" ? "Time off"
-      : activePage ? navLabels[activePage] ?? activePage : "Page not found");
+      : activePage ? navLabels[activePage] ?? activePage : adminPage ? "Administrators only" : "Page not found");
   useEffect(() => { document.title = `${viewTitle} | Flawment`; }, [viewTitle]);
   // After moving to another view, the keyboard starts at its heading, not back at the sidebar.
   const viewKey = [view, projectId, taskId].join("|");
@@ -187,11 +188,19 @@ export default function AppShell({ documents, projects, tasks, task, profile, te
           />
         ) : (
           <>
-            <PageHeader title="Page not found" />
-            <section className="placeholder-panel">
-              <h2>{adminPage ? "Only administrators can open this page" : "This page does not exist"}</h2>
-              <p><Link href="/">Go to the dashboard</Link></p>
-            </section>
+            <PageHeader title={adminPage ? "Administrators only" : "Page not found"} />
+            {adminPage
+              ? <EmptyState art="locked" title="Only administrators can open this page"
+                action={<Link className="primary-button" href="/">Go to the dashboard</Link>}>
+                It is where super admins look after everyone&apos;s accounts. Ask one of them if something about yours needs to change.
+              </EmptyState>
+              : <EmptyState art="lost" title="This page does not exist"
+                action={<>
+                  <Link className="primary-button" href="/">Go to the dashboard</Link>
+                  <button type="button" className="secondary-button" onClick={() => router.back()}>Go back</button>
+                </>}>
+                The address may be mistyped, or the link points to something that was moved or removed.
+              </EmptyState>}
           </>
         )}
       </main>

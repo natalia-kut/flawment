@@ -32,3 +32,7 @@
 .invalid input { border-color: var(--critical); }
 .invalid input:focus-visible { outline-color: var(--critical-border); }
 .fieldError { font-size: 12px; font-weight: 500; line-height: 1.35; color: var(--critical); }
+
+/* The app's 404 page: the wordmark above the same "not found" picture as inside the app. */
+.notFound { position: relative; z-index: 1; display: grid; justify-items: center; width: min(100%, 620px); }
+.notFound > section { width: 100%; box-shadow: 0 24px 48px -32px #39220f40; }
