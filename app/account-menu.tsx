@@ -29,7 +29,7 @@ export default function AccountMenu({ user, compact, onOpen }: {
     window.location.replace("/login");
   }, undefined);
   const [editingStatus, setEditingStatus] = useState(false);
-  const role = user.role === "SUPER_ADMIN" ? "Super admin" : "Standard user";
+  const role = user.role === "SUPER_ADMIN" ? "Administrator" : "Standard user";
 
   // Runs before the popovertarget opens the menu, so it appears in place.
   function place() {
