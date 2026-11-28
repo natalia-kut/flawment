@@ -19,6 +19,7 @@ import EmailText from "./email-text";
 import { useConfirmSubmit } from "@/components/ui/confirm";
 import { submitInPlace } from "@/components/ui/submit-in-place";
 import { OFFLINE, offlineSafe, reach } from "@/components/ui/offline";
+import PasswordCard from "./password-card";
 
 type Person = { id: number; first_name: string; last_name: string; photoVersion: string | null };
 
@@ -166,6 +167,8 @@ export default function ProfileView({ user, today }: { today: string; user: {
             <span>{absenceTypeLabels[user.nextTimeOff.type]} · {nextDays} {nextDays === 1 ? "day" : "days"}</span>
           </p> : <p>Nothing planned.</p>}
         </section>
+
+        <PasswordCard />
       </div>
     </div>
     {editingStatus && <StatusDialog status={user.status} onClose={() => setEditingStatus(false)} />}
