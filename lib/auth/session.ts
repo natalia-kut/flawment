@@ -45,6 +45,18 @@ export async function createSession(userId: number) {
   });
 }
 
+/** The current session's token, hashed as stored, so it can be told apart from the others. */
+export async function currentSessionHash() {
+  const token = (await cookies()).get(cookieName)?.value;
+  return token ? digest(token) : null;
+}
+
+/** Signs a person out everywhere except the session `keep` (this browser). */
+export async function endOtherSessions(userId: number, keep: string | null) {
+  const { count } = await prisma.session.deleteMany({ where: { user_id: userId, ...(keep ? { token_hash: { not: keep } } : {}) } });
+  return count;
+}
+
 export async function deleteSession() {
   const jar = await cookies();
   const token = jar.get(cookieName)?.value;

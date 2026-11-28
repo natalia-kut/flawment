@@ -38,6 +38,31 @@ export async function registerAccount(data: FormData): Promise<AuthResult> {
   return { userId: user.id };
 }
 
+/**
+ * A signed-in person changes their own password: the current one first (wrong guesses
+ * count like failed logins, so a borrowed open session cannot try password after password).
+ */
+export async function changePassword(userId: number, data: FormData): Promise<{ error: string } | { ok: true }> {
+  if (!(data instanceof FormData)) return { error: "Fill in the form and try again." };
+  const current = String(data.get("current_password") ?? "");
+  const next = String(data.get("new_password") ?? "");
+  if (!current) return { error: "Enter your current password." };
+  if (next.length < 10 || next.length > 128) return { error: "Use a new password between 10 and 128 characters." };
+  if (next !== String(data.get("confirm_password") ?? "")) return { error: "The new passwords do not match." };
+  if (next === current) return { error: "Choose a new password that differs from the current one." };
+  const key = createHash("sha256").update("password-change:" + userId).digest("hex");
+  const now = new Date();
+  await prisma.loginAttempt.deleteMany({ where: { expires_at: { lte: now } } });
+  const attempt = await prisma.loginAttempt.upsert({ where: { key },
+    create: { key, expires_at: new Date(now.getTime() + 15 * 60_000) }, update: { count: { increment: 1 } } });
+  if (attempt.count > 10) return { error: "Too many attempts. Try again in a few minutes." };
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { password: true, is_active: true } });
+  if (!user?.is_active || !await verifyPassword(current, user.password)) return { error: "Your current password is not correct." };
+  await prisma.user.update({ where: { id: userId }, data: { password: await hashPassword(next) } });
+  await prisma.loginAttempt.deleteMany({ where: { key } });
+  return { ok: true };
+}
+
 export async function authenticate(data: FormData): Promise<AuthResult> {
   if (!(data instanceof FormData)) return { error: "Enter your email address and password." };
   const email = text(data, "email").toLowerCase();
