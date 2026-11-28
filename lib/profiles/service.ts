@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { Actor } from "@/lib/rbac";
 import { isValidDay, workspaceToday } from "@/lib/time-off/dates";
 import { MAX_PHOTO_BYTES, MAX_SKILLS } from "./limits";
+import { cleanLine } from "@/lib/text";
 
 export { MAX_PHOTO_BYTES };
 export class ProfileError extends Error {}
@@ -31,7 +32,8 @@ function parseBirthDate(value: string, today = workspaceToday()) {
 }
 
 const text = (label: string, max: number) => (raw: string) => {
-  const value = raw.trim().replace(/\s+/g, " ");
+  // Nothing invisible: a zero-width "location" would look empty, a bidi override reverses the name beside it.
+  const value = cleanLine(raw);
   if (value.length > max) throw new ProfileError(`${label} can be up to ${max} characters.`);
   return value || null;
 };
@@ -44,7 +46,9 @@ const profileFields = {
   pronouns: text("Pronouns", 30),
   phone: (raw: string) => {
     const phone = text("Phone", 30)(raw);
-    if (phone && !/^\+?[\d\s()-]{6,30}$/.test(phone)) throw new ProfileError("Enter a phone number using digits, spaces, +, ( ) or -.");
+    if (phone && (!/^\+?[\d\s()-]{6,30}$/.test(phone) || (phone.match(/\d/g)?.length ?? 0) < 6)) {
+      throw new ProfileError("Enter a phone number with at least 6 digits, using digits, spaces, +, ( ) or -.");
+    }
     return phone;
   },
   location: text("Location", 80),
@@ -64,7 +68,7 @@ export async function updateProfileField(actor: Actor, field: string, value: str
 function parseSkills(raw: string) {
   const skills: string[] = [];
   for (const part of raw.split(",")) {
-    const skill = part.trim().replace(/\s+/g, " ");
+    const skill = cleanLine(part);
     if (!skill) continue;
     if (skill.length > 30) throw new ProfileError("Each skill can be up to 30 characters.");
     if (!skills.some((s) => s.toLowerCase() === skill.toLowerCase())) skills.push(skill);

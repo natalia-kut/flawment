@@ -35,7 +35,8 @@ export default async function ProfileSection() {
       name: team.name,
       // "Reports to": the team's leads other than you.
       leads: team.members.filter((m) => m.team_lead && m.id !== actor.id).map(plain),
-      members: team.members.map(plain),
+      // Your teammates: the others, not you.
+      members: team.members.filter((m) => m.id !== actor.id).map(plain),
     },
   }} />;
 }

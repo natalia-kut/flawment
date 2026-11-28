@@ -155,9 +155,12 @@ export default function TaskPage({ project, task, details, viewer, today }: {
     run({ status }, changeTaskStatusAction, data, () => { if (status === "COMPLETED") celebrate("small", origin); });
   }
   function commitTitle() {
-    const title = titleDraft?.trim() ?? "";
+    if (titleDraft === null) return;
+    const title = titleDraft.trim();
     setTitleDraft(null);
-    if (title && title !== values.title) save("title", title);
+    // A blank title is not saved, and says so instead of quietly putting the old one back.
+    if (!title) setError("A task needs a title. The previous one was kept.");
+    else if (title !== values.title) save("title", title);
   }
   async function copyLink() {
     try {

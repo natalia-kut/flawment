@@ -56,7 +56,9 @@ test("statuses expire on time in the workspace time zone and hide once expired",
   assert.equal(workspaceMidnight("2026-07-01").toISOString(), "2026-06-30T22:00:00.000Z", "summer time is UTC+2");
   const lunch = { status_emoji: "🍽️", status_text: "Lunch", status_expires_at: statusExpiry("1h", now) };
   assert.deepEqual(activeStatus(lunch, now), { emoji: "🍽️", text: "Lunch", until: "2026-11-12T12:00:00.000Z", untilLabel: "Until 13:00" });
-  assert.equal(activeStatus({ ...lunch, status_expires_at: statusExpiry("today", now) }, now)?.untilLabel, "Until tomorrow");
+  assert.equal(activeStatus({ ...lunch, status_expires_at: statusExpiry("today", now) }, now)?.untilLabel, "Until end of today");
+  // "This week" ends at Monday 00:00: it lasts through Sunday, and says so.
+  assert.equal(activeStatus({ ...lunch, status_expires_at: statusExpiry("week", now) }, now)?.untilLabel, "Until end of Sunday");
   assert.equal(activeStatus(lunch, new Date("2026-11-12T12:00:00Z")), null, "expired at its end time");
   assert.equal(activeStatus({ status_emoji: null, status_text: null, status_expires_at: null }, now), null);
 });
