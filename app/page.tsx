@@ -45,7 +45,7 @@ async function Workspace({ searchParams }: Pick<PageProps<"/">, "searchParams">)
   // Loaded once for both the Team page and the dashboard's "Your team".
   const teams = await getTeamsOverview(user, today);
   const own = teams.teams.find((team) => team.id === teams.myTeamId);
-  const myTeam = own ? { name: own.name, members: own.members } : null;
+  const myTeam = own ? { id: own.id, name: own.name, members: own.members } : null;
   // Job title requests: a super admin decides them, a team lead follows their own.
   const [pendingRequests, leadRequests] = await Promise.all([getPendingTitleRequests(user), getLeadTitleRequests(user)]);
   const admin = user.role === "SUPER_ADMIN" ? { requests: pendingRequests, people: teams.people, teams: teams.teams } : null;

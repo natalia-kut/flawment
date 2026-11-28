@@ -29,7 +29,7 @@ export default function TaskPreview({ task, onClose }: { task: PreviewTask; onCl
       {task.description ? <RichText text={task.description} /> : <p className={details.detailsEmpty}>No description yet.</p>}
     </TaskDialogColumns>
     <div className="dialog-actions">
-      <Link className="secondary-button" href={`/?view=tasks&in=${task.projectId}`}>Open in Tasks</Link>
+      <Link className="secondary-button" href={`/?view=tasks&in=${task.projectId}`}>Open on the Tasks board</Link>
       <Link className="primary-button" href={`/?task=${task.id}`}>Open task page</Link>
     </div>
   </TaskDetailsDialog>;
