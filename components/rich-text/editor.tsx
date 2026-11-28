@@ -60,7 +60,9 @@ function Toolbar({ editor, tools }: { editor: Editor; tools: Tool[][] }) {
   function applyLink() {
     const typed = linkDraft?.trim() ?? "";
     // "example.com" is what people type; an address with any other scheme is refused.
-    const href = !typed ? "" : safeHref(typed) ?? (/^[a-z][a-z0-9+.-]*:(?!\d)/i.test(typed) ? null : typed.includes("@") && !typed.includes("/") ? `mailto:${typed}` : `https://${typed}`);
+    // Spaces are not part of an address: encoded, the link survives saving.
+    const typedHref = typed.replace(/\s/g, "%20");
+    const href = !typed ? "" : safeHref(typedHref) ?? (/^[a-z][a-z0-9+.-]*:(?!\d)/i.test(typed) ? null : typed.includes("@") && !typed.includes("/") ? `mailto:${typedHref}` : `https://${typedHref}`);
     if (href === null) { setLinkError(true); return; }
     const chain = editor.chain().focus().extendMarkRange("link");
     if (!href) chain.unsetLink().run();
@@ -105,14 +107,32 @@ function Toolbar({ editor, tools }: { editor: Editor; tools: Tool[][] }) {
 const looksLikeMarkdown = (text: string) => /^\s*(?:[-*+]\s|\d+[.)]\s|#{1,6}\s|>\s|```)/m.test(text) || /\*\*[^*\n]+\*\*/.test(text);
 
 /**
- * Google Docs and Word put a nested list straight inside its parent list, next to the items.
- * Moved into the item before it, the numbering goes on instead of starting again.
+ * Pasted HTML made to fit what the editor has:
+ * - Google Docs and Word put a nested list straight inside its parent list, next to the items.
+ *   Moved into the item before it, the numbering goes on instead of starting again.
+ * - A table (from Excel, a web page) becomes one line per row with its cells apart, instead of
+ *   all the cells run together.
+ * - Headings of other levels become the nearest one the editor has (H1 to H2, H4-H6 to H3).
  */
-function nestPastedLists(html: string) {
+function fitPastedHtml(html: string) {
   const page = new DOMParser().parseFromString(html, "text/html");
   for (const list of page.querySelectorAll(":is(ol, ul) > :is(ol, ul)")) {
     const item = list.previousElementSibling;
     if (item?.tagName === "LI") item.append(list);
+  }
+  for (const table of page.querySelectorAll("table")) {
+    const lines = [...table.querySelectorAll("tr")].map((row) => {
+      const line = page.createElement("p");
+      line.textContent = [...row.querySelectorAll("th, td")].map((cell) => cell.textContent?.trim() ?? "").join(" | ");
+      return line;
+    });
+    table.replaceWith(...lines);
+  }
+  for (const heading of page.querySelectorAll("h1, h4, h5, h6")) {
+    const level = heading.tagName === "H1" ? "h2" : "h3";
+    const replacement = page.createElement(level);
+    replacement.append(...heading.childNodes);
+    heading.replaceWith(replacement);
   }
   return page.body.innerHTML;
 }
@@ -137,7 +157,7 @@ export default function RichTextEditor({ initial, label, placeholder, autoFocus 
     autofocus: autoFocus ? "end" : false,
     editorProps: {
       attributes: { class: styles.content, role: "textbox", "aria-multiline": "true", "aria-label": label },
-      transformPastedHTML: nestPastedLists,
+      transformPastedHTML: fitPastedHtml,
       handleKeyDown: (_view, event) => {
         if (event.key === "Escape" && latest.current.onEscape) { latest.current.onEscape(); return true; }
         if (event.key !== "Enter" || !(event.ctrlKey || event.metaKey) || !latest.current.onSubmit) return false;

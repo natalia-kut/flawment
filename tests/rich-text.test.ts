@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { MarkdownManager } from "@tiptap/markdown";
 import { createMarked, plainText, safeHref, toggleTask } from "../lib/rich-text/markdown";
-import { richTextExtensions, trimMarkdown } from "../lib/rich-text/extensions";
+import { escapeLineStarts, richTextExtensions, trimMarkdown } from "../lib/rich-text/extensions";
 
 function editor() {
   return new MarkdownManager({ extensions: richTextExtensions(), marked: createMarked() as never });
@@ -46,3 +46,25 @@ test("only web and email addresses become links", () => {
   assert.equal(safeHref("mailto:a@b.pl"), "mailto:a@b.pl");
   for (const href of ["javascript:alert(1)", " javascript:alert(1)", "data:text/html,x", "vbscript:x", "//x.pl", "/x"]) assert.equal(safeHref(href), null, href);
 });
+
+test("headings, bold and line starts mean the same in the editor and the reader", () => {
+  const manager = editor();
+  const save = (text: string) => trimMarkdown(manager.serialize(manager.parse(text)));
+  // The editor has two heading levels: others become the nearest one instead of plain text.
+  assert.equal(save("# Title"), "## Title");
+  assert.equal(save("#### Four"), "### Four");
+  // Bold the editor writes against a letter stays bold.
+  const bold = manager.parse("foo**(bar)**baz");
+  assert.match(JSON.stringify(bold), /"bold"/);
+  assert.equal(save("foo**(bar)**baz"), "foo**(bar)**baz");
+  assert.equal(plainText("foo**(bar)**baz"), "foo(bar)baz");
+  // A paragraph that only looks like a list or a heading is saved so it stays a paragraph.
+  for (const line of ["- x", "* x", "+ x", "1. x", "2) x", "# x", "> x"]) {
+    const doc = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: line }] }] };
+    const saved = trimMarkdown(manager.serialize(doc as never));
+    assert.equal(JSON.stringify(manager.parse(saved)).includes('"paragraph"'), true, saved);
+    assert.equal(plainText(saved), line, saved);
+  }
+  assert.equal(escapeLineStarts("-5 degrees\n#tag\n--|--"), "-5 degrees\n#tag\n--|--");
+});
+

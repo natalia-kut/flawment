@@ -1,4 +1,7 @@
-import { Marked, type Token, type Tokens } from "marked";
+import { Marked, Tokenizer, type Token, type Tokens } from "marked";
+
+/** The heading levels the editor has. Others are read as the nearest one, so reader and editor agree. */
+const clampHeading = (depth: number) => Math.min(Math.max(depth, 2), 3);
 
 /**
  * Formatted text is stored as Markdown. Only what the editor can show is read as formatting:
@@ -14,6 +17,20 @@ export function createMarked() {
       // `false` hands over to the standard rule.
       link: (src) => src.startsWith("!") ? undefined : false,
       del: (src) => src.startsWith("~~") ? false : undefined,
+      // "# Title" and "#### Note" become the editor's two levels, instead of a heading in
+      // one view and plain text in the other (and lost on the next save).
+      heading(src) {
+        const token = Tokenizer.prototype.heading.call(this, src);
+        if (token) token.depth = clampHeading(token.depth);
+        return token ?? false;
+      },
+      // Bold the editor wrote right against a letter, as in foo**(bar)**baz: strict Markdown
+      // reads those stars as text. A simple **...** on one line is bold wherever it is.
+      emStrong(src) {
+        const match = /^\*\*(?=\S)([^*\n]*?\S)\*\*/.exec(src);
+        if (!match) return false;
+        return { type: "strong", raw: match[0], text: match[1], tokens: this.lexer.inlineTokens(match[1]) };
+      },
     },
   });
   return marked;
