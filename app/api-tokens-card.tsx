@@ -61,6 +61,10 @@ export default function ApiTokensCard({ tokens }: { tokens: ApiTokenSummary[] })
         <code>{shown}</code>
         <button type="button" className="secondary-button" onClick={() => copy(shown)}>{copied ? "Copied" : "Copy"}</button>
       </div>
+      {/* Google and Outlook on the web fetch the feed from their own servers, which cannot reach this computer. */}
+      {state.calendar && /^(localhost|127\.|\[::1\])/.test(window.location.hostname) && <p className="muted-value api-token-warning">
+        This link points to this computer, so online calendars such as Google Calendar cannot reach it. Use a calendar app on this computer, or a deployed Flawment.
+      </p>}
     </div>}
 
     {creating ? <form action={action} onSubmit={submitInPlace(action)} className="workspace-form api-token-form">
