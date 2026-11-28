@@ -3,7 +3,10 @@
   "regions": ["fra1"],
   "git": {
     "deploymentEnabled": {
-      "dependabot/**": false
+      "**": false,
+      "main": true,
+      "feat/**": true,
+      "feature/**": true
     }
   }
 }
