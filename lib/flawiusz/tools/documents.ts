@@ -115,8 +115,9 @@ export type TemplateProposal = TemplateInput & {
 // keeps the settings the model does not know about.
 async function prepareTemplate(
   { template_id, name, description, project_id, blocks }: z.infer<typeof templateSchema>,
-  { chosenProjectId }: ToolContext,
+  { actor, chosenProjectId }: ToolContext,
 ) {
+  if (!actor) return { ok: false as const, error: "Sign in first." };
   const existing = template_id
     ? (await getDocumentTemplates()).find((template) => template.id === template_id && !template.isBuiltIn)
     : undefined;
@@ -133,7 +134,7 @@ async function prepareTemplate(
     };
   }
   // Only whether it exists for this user matters here, so the light list is enough.
-  const project = projectId === null ? null : (await projectList()).find((item) => item.id === projectId);
+  const project = projectId === null ? null : (await projectList(actor)).find((item) => item.id === projectId);
   if (project === undefined) return { ok: false as const, error: `There is no project ${projectId}; use an id from list_projects or ask_project.` };
 
   const parsed = parseTemplateInput({
