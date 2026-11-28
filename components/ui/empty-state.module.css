@@ -26,3 +26,11 @@
 .plus { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; }
 
 @media (max-width: 560px) { .panel { min-height: 0; padding: 30px 20px 36px; } .panel h2 { font-size: 21px; } }
+
+/* The magnifying glass and the padlock of the "not found" and "not yours" pictures. */
+.lens { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 3; }
+.handle { fill: none; stroke: var(--text-secondary); stroke-width: 7; stroke-linecap: round; }
+.mark { fill: none; stroke: var(--accent); stroke-width: 3.2; stroke-linecap: round; }
+.shackle { fill: none; stroke: var(--text-secondary); stroke-width: 5; stroke-linecap: round; }
+/* Two buttons side by side, wrapping on a phone. */
+.action { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
