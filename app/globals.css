@@ -937,6 +937,25 @@ button:focus-visible, a:focus-visible, summary:focus-visible,
 .password-card .text-button { padding: 0; font: inherit; font-size: 13px; font-weight: 600; }
 .password-done { margin: 10px 0 0; font-size: 13.5px; color: var(--success-strong); }
 
+/* My profile, Sign-in & security tab: one card under another, each as tall as it needs. */
+.profile-security { display: grid; gap: 24px; align-items: start; }
+
+/* My profile: access tokens for MCP clients and calendar feeds. */
+.workspace-form.api-token-form { margin-top: 0; }
+.api-token-form .muted-value { margin: 0; font-size: 12.5px; }
+.api-token-scopes { display: grid; gap: 6px; margin: 0; padding: 0; border: 0; }
+.api-token-scopes legend { margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+.api-tokens-card .text-button { padding: 0; font: inherit; font-size: 13px; font-weight: 600; }
+.api-tokens-card .text-button.danger-text { color: var(--critical); }
+.api-token-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.api-token-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.api-token-list small { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px; }
+.api-token-list code, .api-token-value code { font-size: 12.5px; }
+.api-token-new { margin-bottom: 12px; padding: 10px 14px; border: 1px solid var(--accent-border); border-radius: 8px; background: var(--accent-soft); }
+.api-token-new p { margin: 0 0 8px; font-size: 13.5px; font-weight: 600; }
+.api-token-value { display: flex; align-items: center; gap: 8px; }
+.api-token-value code { flex: 1; min-width: 0; overflow-wrap: anywhere; user-select: all; }
+
 /* Whom to contact: the administrators, on the Teams page and in My profile. */
 .workspace-card.admin-contact { margin-top: 18px; padding: 18px 22px; }
 .admin-contact h2 { margin: 0 0 6px; font-size: 18px; }

@@ -85,6 +85,7 @@ model User {
   created_at        DateTime           @default(now())
   absences          Absence[]
   sessions          Session[]
+  api_tokens        ApiToken[]
   templates         DocumentTemplate[]
 
   title_requests_about   JobTitleRequest[] @relation("TitleRequestPerson")
@@ -170,6 +171,30 @@ model Session {
 
   @@index([user_id])
   @@index([expires_at])
+}
+
+// What an access token may be used for.
+enum ApiScope {
+  MCP_READ
+  CALENDAR
+}
+
+// Personal access tokens for tools outside the browser (an MCP client, a calendar
+// feed). Stored hashed, like sessions; deleting the row revokes the token.
+model ApiToken {
+  id           Int        @id @default(autoincrement())
+  user_id      Int
+  user         User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  name         String
+  token_hash   String     @unique
+  // The start of the token, so its owner can tell their tokens apart.
+  prefix       String
+  scopes       ApiScope[]
+  expires_at   DateTime
+  last_used_at DateTime?
+  created_at   DateTime   @default(now())
+
+  @@index([user_id])
 }
 
 model LoginAttempt {
