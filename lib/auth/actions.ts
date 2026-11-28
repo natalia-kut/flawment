@@ -54,16 +54,16 @@ export async function logout() {
   await deleteSession();
 }
 
-export type ApiTokenState = { error?: string; token?: string };
+export type ApiTokenState = { error?: string; token?: string; calendar?: boolean };
 
 /** Creates an access token; the answer carries it in full, the only time it is shown. */
 export async function createApiTokenAction(_state: ApiTokenState, data: FormData): Promise<ApiTokenState> {
   const user = await currentUser();
   if (!user) return { error: SESSION_ENDED };
   try {
-    const { token } = await createApiToken(user.id, data);
+    const { token, scopes } = await createApiToken(user.id, data);
     revalidatePath("/");
-    return { token };
+    return { token, calendar: scopes.includes("CALENDAR") };
   } catch (error) {
     return { error: actionError(error, ApiTokenError, "The token could not be created. Please try again.") };
   }

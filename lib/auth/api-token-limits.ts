@@ -7,8 +7,11 @@ export const MAX_TOKEN_NAME = 60;
 export const TOKEN_LIFETIMES = [30, 90, 365] as const;
 export const scopeLabels: Record<ApiScope, string> = {
   MCP_READ: "AI assistants (MCP): read projects, tasks and the team",
-  CALENDAR: "Calendar feed: deadlines and time off",
+  CALENDAR: "Calendar feed: your deadlines, project ends and time off",
 };
+
+/** The calendar subscription address for a calendar token. */
+export const calendarFeedUrl = (origin: string, token: string) => `${origin}/api/calendar/${token}.ics`;
 
 export type ApiTokenSummary = {
   id: number; name: string; prefix: string; scopes: ApiScope[];

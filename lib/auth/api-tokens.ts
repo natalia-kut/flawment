@@ -40,6 +40,8 @@ export async function createApiToken(userId: number, data: FormData, now = new D
   const chosen = [...new Set(data.getAll("scopes").map(String))];
   if (chosen.length === 0) throw new ApiTokenError("Choose what the token may be used for.");
   if (chosen.some((scope) => !scopes.includes(scope as ApiScope))) throw new ApiTokenError("Choose what the token may be used for.");
+  // A calendar token travels in a link (calendar apps send no headers), so it may do nothing else.
+  if (chosen.includes("CALENDAR") && chosen.length > 1) throw new ApiTokenError("A calendar token is part of a link, so it can only be used for the calendar.");
   const days = Number(data.get("days"));
   if (!TOKEN_LIFETIMES.includes(days as (typeof TOKEN_LIFETIMES)[number])) throw new ApiTokenError("Choose when the token expires.");
 
@@ -55,7 +57,7 @@ export async function createApiToken(userId: number, data: FormData, now = new D
       scopes: chosen as ApiScope[], expires_at: new Date(now.getTime() + days * 86_400_000),
     } });
   });
-  return { id: saved.id, token };
+  return { id: saved.id, token, scopes: saved.scopes };
 }
 
 /** Revokes one of your own tokens; someone else's id changes nothing. */

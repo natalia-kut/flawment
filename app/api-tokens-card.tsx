@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useState } from "react";
 import { createApiTokenAction, deleteApiTokenAction, type ApiTokenState } from "@/lib/auth/actions";
-import { MAX_TOKEN_NAME, scopeLabels, TOKEN_LIFETIMES, type ApiTokenSummary } from "@/lib/auth/api-token-limits";
+import { calendarFeedUrl, MAX_TOKEN_NAME, scopeLabels, TOKEN_LIFETIMES, type ApiTokenSummary } from "@/lib/auth/api-token-limits";
 import { useConfirm } from "@/components/ui/confirm";
 import { OFFLINE, reach } from "@/components/ui/offline";
 import { submitInPlace } from "@/components/ui/submit-in-place";
@@ -35,9 +35,12 @@ export default function ApiTokensCard({ tokens }: { tokens: ApiTokenSummary[] })
     });
   }
 
-  async function copy(token: string) {
+  // Only after a token was made in this browser, so window is there.
+  const shown = state.token && (state.calendar ? calendarFeedUrl(window.location.origin, state.token) : state.token);
+
+  async function copy(value: string) {
     try {
-      await navigator.clipboard.writeText(token);
+      await navigator.clipboard.writeText(value);
       setCopied(true);
     } catch {
       setCopied(false);
@@ -50,11 +53,13 @@ export default function ApiTokensCard({ tokens }: { tokens: ApiTokenSummary[] })
       {!creating && <button type="button" className="inline-link text-button" onClick={() => { setCreating(true); setCopied(false); }}>New token</button>}
     </div>
 
-    {state.token && !creating && <div className="api-token-new" role="status">
-      <p>Copy your new token now: it will not be shown again.</p>
+    {shown && !creating && <div className="api-token-new" role="status">
+      <p>{state.calendar
+        ? "Copy your calendar link now: it will not be shown again. In your calendar app, add a calendar from a URL and paste it."
+        : "Copy your new token now: it will not be shown again."}</p>
       <div className="api-token-value">
-        <code>{state.token}</code>
-        <button type="button" className="secondary-button" onClick={() => copy(state.token!)}>{copied ? "Copied" : "Copy"}</button>
+        <code>{shown}</code>
+        <button type="button" className="secondary-button" onClick={() => copy(shown)}>{copied ? "Copied" : "Copy"}</button>
       </div>
     </div>}
 
@@ -62,9 +67,10 @@ export default function ApiTokensCard({ tokens }: { tokens: ApiTokenSummary[] })
       <fieldset disabled={pending}>
         <label>Name<input name="name" required maxLength={MAX_TOKEN_NAME} placeholder="Claude on my laptop" autoFocus /></label>
         <fieldset className="api-token-scopes">
-          <legend>May be used for</legend>
+          <legend>Used for</legend>
+          {/* One use each: a calendar token travels in a link, so it may do nothing else. */}
           {(Object.entries(scopeLabels) as [ApiScope, string][]).map(([scope, label]) =>
-            <label key={scope} className="checkbox-label"><input type="checkbox" name="scopes" value={scope} defaultChecked={scope === "MCP_READ"} />{label}</label>)}
+            <label key={scope} className="checkbox-label"><input type="radio" name="scopes" value={scope} required defaultChecked={scope === "MCP_READ"} />{label}</label>)}
         </fieldset>
         <label>Expires after
           <select name="days" defaultValue="90">
