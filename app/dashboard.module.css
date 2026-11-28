@@ -92,3 +92,7 @@ section.assistant:global(.started) .ripples { display: none; }
   .rays, .dueIcon::after, .ripples::before, .ripples::after { animation: none; }
   .stat, .task { transition: none; }
 }
+
+/* A new account with no projects: one panel that says why the page is empty. */
+.firstRun h2 { margin: 0 0 8px; font-size: 19px; }
+.firstRun p { max-width: 62ch; margin: 0 0 16px; color: var(--muted); }

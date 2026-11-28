@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import styles from "./dashboard-widgets.module.css";
 import { PersonButton } from "@/app/people-context";
@@ -23,8 +24,10 @@ type Person = { key: string; name: string; open: number; done: number; total: nu
  * Someone away today is dimmed with a moon; a birthday or work anniversary
  * today gets a festive outline. Busiest first; the rings draw in on first show.
  */
-export default function TeamRings({ tasks, currentUserKey, people: details = new Map(), members }: {
+export default function TeamRings({ tasks, currentUserKey, people: details = new Map(), members, moreHref }: {
   tasks: TeamTask[]; currentUserKey: string; people?: Map<string, RingPerson>;
+  /** Where the people beyond the first few are listed. */
+  moreHref?: string;
   /**
    * Show exactly these people (your team), even with no tasks. Their counts
    * come only from projects you can see, so a zero reads "No shared tasks".
@@ -47,9 +50,14 @@ export default function TeamRings({ tasks, currentUserKey, people: details = new
   const sorted = [...people.values()].sort((a, b) => b.open - a.open || a.name.localeCompare(b.name));
 
   if (sorted.length === 0) return <p className={styles.quiet}>Nobody has tasks yet.</p>;
+  // The busiest few, and always you: in a big team you would otherwise drop off your own dashboard.
+  const shown = sorted.slice(0, MAX_PEOPLE);
+  const you = sorted.find((person) => person.key === currentUserKey);
+  if (you && !shown.includes(you)) shown[shown.length - 1] = you;
+  const more = sorted.length - shown.length;
 
   return <ul className={styles.team}>
-      {sorted.slice(0, MAX_PEOPLE).map((person, index) => {
+      {shown.map((person, index) => {
         const share = person.total ? person.done / person.total : 0;
         const initials = person.name.split(/\s+/).map((part) => part.charAt(0)).join("").slice(0, 2);
         const extra = details.get(person.key);
@@ -88,5 +96,8 @@ export default function TeamRings({ tasks, currentUserKey, people: details = new
           {away && <span className={styles.awayNote}>Out until {formatShortDay(away.until)}</span>}
         </li>;
       })}
+      {more > 0 && <li className={styles.member}>
+        {moreHref ? <Link href={moreHref} className={styles.more}>+{more} more</Link> : <span className={styles.more}>+{more} more</span>}
+      </li>}
   </ul>;
 }

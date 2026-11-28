@@ -29,23 +29,33 @@ const ago = (day: string, today: string) => {
   return days === 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
 };
 
+/** People listed before "Show all": enough to start on, short enough to see the teams below. */
+const UNSET_SHOWN = 5;
+
 /** Requests to decide, then gaps to fill: one quiet row each; "all caught up" when there are none. */
 export default function NeedsYou({ requests, needs, today }: { requests: PendingTitleRequest[]; needs: ReturnType<typeof setupNeeds>; today: string }) {
   const unset = [...new Set([...needs.noTitle, ...needs.noTeam])];
   const count = requests.length + unset.length + needs.leaderless.length;
+  const [showAll, setShowAll] = useState(false);
+  const hidden = showAll ? 0 : Math.max(0, unset.length - UNSET_SHOWN);
   return <section className={dashboard.panel} id="title-requests" aria-labelledby="needs-title">
     <div className={dashboard.panelHeading}><h2 id="needs-title">Needs you{count > 0 && <> <span className="role-badge">{count}</span></>}</h2></div>
     {count === 0 ? <p className={styles.caughtUp}><span aria-hidden="true">🎉</span> You&apos;re all caught up: no requests, and everyone is set up.</p>
     : <ul className={styles.list}>
       {requests.map((r) => <RequestRow key={r.id} request={r} today={today} />)}
-      {unset.map((p) => <li key={p.id} className={styles.row}>
+      {unset.slice(0, unset.length - hidden).map((p) => <li key={p.id} className={styles.row}>
         <UserAvatar id={p.id} firstName={p.first_name} lastName={p.last_name} photoVersion={p.photoVersion} size={36} />
         <div className={styles.body}>
           <p><strong>{p.first_name} {p.last_name}</strong></p>
           <p className={styles.missing}>{[p.jobTitle === null && "No job title", p.teamId === null && "No team"].filter(Boolean).join(" · ")}</p>
         </div>
-        <Link className={styles.fix} href="/?view=team">Set up →</Link>
+        <Link className={styles.fix} href={`/?view=team&setup=${p.id}`} aria-label={`Set up ${p.first_name} ${p.last_name}`}>Set up →</Link>
       </li>)}
+      {(hidden > 0 || (showAll && unset.length > UNSET_SHOWN)) && <li className={styles.more}>
+        <button type="button" className={styles.moreButton} aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
+          {showAll ? "Show fewer" : `Show ${hidden} more ${hidden === 1 ? "person" : "people"}`}
+        </button>
+      </li>}
       {needs.leaderless.map((t) => <li key={"team-" + t.id} className={styles.row}>
         <span className={styles.teamMark} aria-hidden="true">{t.name.split(/\s+/).map((w) => w[0]).filter((c) => /\w/.test(c)).join("").slice(0, 2)}</span>
         <div className={styles.body}>

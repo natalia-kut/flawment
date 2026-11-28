@@ -98,7 +98,7 @@ export default function ProjectTimeline({ projects, today }: { projects: Workspa
       </span>
     </div>
 
-    {bars.length === 0 ? <p className={styles.quiet}>Pick projects above to see them on the timeline.</p> : <>
+    {bars.length === 0 ? <p className={styles.quiet}>{projects.length === 0 ? "No projects yet." : "Pick projects above to see them on the timeline."}</p> : <>
       <div className={styles.scroll}><div className={styles.chart} onMouseLeave={() => setHover(null)}>
         <div className={styles.names}>
           <span className={styles.axisSpacer} />
