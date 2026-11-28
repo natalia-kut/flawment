@@ -4,6 +4,7 @@ import type { Prisma } from "@/src/generated/prisma/client";
 import { MAX_COMMENT_LENGTH } from "./limits";
 import { recordId, TaskError } from "./service";
 import { serializable } from "@/lib/transaction";
+import { notify } from "@/lib/notifications/notify";
 
 const field = (data: FormData, key: string) => String(data.get(key) ?? "");
 
@@ -28,18 +29,21 @@ export async function addComment(actor: Actor, data: FormData) {
   const parentId = field(data, "parent_id") ? recordId(field(data, "parent_id")) : null;
   const body = readBody(data);
   return serializable(async (tx) => {
-    const task = await tx.task.findUnique({ where: { id: taskId }, select: { project_id: true } });
+    const task = await tx.task.findUnique({ where: { id: taskId }, select: { project_id: true, assigned_to: true, created_by: true } });
     if (!task || !can(await roleIn(tx, actor, task.project_id), "project:read", actor.role)) {
       throw new TaskError("This task is no longer available.");
     }
     const parent = parentId === null ? null
-      : await tx.taskComment.findFirst({ where: { id: parentId, task_id: taskId, deleted_at: null }, select: { id: true, parent_id: true } });
+      : await tx.taskComment.findFirst({ where: { id: parentId, task_id: taskId, deleted_at: null }, select: { id: true, parent_id: true, author_id: true } });
     if (parentId !== null && !parent) throw new TaskError("The comment you are replying to is no longer available.");
-    return tx.taskComment.create({
+    const comment = await tx.taskComment.create({
       // Threads are one level deep: a reply to a reply joins the same thread.
       data: { task_id: taskId, author_id: actor.id, body, parent_id: parent ? parent.parent_id ?? parent.id : null },
       select: { id: true },
     });
+    // The people the task is about, and whoever was answered.
+    await notify(tx, { type: "TASK_COMMENT", recipients: [task.assigned_to, task.created_by, parent?.author_id], actorId: actor.id, taskId });
+    return comment;
   });
 }
 

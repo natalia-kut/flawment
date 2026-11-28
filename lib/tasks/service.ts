@@ -5,6 +5,7 @@ import type { Task, TaskPriority, TaskStatus } from "@/src/generated/prisma/clie
 import { serializable } from "@/lib/transaction";
 import { keepUnchanged, knowsBase, listFields, staleFields } from "@/lib/stale";
 import { cleanLine } from "@/lib/text";
+import { notify } from "@/lib/notifications/notify";
 
 export class TaskError extends Error {}
 /** The page was out of date: someone changed what it was about to save. */
@@ -152,16 +153,16 @@ async function saveTask(actor: Actor, data: FormData, editing: boolean, partial 
       deadline: deadline ? new Date(deadline) : null,
       assigned_to: assignedTo, status,
     };
-    if (taskId !== null) {
-      return tx.task.update({
-        where: { id: taskId, project_id: projectId },
-        data: values, select: { id: true },
-      });
+    const saved = taskId !== null
+      ? await tx.task.update({ where: { id: taskId, project_id: projectId }, data: values, select: { id: true } })
+      : await tx.task.create({ data: { ...values, project_id: projectId, created_by: actor.id }, select: { id: true } });
+    const newlyAssigned = assignedTo !== null && assignedTo !== existing?.assigned_to;
+    if (newlyAssigned) await notify(tx, { type: "TASK_ASSIGNED", recipients: [assignedTo], actorId: actor.id, taskId: saved.id });
+    if (existing && existing.status !== status) {
+      // Someone just handed the task gets the assignment, not also its status.
+      await notify(tx, { type: "TASK_STATUS", recipients: [existing.created_by, newlyAssigned ? null : assignedTo], actorId: actor.id, taskId: saved.id, status });
     }
-    return tx.task.create({
-      data: { ...values, project_id: projectId, created_by: actor.id },
-      select: { id: true },
-    });
+    return saved;
   });
 }
 
@@ -213,5 +214,8 @@ export async function changeTaskStatus(actor: Actor, data: FormData) {
       data: { status, ...completion(status, expected) },
     });
     if (changed.count !== 1) throw new TaskError("Someone changed this task in the meantime. Check its status and try again.");
+    if (status !== expected) {
+      await notify(tx, { type: "TASK_STATUS", recipients: [task.assigned_to, task.created_by], actorId: actor.id, taskId, status });
+    }
   });
 }
